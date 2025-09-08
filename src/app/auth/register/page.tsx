@@ -1,8 +1,10 @@
+
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,44 +13,44 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Newspaper } from 'lucide-react';
 import Link from 'next/link';
-import { doc, getDoc } from 'firebase/firestore';
-import type { UserProfile } from '@/lib/types';
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Fetch user profile to check role
+      // Create a user profile document in Firestore
       const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+      
+      const isAdmin = email === 'Rajashekardg2002@gmail.com';
+      const role = isAdmin ? 'admin' : 'user';
 
-      toast({ title: 'Login Successful', description: 'Redirecting...' });
+      await setDoc(userDocRef, {
+        uid: user.uid,
+        email: user.email,
+        displayName: displayName,
+        role: role,
+      });
 
-      if (userDoc.exists()) {
-        const userProfile = userDoc.data() as UserProfile;
-        if (userProfile.role === 'admin') {
-          router.push('/admin');
-        } else {
-          router.push('/');
-        }
-      } else {
-        // Default redirect for users without a profile doc
-        router.push('/');
-      }
+      toast({
+        title: 'Registration Successful',
+        description: 'Please login with your new account.',
+      });
+      router.push('/auth/login');
     } catch (error: any) {
       console.error(error);
       toast({
-        title: 'Login Failed',
+        title: 'Registration Failed',
         description: error.message || 'An unknown error occurred.',
         variant: 'destructive',
       });
@@ -68,17 +70,29 @@ export default function LoginPage() {
         </div>
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl font-headline">Admin Login</CardTitle>
-            <CardDescription>Enter your credentials to access the portal.</CardDescription>
+            <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
+            <CardDescription>Enter your details to register.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleRegister} className="space-y-4">
+               <div className="space-y-2">
+                <Label htmlFor="displayName">Full Name</Label>
+                <Input
+                  id="displayName"
+                  type="text"
+                  placeholder="Your Name"
+                  required
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@example.com"
+                  placeholder="user@example.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -90,6 +104,7 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type="password"
+                  placeholder="••••••••"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -97,13 +112,13 @@ export default function LoginPage() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Logging in...' : 'Login'}
+                {loading ? 'Registering...' : 'Register'}
               </Button>
             </form>
              <div className="mt-4 text-center text-sm">
-                Don't have an account?{' '}
-                <Link href="/auth/register" className="underline text-primary">
-                    Register
+                Already have an account?{' '}
+                <Link href="/auth/login" className="underline text-primary">
+                    Login
                 </Link>
             </div>
           </CardContent>

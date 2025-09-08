@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -32,17 +33,17 @@ export default function LoginPage() {
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
-      toast({ title: 'Login Successful', description: 'Redirecting...' });
-
       if (userDoc.exists()) {
         const userProfile = userDoc.data() as UserProfile;
+        toast({ title: 'Login Successful', description: 'Redirecting...' });
         if (userProfile.role === 'admin') {
           router.push('/admin');
         } else {
           router.push('/');
         }
       } else {
-        // Default redirect for users without a profile doc
+        // Default redirect for users without a profile doc or role
+        toast({ title: 'Login Successful', description: 'Redirecting...' });
         router.push('/');
       }
     } catch (error: any) {
@@ -69,7 +70,7 @@ export default function LoginPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl font-headline">Login</CardTitle>
-            <CardDescription>Enter your credentials to access your account.</CardDescription>
+            <CardDescription>Enter your credentials to access your account. Admins will be redirected to the dashboard.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">

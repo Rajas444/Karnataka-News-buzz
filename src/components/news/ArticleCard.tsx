@@ -1,0 +1,61 @@
+import Image from 'next/image';
+import Link from 'next/link';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import type { Article } from '@/lib/types';
+import { formatDistanceToNow } from 'date-fns';
+import { placeholderCategories, placeholderDistricts } from '@/lib/placeholder-data';
+import { Calendar, MapPin } from 'lucide-react';
+
+interface ArticleCardProps {
+  article: Article;
+}
+
+export default function ArticleCard({ article }: ArticleCardProps) {
+  const district = placeholderDistricts.find(d => d.id === article.districtId);
+  const categories = placeholderCategories.filter(c => article.categoryIds.includes(c.id));
+
+  return (
+    <Card className="flex flex-col h-full overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      <CardHeader className="p-0">
+        <Link href={`/article/${article.id}`} className="block">
+          <div className="relative h-48 w-full">
+            <Image
+              src={article.imageUrl || 'https://picsum.photos/400/250'}
+              alt={article.title}
+              fill
+              className="object-cover"
+              data-ai-hint={article['data-ai-hint'] || 'news placeholder'}
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            />
+          </div>
+        </Link>
+      </CardHeader>
+      <CardContent className="flex-grow p-4">
+        <div className="flex flex-wrap gap-2 mb-2">
+            {categories.map(cat => (
+                <Badge key={cat.id} variant="secondary">{cat.name}</Badge>
+            ))}
+        </div>
+        <CardTitle className="mb-2 text-xl leading-tight font-headline">
+          <Link href={`/article/${article.id}`} className="hover:text-primary transition-colors">
+            {article.title}
+          </Link>
+        </CardTitle>
+        <p className="text-muted-foreground text-sm">
+          {article.content.substring(0, 100)}...
+        </p>
+      </CardContent>
+      <CardFooter className="p-4 bg-muted/50 text-xs text-muted-foreground flex justify-between">
+        <div className="flex items-center gap-1">
+            <MapPin className="h-3 w-3" />
+            <span>{district?.name || 'Karnataka'}</span>
+        </div>
+        <div className="flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
+            <span>{formatDistanceToNow(article.publishedAt, { addSuffix: true })}</span>
+        </div>
+      </CardFooter>
+    </Card>
+  );
+}

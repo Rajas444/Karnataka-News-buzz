@@ -68,8 +68,8 @@ export default function LoginPage() {
         </div>
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl font-headline">Admin Login</CardTitle>
-            <CardDescription>Enter your credentials to access the portal.</CardDescription>
+            <CardTitle className="text-2xl font-headline">Login</CardTitle>
+            <CardDescription>Enter your credentials to access your account.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">

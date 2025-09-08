@@ -23,7 +23,7 @@ const navLinks = [
 
 export default function Header() {
   const { theme, setTheme } = useTheme();
-  const { user, userRole } = useAuth();
+  const { user, userRole, loading } = useAuth();
   const router = useRouter();
 
   const handleAuthAction = () => {
@@ -107,7 +107,7 @@ export default function Header() {
               <Button onClick={() => router.push('/admin')}>Dashboard</Button>
             )}
             <Button variant="outline" onClick={handleAuthAction}>
-              {user ? 'Logout' : 'Admin Login'}
+              {user ? 'Logout' : 'Login'}
             </Button>
           </div>
         </div>

@@ -62,6 +62,13 @@ export default function LoginPage() {
             description: "Invalid credentials. Please check your email and password.",
             variant: 'destructive',
         });
+      } else if (error.message?.includes('client is offline')) {
+        toast({
+          title: 'Firestore Error',
+          description: 'Could not connect to the database. Please ensure Firestore is enabled in your Firebase project.',
+          variant: 'destructive',
+          duration: 9000,
+        });
       } else {
         toast({
             title: 'Login Failed',

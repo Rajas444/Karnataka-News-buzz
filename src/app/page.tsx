@@ -60,16 +60,15 @@ export default function LoginPage() {
       if (userDoc.exists()) {
         const profile = userDoc.data();
          if (profile.role === 'admin') {
-            toast({ title: 'Admin Login', description: 'Redirecting to admin login...' });
+            await auth.signOut(); // Log out the user immediately
+            toast({ title: 'Admin Login', description: 'Redirecting to admin login page...' });
             router.push('/auth/admin-login');
+            setLoading(false);
             return;
         }
-        toast({ title: 'Login Successful', description: 'Redirecting...' });
-        router.push('/home');
-      } else {
-        toast({ title: 'Login Successful', description: 'Redirecting...' });
-        router.push('/home');
       }
+        toast({ title: 'Login Successful', description: 'Redirecting...' });
+        router.push('/home');
     } catch (error: any) {
       console.error(error);
       if (error.code === 'auth/configuration-not-found') {

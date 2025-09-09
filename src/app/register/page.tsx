@@ -27,14 +27,14 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
+      const isAdmin = email.toLowerCase() === 'rajashekar2002@gmail.com';
+      const role = isAdmin ? 'admin' : 'user';
+      
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
       const userDocRef = doc(db, 'users', user.uid);
       
-      const isAdmin = email.toLowerCase() === 'rajashekar2002@gmail.com';
-      const role = isAdmin ? 'admin' : 'user';
-
       await setDoc(userDocRef, {
         uid: user.uid,
         email: user.email,
@@ -42,6 +42,9 @@ export default function RegisterPage() {
         role: role,
         photoURL: ''
       });
+
+      // Log out the user immediately after registration to force them to the correct login page
+      await auth.signOut();
 
       toast({
         title: 'Registration Successful',

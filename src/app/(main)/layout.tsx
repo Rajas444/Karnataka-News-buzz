@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Newspaper } from 'lucide-react';
+import MainLayoutClient from './layout.client';
 
 export default function MainLayout({
   children,
@@ -17,13 +18,7 @@ export default function MainLayout({
     const { user, loading } = useAuth();
     const router = useRouter();
 
-    useEffect(() => {
-        if (!loading && !user) {
-            router.replace('/');
-        }
-    }, [user, loading, router]);
-
-    if (loading || !user) {
+    if (loading) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
@@ -34,12 +29,30 @@ export default function MainLayout({
         );
     }
 
+    if (!user) {
+        // This should be handled by the layout.client, but as a safeguard
+        useEffect(() => {
+            router.replace('/');
+        }, [router]);
+        return (
+             <div className="flex h-screen items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <Newspaper className="h-12 w-12 text-primary animate-pulse" />
+                    <p className="text-muted-foreground">Redirecting to login...</p>
+                </div>
+            </div>
+        );
+    }
+
+
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header />
-      <main className="flex-grow">{children}</main>
-      <Footer />
-      <AIChatWidget />
-    </div>
+    <MainLayoutClient>
+        <div className="flex min-h-screen flex-col">
+          <Header />
+          <main className="flex-grow">{children}</main>
+          <Footer />
+          <AIChatWidget />
+        </div>
+    </MainLayoutClient>
   );
 }

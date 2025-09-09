@@ -42,6 +42,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Label } from '@/components/ui/label';
 
+
 const formSchema = z.object({
   title: z.string().min(10, 'Title must be at least 10 characters long.'),
   content: z.string().min(50, 'Content must be at least 50 characters long.'),

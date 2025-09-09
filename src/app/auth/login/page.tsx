@@ -49,11 +49,20 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       console.error(error);
-      toast({
-        title: 'Login Failed',
-        description: error.message || 'An unknown error occurred.',
-        variant: 'destructive',
-      });
+      if (error.code === 'auth/configuration-not-found') {
+        toast({
+            title: 'Configuration Error',
+            description: "Email/Password sign-in is not enabled in your Firebase project. Please enable it in the Firebase console.",
+            variant: 'destructive',
+            duration: 9000,
+        });
+      } else {
+        toast({
+            title: 'Login Failed',
+            description: error.message || 'An unknown error occurred.',
+            variant: 'destructive',
+        });
+      }
     } finally {
       setLoading(false);
     }

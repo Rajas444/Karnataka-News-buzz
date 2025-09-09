@@ -14,12 +14,17 @@ const categoryMapping: { [key: string]: string } = {
     'science': 'science',
 };
 
-export async function fetchNews(categorySlug: string = 'general', district?: string): Promise<Article[]> {
+type FetchNewsResponse = {
+    articles: Article[];
+    nextPage: string | null;
+}
+
+export async function fetchNews(categorySlug: string = 'general', district?: string, page?: string | null): Promise<FetchNewsResponse> {
     const apiKey = process.env.NEWSDATA_API_KEY;
 
     if (!apiKey) {
         console.error("newsdata.io API key is missing. Falling back to placeholder data.");
-        return placeholderArticles;
+        return { articles: placeholderArticles, nextPage: null };
     }
 
     const newsDataCategory = categoryMapping[categorySlug] || 'top';
@@ -27,20 +32,24 @@ export async function fetchNews(categorySlug: string = 'general', district?: str
     let query = district ? `"${district}" AND "Karnataka"` : 'Karnataka';
     
     // Build the URL for newsdata.io API
-    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&country=in&language=en&q=${encodeURIComponent(query)}&category=${newsDataCategory}`;
+    let url = `https://newsdata.io/api/1/news?apikey=${apiKey}&country=in&language=en&q=${encodeURIComponent(query)}&category=${newsDataCategory}`;
+
+    if (page) {
+        url += `&page=${page}`;
+    }
 
     try {
-        const response = await fetch(url);
+        const response = await fetch(url, { cache: 'no-store' });
         if (!response.ok) {
             const errorBody = await response.json();
             console.error(`newsdata.io API request failed with status: ${response.status}`, errorBody);
-            return [];
+            return { articles: [], nextPage: null };
         }
 
         const data = await response.json();
 
         if (!data.results || data.results.length === 0) {
-            return [];
+            return { articles: [], nextPage: null };
         }
 
         const articles: Article[] = data.results.map((item: any, index: number) => {
@@ -70,9 +79,9 @@ export async function fetchNews(categorySlug: string = 'general', district?: str
             }
         }).filter((article): article is Article => article.title && article.content); // Filter out articles with no title or content
 
-        return articles;
+        return { articles, nextPage: data.nextPage || null };
     } catch (error) {
         console.error("Failed to fetch news from newsdata.io:", error);
-        return []; // Return empty array on network or other errors
+        return { articles: [], nextPage: null }; // Return empty array on network or other errors
     }
 }

@@ -2,12 +2,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { placeholderCategories, placeholderDistricts } from '@/lib/placeholder-data';
-import ArticleCard from '@/components/news/ArticleCard';
 import FilterControls from '@/components/news/FilterControls';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { fetchNews } from '@/services/news';
 import type { Article } from '@/lib/types';
+import ArticleList from '@/components/news/ArticleList';
 
 type HomePageProps = {
   searchParams?: {
@@ -22,10 +22,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const districtName = placeholderDistricts.find(d => d.id === district)?.name;
   
-  const articles = await fetchNews(category, districtName);
+  const { articles, nextPage } = await fetchNews(category, districtName);
 
   const topArticle: Article | undefined = articles[0];
-  const recentArticles = articles.slice(1, 5);
+  const initialArticles = articles.slice(1);
 
   if (!topArticle) {
     return (
@@ -88,22 +88,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </Button>
           )}
         </div>
-        {recentArticles.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {recentArticles.map((article) => (
-              <ArticleCard key={article.id} article={article} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-card rounded-lg">
-            <p className="text-muted-foreground">No articles found for the selected filters.</p>
-          </div>
-        )}
+         <ArticleList 
+            initialArticles={initialArticles} 
+            initialNextPage={nextPage}
+            category={category}
+            district={district}
+            districtName={districtName}
+        />
       </section>
-
-      <div className="text-center mt-12">
-        <Button variant="outline" size="lg">Load More Articles</Button>
-      </div>
     </div>
   );
 }

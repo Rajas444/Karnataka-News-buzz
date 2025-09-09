@@ -17,7 +17,7 @@ import { useAuth } from '@/hooks/use-auth';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,9 +25,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace('/home');
+        if (userProfile?.role === 'admin') {
+            router.replace('/admin');
+        } else {
+            router.replace('/home');
+        }
     }
-  }, [user, authLoading, router]);
+  }, [user, userProfile, authLoading, router]);
 
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -43,8 +47,13 @@ export default function LoginPage() {
       const userDoc = await getDoc(userDocRef);
 
       if (userDoc.exists()) {
+        const profile = userDoc.data();
         toast({ title: 'Login Successful', description: 'Redirecting...' });
-        router.push('/home');
+        if (profile.role === 'admin') {
+            router.push('/admin');
+        } else {
+            router.push('/home');
+        }
       } else {
         // Default redirect for users without a profile doc or role
         toast({ title: 'Login Successful', description: 'Redirecting...' });
@@ -65,10 +74,10 @@ export default function LoginPage() {
             description: "Invalid credentials. Please check your email and password.",
             variant: 'destructive',
         });
-      } else if (error.message?.includes('client is offline')) {
+      } else if (error.message?.includes('client is offline') || error.code === 'unavailable') {
         toast({
           title: 'Firestore Error',
-          description: 'Could not connect to the database. Please ensure Firestore is enabled in your Firebase project.',
+          description: 'Could not connect to the database. Please ensure Firestore is enabled and has correct rules.',
           variant: 'destructive',
           duration: 9000,
         });

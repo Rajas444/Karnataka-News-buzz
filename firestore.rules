@@ -1,0 +1,39 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if a user is an admin
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Articles: Public can read, Admins can write
+    match /articles/{articleId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && isAdmin();
+    }
+
+    // Categories: Public can read, Admins can write
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && isAdmin();
+    }
+
+    // Districts: Public can read, Admins can write
+    match /districts/{districtId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && isAdmin();
+    }
+
+    // Users: Users can read their own profile, Admins can read all profiles
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow create: if request.auth != null; // Allow any authenticated user to create their own profile doc
+      allow update: if request.auth != null && request.auth.uid == userId; // Allow users to update their own profile
+      allow delete: if request.auth != null && isAdmin(); // Only admins can delete user profiles
+    }
+  }
+}

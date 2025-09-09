@@ -38,6 +38,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     )
   }
 
+  const hasFilters = !!(searchParams?.category || searchParams?.district);
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Hero Section */}
@@ -78,9 +80,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section>
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-headline text-3xl font-bold">
-            {searchParams?.category || searchParams?.district ? 'Filtered News' : 'Recent News'}
+            {hasFilters ? 'Filtered News' : 'Recent News'}
           </h2>
-          {(searchParams?.category || searchParams?.district) && (
+          {hasFilters && (
             <Button variant="ghost" asChild>
               <Link href="/home">Clear Filters</Link>
             </Button>

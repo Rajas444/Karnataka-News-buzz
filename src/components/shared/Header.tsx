@@ -1,18 +1,29 @@
+
 'use client';
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Menu, Newspaper, Search, Moon, Sun } from 'lucide-react';
+import { Menu, Newspaper, Search, Moon, Sun, LogOut, User as UserIcon } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
+import { Skeleton } from '../ui/skeleton';
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -23,16 +34,12 @@ const navLinks = [
 
 export default function Header() {
   const { theme, setTheme } = useTheme();
-  const { user, userRole, loading } = useAuth();
+  const { user, userProfile, userRole, loading } = useAuth();
   const router = useRouter();
 
-  const handleAuthAction = () => {
-    if (user) {
-      auth.signOut();
-      router.push('/');
-    } else {
-      router.push('/auth/login');
-    }
+  const handleLogout = () => {
+    auth.signOut();
+    router.push('/');
   };
 
   return (
@@ -103,12 +110,42 @@ export default function Header() {
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Toggle theme</span>
             </Button>
-            {userRole === 'admin' && (
-              <Button onClick={() => router.push('/admin')}>Dashboard</Button>
+            {loading ? (
+                <Skeleton className="h-10 w-20" />
+            ) : user ? (
+                <>
+                {userRole === 'admin' && (
+                    <Button onClick={() => router.push('/admin')}>Dashboard</Button>
+                )}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" size="icon" className="rounded-full">
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={userProfile?.photoURL || undefined} alt={userProfile?.displayName || 'User'} />
+                            <AvatarFallback>{userProfile?.displayName?.charAt(0) || userProfile?.email?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+                        </Avatar>
+                    </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>
+                        <div className="flex flex-col space-y-1">
+                            <p className="text-sm font-medium leading-none">{userProfile?.displayName}</p>
+                            <p className="text-xs leading-none text-muted-foreground">{userProfile?.email}</p>
+                        </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Log out</span>
+                    </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                </>
+            ) : (
+                <Button variant="outline" onClick={() => router.push('/auth/login')}>
+                    Login
+                </Button>
             )}
-            <Button variant="outline" onClick={handleAuthAction}>
-              {user ? 'Logout' : 'Login'}
-            </Button>
           </div>
         </div>
       </div>

@@ -29,6 +29,8 @@ export default function AdminLoginPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    // This effect will handle redirecting away if the user is ALREADY an admin.
+    // The login handler will take care of the redirect AFTER a successful login.
     if (!authLoading && user && userRole === 'admin') {
       router.replace('/admin/dashboard');
     }
@@ -60,8 +62,8 @@ export default function AdminLoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // The useEffect will handle the redirect after auth state is confirmed.
       toast({ title: 'Admin Login Successful', description: 'Redirecting to dashboard...' });
+      router.replace('/admin/dashboard');
     } catch (error: any) {
       console.error(error);
       toast({
@@ -69,7 +71,6 @@ export default function AdminLoginPage() {
         description: error.message || 'An unknown error occurred.',
         variant: 'destructive',
       });
-    } finally {
       setLoading(false);
     }
   };

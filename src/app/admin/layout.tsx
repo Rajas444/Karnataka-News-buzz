@@ -17,8 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Newspaper, LayoutDashboard, FileText, Tags, Map, BarChart2, LogOut, Settings } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Newspaper, LayoutDashboard, FileText, Tags, Map, BarChart2, LogOut, Settings, Users } from 'lucide-react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
 import AIChatWidget from '@/components/shared/AIChatWidget';
@@ -28,6 +27,7 @@ const navItems = [
   { href: '/admin/articles', label: 'Articles', icon: FileText },
   { href: '/admin/categories', label: 'Categories', icon: Tags },
   { href: '/admin/districts', label: 'Districts', icon: Map },
+  { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
@@ -39,7 +39,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!loading) {
       if (!user || userRole !== 'admin') {
-        router.replace('/auth/login');
+        router.replace('/auth/admin-login');
       }
     }
   }, [user, loading, userRole, router]);

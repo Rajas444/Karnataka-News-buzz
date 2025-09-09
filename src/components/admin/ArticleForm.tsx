@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -40,7 +41,6 @@ import type { Article } from '@/lib/types';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Label } from '@/components/ui/label';
-
 
 const formSchema = z.object({
   title: z.string().min(10, 'Title must be at least 10 characters long.'),
@@ -377,3 +377,5 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
     </Form>
   );
 }
+
+    

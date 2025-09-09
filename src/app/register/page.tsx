@@ -47,10 +47,22 @@ export default function RegisterPage() {
         title: 'Registration Successful',
         description: 'Please login with your new account.',
       });
-      router.push('/');
+
+      if (isAdmin) {
+          router.push('/auth/admin-login');
+      } else {
+          router.push('/');
+      }
+
     } catch (error: any) {
       console.error(error);
-      if (error.code === 'auth/configuration-not-found') {
+      if (error.code === 'auth/email-already-in-use') {
+         toast({
+            title: 'Registration Failed',
+            description: "An account with this email already exists.",
+            variant: 'destructive',
+        });
+      } else if (error.code === 'auth/configuration-not-found') {
         toast({
             title: 'Configuration Error',
             description: "Email/Password sign-in is not enabled in your Firebase project. Please enable it in the Firebase console.",

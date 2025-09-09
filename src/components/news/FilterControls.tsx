@@ -28,24 +28,48 @@ export default function FilterControls({ categories, districts }: FilterControls
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const selectedCategory = searchParams.get('category') || 'general';
+  // On a category page like /categories/politics, the category comes from the path
+  const pathCategory = pathname.startsWith('/categories/') 
+    ? pathname.split('/')[2] 
+    : null;
+
+  const selectedCategory = pathCategory || searchParams.get('category') || 'general';
   const selectedDistrict = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value === 'all' || (name === 'category' && value === 'general')) {
-        params.delete(name);
+       // If a category is selected via path, we don't want to add it to query params
+      if (name === 'category' && pathCategory) {
+          // just update the district param if it exists
+           if (value === 'all' || (name === 'category' && value === 'general')) {
+               params.delete(name)
+           } else {
+               params.set(name, value)
+           }
       } else {
-        params.set(name, value);
+        if (value === 'all' || (name === 'category' && value === 'general')) {
+            params.delete(name);
+        } else {
+            params.set(name, value);
+        }
       }
+
       return params.toString();
     },
-    [searchParams]
+    [searchParams, pathCategory]
   );
   
   const handleFilterChange = (type: 'category' | 'district', value: string) => {
-    router.push(pathname + '?' + createQueryString(type, value));
+      if (type === 'category' && !pathCategory) {
+          const newPath = value === 'general' ? '/home' : `/categories/${value}`;
+          const params = new URLSearchParams(searchParams.toString());
+          params.delete('category'); // remove from query if we're moving to path-based
+          const queryString = params.toString();
+          router.push(newPath + (queryString ? '?' + queryString : ''));
+      } else {
+         router.push(pathname + '?' + createQueryString(type, value));
+      }
   };
 
 

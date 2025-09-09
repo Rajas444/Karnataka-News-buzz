@@ -24,12 +24,14 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import { Skeleton } from '../ui/skeleton';
+import { placeholderCategories } from '@/lib/placeholder-data';
+
 
 const navLinks = [
   { href: '/home', label: 'Home' },
-  { href: '/categories/politics', label: 'Politics' },
-  { href: '/categories/technology', label: 'Technology' },
-  { href: '/categories/sports', label: 'Sports' },
+  { href: `/categories/${placeholderCategories.find(c=>c.name === 'Politics')?.slug || 'politics'}`, label: 'Politics' },
+  { href: `/categories/${placeholderCategories.find(c=>c.name === 'Technology')?.slug || 'technology'}`, label: 'Technology' },
+  { href: `/categories/${placeholderCategories.find(c=>c.name === 'Sports')?.slug || 'sports'}`, label: 'Sports' },
 ];
 
 export default function Header() {

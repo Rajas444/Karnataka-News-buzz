@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Newspaper } from 'lucide-react';
+import { placeholderCategories } from '@/lib/placeholder-data';
 
 export default function Footer() {
   return (

@@ -30,15 +30,17 @@ export async function aiChat(input: AIChatInput): Promise<AIChatOutput> {
 const prompt = ai.definePrompt({
   name: 'aiChatPrompt',
   input: {schema: AIChatInputSchema},
-  output: {schema: AIChatOutputSchema},
-  prompt: `You are an AI assistant providing information about Karnataka news, events, and districts.
+  output: {schema: z.object({ summary: z.string(), relatedArticles: z.array(z.string()).optional() })},
+  prompt: `You are a helpful AI news assistant for the Karnataka News Buzz website.
 
-  Respond to the user query with a concise summary and suggest related article titles.
+Your goal is to answer user questions about news, current events, or any other general queries they may have.
 
-  Query: {{{query}}}
+If the user asks a question about a news topic, provide a helpful summary.
+If the user asks a general question, provide a helpful response.
+If a query is unclear or outside your scope as a news assistant, you can politely say so.
 
-  Summary:
-  Related Articles:`, // Consider adding examples for better guidance.
+User Query: {{{query}}}
+`,
 });
 
 const aiChatFlow = ai.defineFlow(
@@ -49,6 +51,7 @@ const aiChatFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    // Add a fallback for the case where the model doesn't generate related articles.
+    return { summary: output!.summary, relatedArticles: output!.relatedArticles || [] };
   }
 );

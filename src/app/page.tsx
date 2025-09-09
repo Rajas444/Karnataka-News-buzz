@@ -38,24 +38,35 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
+    // Hard-coded check to redirect admin user to the correct login page.
+    if (email.toLowerCase() === 'rajashekar2002@gmail.com') {
+      toast({
+        title: 'Admin Account',
+        description: 'Please use the dedicated admin login page.',
+        variant: 'destructive',
+      });
+      router.push('/auth/admin-login');
+      setLoading(false);
+      return;
+    }
+
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // Fetch user profile to check role
+      
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
       if (userDoc.exists()) {
         const profile = userDoc.data();
-        toast({ title: 'Login Successful', description: 'Redirecting...' });
-        if (profile.role === 'admin') {
-            router.push('/admin');
-        } else {
-            router.push('/home');
+         if (profile.role === 'admin') {
+            toast({ title: 'Admin Login', description: 'Redirecting to admin login...' });
+            router.push('/auth/admin-login');
+            return;
         }
+        toast({ title: 'Login Successful', description: 'Redirecting...' });
+        router.push('/home');
       } else {
-        // Default redirect for users without a profile doc or role
         toast({ title: 'Login Successful', description: 'Redirecting...' });
         router.push('/home');
       }
@@ -116,7 +127,7 @@ export default function LoginPage() {
         </div>
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl font-headline">Login</CardTitle>
+            <CardTitle className="text-2xl font-headline">User Login</CardTitle>
             <CardDescription>Enter your credentials to access your account.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -126,7 +137,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@example.com"
+                  placeholder="user@example.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -152,6 +163,12 @@ export default function LoginPage() {
                 Don't have an account?{' '}
                 <Link href="/register" className="underline text-primary">
                     Register
+                </Link>
+            </div>
+            <div className="mt-2 text-center text-sm">
+                Are you an admin?{' '}
+                <Link href="/auth/admin-login" className="underline text-primary">
+                    Admin Login
                 </Link>
             </div>
           </CardContent>

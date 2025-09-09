@@ -30,11 +30,9 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Create a user profile document in Firestore
       const userDocRef = doc(db, 'users', user.uid);
       
-      // Assign 'admin' role if the email matches, otherwise 'user'
-      const isAdmin = email.toLowerCase() === 'admin@example.com';
+      const isAdmin = email.toLowerCase() === 'rajashekar2002@gmail.com';
       const role = isAdmin ? 'admin' : 'user';
 
       await setDoc(userDocRef, {

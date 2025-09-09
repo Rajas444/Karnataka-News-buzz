@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState } from "react";
@@ -11,11 +12,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { aiChat } from "@/ai/flows/ai-chat-interface";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import type { AIChatOutput } from "@/ai/flows/ai-chat-interface";
+import Link from "next/link";
 
 interface Message {
     sender: 'user' | 'ai';
     text: string;
-    relatedArticles?: string[];
+    relatedArticles?: AIChatOutput['relatedArticles'];
 }
 
 export default function AIChatWidget() {
@@ -44,7 +47,7 @@ export default function AIChatWidget() {
                 description: "Sorry, I couldn't process your request right now.",
                 variant: "destructive"
             })
-            setMessages(prev => prev.slice(0, prev.length -1)); // remove user message on error
+            // Do not remove user message on error, so they can retry
         } finally {
             setIsLoading(false);
         }
@@ -81,11 +84,17 @@ export default function AIChatWidget() {
                                         {message.sender === 'ai' && <Avatar className="h-6 w-6"><AvatarFallback>AI</AvatarFallback></Avatar>}
                                         <div className={cn("max-w-[80%] rounded-lg px-3 py-2 text-sm", message.sender === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
                                             <p>{message.text}</p>
-                                            {message.relatedArticles && (
+                                            {message.relatedArticles && message.relatedArticles.length > 0 && (
                                                  <div className="mt-2 border-t pt-2">
                                                      <h4 className="font-semibold text-xs mb-1">Related Articles:</h4>
                                                      <ul className="list-disc list-inside space-y-1">
-                                                         {message.relatedArticles.map((article, i) => <li key={i}>{article}</li>)}
+                                                         {message.relatedArticles.map((article, i) => (
+                                                            <li key={i}>
+                                                                <Link href={article.url} target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">
+                                                                    {article.title}
+                                                                </Link>
+                                                            </li>
+                                                         ))}
                                                      </ul>
                                                  </div>
                                             )}
@@ -119,7 +128,7 @@ export default function AIChatWidget() {
                                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                                 disabled={isLoading}
                             />
-                            <Button size="icon" onClick={handleSend} disabled={isLoading}>
+                            <Button size="icon" onClick={handleSend} disabled={isLoading || !input.trim()}>
                                 <Send className="h-4 w-4" />
                             </Button>
                         </div>

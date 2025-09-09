@@ -36,11 +36,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, userProfile, loading, userRole } = useAuth();
   const router = useRouter();
 
+  console.log('[AdminLayout] Auth State:', { loading, user: !!user, userRole });
+
   useEffect(() => {
+    console.log('[AdminLayout] useEffect triggered. State:', { loading, user: !!user, userRole });
     if (!loading) {
       if (!user || userRole !== 'admin') {
+        console.log('[AdminLayout] Redirecting to admin login. Reason: Not an admin or not logged in.');
         router.replace('/auth/admin-login');
+      } else {
+        console.log('[AdminLayout] Access granted. User is an admin.');
       }
+    } else {
+        console.log('[AdminLayout] Still loading auth state...');
     }
   }, [user, loading, userRole, router]);
 

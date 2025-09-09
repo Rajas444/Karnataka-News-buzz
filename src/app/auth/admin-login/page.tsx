@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Newspaper, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
 
 const ADMIN_EMAIL = 'rajashekar2002@gmail.com';
 const ADMIN_PASS = 'Raju@4444';
@@ -19,12 +20,19 @@ const ACCESS_CODE = '4444';
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const { user, userRole, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [isCodeVerified, setIsCodeVerified] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!authLoading && user && userRole === 'admin') {
+      router.replace('/admin/dashboard');
+    }
+  }, [user, userRole, authLoading, router]);
 
   const handleCodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,8 +60,8 @@ export default function AdminLoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      // The useEffect will handle the redirect after auth state is confirmed.
       toast({ title: 'Admin Login Successful', description: 'Redirecting to dashboard...' });
-      router.push('/admin/dashboard');
     } catch (error: any) {
       console.error(error);
       toast({
@@ -65,6 +73,17 @@ export default function AdminLoginPage() {
       setLoading(false);
     }
   };
+  
+    if (authLoading) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <Newspaper className="h-12 w-12 text-primary animate-pulse" />
+                    <p className="text-muted-foreground">Loading...</p>
+                </div>
+            </div>
+        );
+    }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">

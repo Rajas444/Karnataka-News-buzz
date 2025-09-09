@@ -55,9 +55,11 @@ const formSchema = z.object({
   seoKeywords: z.string().optional(),
 });
 
-type ArticleFormProps = {
+type ArticleFormValues = z.infer<typeof formSchema>;
+
+interface ArticleFormProps {
   initialData?: Article;
-};
+}
 
 export default function ArticleForm({ initialData }: ArticleFormProps) {
     const [isGenerating, setIsGenerating] = useState(false);
@@ -65,18 +67,18 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
     const { toast } = useToast();
     const router = useRouter();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<ArticleFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: initialData?.title || '',
       content: initialData?.content || '',
       status: initialData?.status || 'draft',
-      categoryId: initialData?.categoryIds[0] || '',
+      categoryId: initialData?.categoryIds?.[0] || '',
       districtId: initialData?.districtId || '',
-      publishedAt: initialData?.publishedAt,
-      imageUrl: initialData?.imageUrl,
-      seoMetaDescription: initialData?.seo.metaDescription || '',
-      seoKeywords: initialData?.seo.keywords.join(', ') || '',
+      publishedAt: initialData?.publishedAt ? new Date(initialData.publishedAt) : undefined,
+      imageUrl: initialData?.imageUrl || null,
+      seoMetaDescription: initialData?.seo?.metaDescription || '',
+      seoKeywords: initialData?.seo?.keywords?.join(', ') || '',
     },
   });
 
@@ -88,7 +90,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
             status: initialData.status,
             categoryId: initialData.categoryIds[0],
             districtId: initialData.districtId,
-            publishedAt: initialData.publishedAt,
+            publishedAt: new Date(initialData.publishedAt),
             imageUrl: initialData.imageUrl,
             seoMetaDescription: initialData.seo.metaDescription,
             seoKeywords: initialData.seo.keywords.join(', '),
@@ -142,7 +144,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
   }
 
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  function onSubmit(values: ArticleFormValues) {
     console.log(values);
     const action = initialData ? 'updated' : 'created';
     toast({
@@ -208,7 +210,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                     <FormItem>
                         <FormLabel>Meta Description</FormLabel>
                         <FormControl>
-                        <Textarea placeholder="A brief summary for search engines (max 160 characters)." {...field} />
+                        <Textarea placeholder="A brief summary for search engines (max 160 characters)." {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -221,7 +223,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                     <FormItem>
                         <FormLabel>Keywords</FormLabel>
                         <FormControl>
-                        <Input placeholder="e.g., karnataka, news, politics" {...field} />
+                        <Input placeholder="e.g., karnataka, news, politics" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormDescription>Comma-separated keywords.</FormDescription>
                         <FormMessage />
@@ -376,5 +378,3 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
     </Form>
   );
 }
-
-    

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -358,7 +357,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a district" />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {placeholderDistricts.map((dist) => (
@@ -377,5 +376,3 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
     </Form>
   );
 }
-
-    

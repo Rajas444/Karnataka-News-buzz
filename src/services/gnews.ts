@@ -16,8 +16,8 @@ const categoryMapping: { [key: string]: string } = {
 
 export async function fetchNews(categorySlug: string = 'general', district?: string): Promise<Article[]> {
     const apiKey = process.env.GNEWS_API_KEY;
-    if (!apiKey) {
-        console.error("GNews API key is missing. Falling back to placeholder data.");
+    if (!apiKey || apiKey === 'b22ac38c0388be49295828dfa7b73ea0_placeholder') {
+        console.error("GNews API key is missing or is a placeholder. Falling back to placeholder data.");
         return placeholderArticles;
     }
 
@@ -25,7 +25,7 @@ export async function fetchNews(categorySlug: string = 'general', district?: str
     
     // Construct the query. Prioritize district if available.
     let query = district ? `${district} Karnataka` : 'Karnataka';
-    if(categorySlug !== 'general' && categorySlug !== 'local-news') {
+    if(gnewsCategory !== 'general' && gnewsCategory !== 'nation') {
         query += ` ${gnewsCategory}`;
     }
 

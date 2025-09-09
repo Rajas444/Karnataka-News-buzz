@@ -93,7 +93,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
       status: initialData?.status || 'draft',
       categoryId: initialData?.categoryIds?.[0] || '',
       districtId: initialData?.districtId || '',
-      publishedAt: initialData?.publishedAt ? new Date(initialData.publishedAt) : new Date(),
+      publishedAt: initialData?.publishedAt ? new Date(initialData.publishedAt) : undefined,
       imageUrl: initialData?.imageUrl || null,
       imagePath: initialData?.imagePath || '',
       seoMetaDescription: initialData?.seo?.metaDescription || '',
@@ -179,7 +179,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-lg">Title</FormLabel>
+                    <FormLabel>Title</FormLabel>
                     <FormControl>
                         <div className="relative">
                             <Input placeholder="Enter a catchy title for your article" {...field} className="pr-10" />
@@ -197,7 +197,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                 name="content"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-lg">Content</FormLabel>
+                    <FormLabel>Content</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Write your article content here. Use markdown for formatting."
@@ -395,3 +395,5 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
     </Form>
   );
 }
+
+    

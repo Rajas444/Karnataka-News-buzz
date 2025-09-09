@@ -53,7 +53,7 @@ export default function AdminLoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: 'Admin Login Successful', description: 'Redirecting to dashboard...' });
-      router.push('/admin');
+      router.push('/admin/dashboard');
     } catch (error: any) {
       console.error(error);
       toast({

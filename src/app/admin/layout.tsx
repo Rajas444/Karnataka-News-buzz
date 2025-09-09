@@ -23,7 +23,7 @@ import { auth } from '@/lib/firebase';
 import AIChatWidget from '@/components/shared/AIChatWidget';
 
 const navItems = [
-  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/articles', label: 'Articles', icon: FileText },
   { href: '/admin/categories', label: 'Categories', icon: Tags },
   { href: '/admin/districts', label: 'Districts', icon: Map },

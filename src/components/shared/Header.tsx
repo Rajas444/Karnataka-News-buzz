@@ -111,12 +111,8 @@ export default function Header() {
               <span className="sr-only">Toggle theme</span>
             </Button>
             {loading ? (
-                <Skeleton className="h-10 w-20" />
+                <Skeleton className="h-10 w-10 rounded-full" />
             ) : user ? (
-                <>
-                {userRole === 'admin' && (
-                    <Button onClick={() => router.push('/admin')}>Dashboard</Button>
-                )}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                     <Button variant="secondary" size="icon" className="rounded-full">
@@ -134,13 +130,23 @@ export default function Header() {
                         </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                     <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer">
+                        <UserIcon className="mr-2 h-4 w-4" />
+                        <span>Profile</span>
+                    </DropdownMenuItem>
+                    {userRole === 'admin' && (
+                        <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer">
+                            <UserIcon className="mr-2 h-4 w-4" />
+                            <span>Dashboard</span>
+                        </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                         <LogOut className="mr-2 h-4 w-4" />
                         <span>Log out</span>
                     </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
-                </>
             ) : (
                 <Button variant="outline" onClick={() => router.push('/auth/login')}>
                     Login

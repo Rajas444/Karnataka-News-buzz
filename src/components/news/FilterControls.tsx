@@ -2,20 +2,26 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+
 import type { Category, District } from '@/lib/types';
-import { ChevronDown, SlidersHorizontal } from 'lucide-react';
-import { placeholderCategories } from '@/lib/placeholder-data';
+import { Check, ChevronsUpDown, SlidersHorizontal } from 'lucide-react';
+import { placeholderCategories, placeholderDistricts } from '@/lib/placeholder-data';
+import { cn } from '@/lib/utils';
 
 
 interface FilterControlsProps {
@@ -27,14 +33,21 @@ export default function FilterControls({ categories, districts }: FilterControls
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  
+  const [openCategory, setOpenCategory] = useState(false)
+  const [openDistrict, setOpenDistrict] = useState(false)
 
   // On a category page like /categories/politics, the category comes from the path
   const pathCategory = pathname.startsWith('/categories/') 
     ? pathname.split('/')[2] 
     : null;
 
-  const selectedCategory = pathCategory || searchParams.get('category') || 'general';
-  const selectedDistrict = searchParams.get('district') || 'all';
+  const selectedCategorySlug = pathCategory || searchParams.get('category') || 'general';
+  const selectedDistrictId = searchParams.get('district') || 'all';
+
+  const selectedCategory = placeholderCategories.find(c => c.slug === selectedCategorySlug);
+  const selectedDistrict = placeholderDistricts.find(d => d.id === selectedDistrictId);
+
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
@@ -80,48 +93,123 @@ export default function FilterControls({ categories, districts }: FilterControls
         <h3 className="font-semibold text-lg">Filters</h3>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              Category: {placeholderCategories.find(c => c.slug === selectedCategory)?.name || 'General'}
-              <ChevronDown className="ml-2 h-4 w-4" />
+        {/* Category Filter */}
+        <Popover open={openCategory} onOpenChange={setOpenCategory}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={openCategory}
+              className="w-[200px] justify-between"
+            >
+              {selectedCategory ? selectedCategory.name : "Select category..."}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-             <DropdownMenuLabel>Filter by Category</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuRadioGroup value={selectedCategory} onValueChange={(value) => handleFilterChange('category', value)}>
-              <DropdownMenuRadioItem value="general">All Categories</DropdownMenuRadioItem>
-              {categories.map((category) => (
-                <DropdownMenuRadioItem key={category.id} value={category.slug}>
-                  {category.name}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              District: {districts.find(d => d.id === selectedDistrict)?.name || 'All'}
-              <ChevronDown className="ml-2 h-4 w-4" />
+          </PopoverTrigger>
+          <PopoverContent className="w-[200px] p-0">
+            <Command>
+              <CommandInput placeholder="Search category..." />
+              <CommandList>
+                <CommandEmpty>No category found.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem
+                    value="general"
+                    onSelect={() => {
+                      handleFilterChange('category', 'general');
+                      setOpenCategory(false);
+                    }}
+                  >
+                     <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          selectedCategorySlug === 'general' ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                    All Categories
+                  </CommandItem>
+                  {categories.map((category) => (
+                    <CommandItem
+                      key={category.id}
+                      value={category.name}
+                      onSelect={(currentValue) => {
+                        handleFilterChange('category', category.slug);
+                        setOpenCategory(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          selectedCategorySlug === category.slug ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {category.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        
+        {/* District Filter */}
+        <Popover open={openDistrict} onOpenChange={setOpenDistrict}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={openDistrict}
+              className="w-[200px] justify-between"
+            >
+              {selectedDistrict ? selectedDistrict.name : "Select district..."}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuLabel>Filter by District</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuRadioGroup value={selectedDistrict} onValueChange={(value) => handleFilterChange('district', value)}>
-              <DropdownMenuRadioItem value="all">All Districts</DropdownMenuRadioItem>
-              {districts.map((district) => (
-                <DropdownMenuRadioItem key={district.id} value={district.id}>
-                  {district.name}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </PopoverTrigger>
+          <PopoverContent className="w-[200px] p-0">
+            <Command>
+              <CommandInput placeholder="Search district..." />
+              <CommandList>
+                <CommandEmpty>No district found.</CommandEmpty>
+                <CommandGroup>
+                   <CommandItem
+                      value="all"
+                      onSelect={() => {
+                        handleFilterChange('district', 'all');
+                        setOpenDistrict(false);
+                      }}
+                    >
+                       <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            selectedDistrictId === 'all' ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                      All Districts
+                    </CommandItem>
+                  {districts.map((district) => (
+                    <CommandItem
+                      key={district.id}
+                      value={district.name}
+                      onSelect={() => {
+                        handleFilterChange('district', district.id);
+                        setOpenDistrict(false);
+                      }}
+                    >
+                       <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            selectedDistrictId === district.id ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                      {district.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );
 }
+

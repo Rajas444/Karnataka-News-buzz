@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,17 +30,19 @@ import {
     PopoverTrigger,
   } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { CalendarIcon, Sparkles, Upload } from 'lucide-react';
-import { placeholderCategories, placeholderDistricts } from '@/lib/placeholder-data';
+import { CalendarIcon, Sparkles, Upload, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { generateHeadline } from '@/ai/flows/ai-headline-generator';
 import { useToast } from '@/hooks/use-toast';
-import type { Article } from '@/lib/types';
+import type { Article, Category, District } from '@/lib/types';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Label } from '@/components/ui/label';
+import { createArticle, updateArticle } from '@/services/articles';
+import { getCategories } from '@/services/categories';
+import { getDistricts } from '@/services/districts';
 
 const formSchema = z.object({
   title: z.string().min(10, 'Title must be at least 10 characters long.'),
@@ -49,21 +52,38 @@ const formSchema = z.object({
   districtId: z.string().nonempty('Please select a district.'),
   publishedAt: z.date().optional(),
   imageUrl: z.string().nullable().optional(),
+  imagePath: z.string().optional(),
   seoMetaDescription: z.string().max(160).optional(),
   seoKeywords: z.string().optional(),
 });
 
-type ArticleFormValues = z.infer<typeof formSchema>;
+export type ArticleFormValues = z.infer<typeof formSchema>;
 
 interface ArticleFormProps {
   initialData?: Article;
 }
 
 export default function ArticleForm({ initialData }: ArticleFormProps) {
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(initialData?.imageUrl || null);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [districts, setDistricts] = useState<District[]>([]);
     const { toast } = useToast();
     const router = useRouter();
+
+    useEffect(() => {
+        async function fetchData() {
+            try {
+                const [cats, dists] = await Promise.all([getCategories(), getDistricts()]);
+                setCategories(cats);
+                setDistricts(dists);
+            } catch (error) {
+                toast({ title: "Failed to load categories or districts", variant: "destructive" });
+            }
+        }
+        fetchData();
+    }, [toast]);
 
   const form = useForm<ArticleFormValues>({
     resolver: zodResolver(formSchema),
@@ -73,29 +93,13 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
       status: initialData?.status || 'draft',
       categoryId: initialData?.categoryIds?.[0] || '',
       districtId: initialData?.districtId || '',
-      publishedAt: initialData?.publishedAt ? new Date(initialData.publishedAt) : undefined,
+      publishedAt: initialData?.publishedAt ? new Date(initialData.publishedAt) : new Date(),
       imageUrl: initialData?.imageUrl || null,
+      imagePath: initialData?.imagePath || '',
       seoMetaDescription: initialData?.seo?.metaDescription || '',
       seoKeywords: initialData?.seo?.keywords?.join(', ') || '',
     },
   });
-
-  useEffect(() => {
-    if (initialData) {
-        form.reset({
-            title: initialData.title,
-            content: initialData.content,
-            status: initialData.status,
-            categoryId: initialData.categoryIds[0],
-            districtId: initialData.districtId,
-            publishedAt: new Date(initialData.publishedAt),
-            imageUrl: initialData.imageUrl,
-            seoMetaDescription: initialData.seo.metaDescription,
-            seoKeywords: initialData.seo.keywords.join(', '),
-        });
-        setImagePreview(initialData.imageUrl);
-    }
-  }, [initialData, form]);
 
   async function handleGenerateHeadline() {
     const content = form.getValues("content");
@@ -134,22 +138,34 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
       reader.onloadend = () => {
         const result = reader.result as string;
         setImagePreview(result);
-        form.setValue('imageUrl', result); // In a real app, this would be the URL from storage
+        form.setValue('imageUrl', result);
       };
       reader.readAsDataURL(file);
       toast({ title: 'Image selected', description: 'Preview updated. Save article to persist.' });
     }
   }
 
-
-  function onSubmit(values: ArticleFormValues) {
-    console.log(values);
-    const action = initialData ? 'updated' : 'created';
-    toast({
-        title: `Article ${action}!`,
-        description: `Your article has been successfully ${action}.`,
-    });
-    router.push('/admin/articles');
+  async function onSubmit(values: ArticleFormValues) {
+    setIsSubmitting(true);
+    try {
+        if (initialData) {
+            await updateArticle(initialData.id, values);
+        } else {
+            await createArticle(values);
+        }
+        const action = initialData ? 'updated' : 'created';
+        toast({
+            title: `Article ${action}!`,
+            description: `Your article has been successfully ${action}.`,
+        });
+        router.push('/admin/articles');
+        router.refresh();
+    } catch (error) {
+        console.error(error);
+        toast({ title: `Failed to ${initialData ? 'update' : 'create'} article`, variant: 'destructive' });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
@@ -300,7 +316,10 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                     )}
                     />
                 )}
-                 <Button type="submit" className="w-full">{initialData ? 'Update Article' : 'Save Article'}</Button>
+                 <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isSubmitting ? 'Saving...' : (initialData ? 'Update Article' : 'Save Article')}
+                </Button>
                 </CardContent>
             </Card>
           <Card>
@@ -338,7 +357,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {placeholderCategories.map((cat) => (
+                        {categories.map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -357,10 +376,10 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a district" />
-                        </SelectTrigger>
+                        </Trigger>
                       </FormControl>
                       <SelectContent>
-                        {placeholderDistricts.map((dist) => (
+                        {districts.map((dist) => (
                           <SelectItem key={dist.id} value={dist.id}>{dist.name}</SelectItem>
                         ))}
                       </SelectContent>

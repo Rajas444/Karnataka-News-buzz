@@ -1,25 +1,40 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { placeholderDistricts } from '@/lib/placeholder-data';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import type { District } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import DistrictDialog from '@/components/admin/DistrictDialog';
+import { getDistricts, createDistrict, updateDistrict, deleteDistrict } from '@/services/districts';
 
 export default function ManageDistrictsPage() {
-  const [districts, setDistricts] = useState<District[]>(placeholderDistricts);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDistrict, setSelectedDistrict] = useState<District | null>(null);
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    async function fetchDistricts() {
+        try {
+            const fetchedDistricts = await getDistricts();
+            setDistricts(fetchedDistricts);
+        } catch (error) {
+            toast({ title: "Failed to fetch districts", variant: "destructive" });
+        } finally {
+            setLoading(false);
+        }
+    }
+    fetchDistricts();
+  }, [toast]);
 
   const handleAdd = () => {
     setSelectedDistrict(null);
@@ -36,49 +51,50 @@ export default function ManageDistrictsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (selectedDistrict) {
-      setDistricts(districts.filter((d) => d.id !== selectedDistrict.id));
-      toast({
-        title: 'District Deleted',
-        description: `The district "${selectedDistrict.name}" has been deleted.`,
-      });
+        try {
+            await deleteDistrict(selectedDistrict.id);
+            setDistricts(districts.filter((d) => d.id !== selectedDistrict.id));
+            toast({
+                title: 'District Deleted',
+                description: `The district "${selectedDistrict.name}" has been deleted.`,
+            });
+        } catch(e) {
+            toast({ title: 'Failed to delete district', variant: 'destructive' });
+        }
     }
     setDeleteDialogOpen(false);
     setSelectedDistrict(null);
   };
 
-  const handleSave = (districtData: Omit<District, 'id'> & { id?: string }) => {
-    if (districtData.id) {
-      // Edit
-      setDistricts(
-        districts.map((d) => (d.id === districtData.id ? { ...d, ...districtData } : d))
-      );
-      toast({
-        title: 'District Updated',
-        description: `The district "${districtData.name}" has been updated.`,
-      });
-    } else {
-      // Add
-      const newDistrict: District = { ...districtData, id: new Date().toISOString() };
-      setDistricts([...districts, newDistrict]);
-      toast({
-        title: 'District Added',
-        description: `The district "${districtData.name}" has been added.`,
-      });
+  const handleSave = async (districtData: Omit<District, 'id'> & { id?: string }) => {
+    try {
+        if (districtData.id) {
+        // Edit
+        await updateDistrict(districtData.id, { name: districtData.name });
+        setDistricts(
+            districts.map((d) => (d.id === districtData.id ? { ...d, name: districtData.name } : d))
+        );
+        toast({
+            title: 'District Updated',
+            description: `The district "${districtData.name}" has been updated.`,
+        });
+        } else {
+        // Add
+        const newDistrict = await createDistrict({ name: districtData.name });
+        setDistricts([...districts, newDistrict]);
+        toast({
+            title: 'District Added',
+            description: `The district "${districtData.name}" has been added.`,
+        });
+        }
+    } catch(e) {
+        toast({ title: 'Failed to save district', variant: 'destructive' });
     }
     setDialogOpen(false);
     setSelectedDistrict(null);
   };
-
-  // This is a client-side only random number for display purposes.
-  const [articleCounts] = useState(() => {
-    const counts = new Map<string, number>();
-    placeholderDistricts.forEach(dist => {
-      counts.set(dist.id, Math.floor(Math.random() * 100));
-    });
-    return counts;
-  });
 
   return (
     <>
@@ -102,42 +118,48 @@ export default function ManageDistrictsPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Article Count</TableHead>
-                  <TableHead>
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {districts.map((district) => (
-                  <TableRow key={district.id}>
-                    <TableCell className="font-medium">{district.name}</TableCell>
-                    <TableCell>{articleCounts.get(district.id) || 0}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEdit(district)}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(district)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {loading ? (
+                <div className="flex justify-center items-center h-64">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            ) : (
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Article Count</TableHead>
+                    <TableHead>
+                        <span className="sr-only">Actions</span>
+                    </TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {districts.map((district) => (
+                    <TableRow key={district.id}>
+                        <TableCell className="font-medium">{district.name}</TableCell>
+                        <TableCell>0</TableCell>
+                        <TableCell>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEdit(district)}>Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDelete(district)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                Delete
+                            </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -1,25 +1,39 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { placeholderCategories } from '@/lib/placeholder-data';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import type { Category } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import CategoryDialog from '@/components/admin/CategoryDialog';
+import { getCategories, createCategory, updateCategory, deleteCategory } from '@/services/categories';
 
 export default function ManageCategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>(placeholderCategories);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-
   const { toast } = useToast();
+
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const fetchedCategories = await getCategories();
+        setCategories(fetchedCategories);
+      } catch (error) {
+        toast({ title: 'Error fetching categories', variant: 'destructive' });
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchCategories();
+  }, [toast]);
 
   const handleAdd = () => {
     setSelectedCategory(null);
@@ -36,49 +50,50 @@ export default function ManageCategoriesPage() {
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (selectedCategory) {
-      setCategories(categories.filter((c) => c.id !== selectedCategory.id));
-      toast({
-        title: 'Category Deleted',
-        description: `The category "${selectedCategory.name}" has been deleted.`,
-      });
+        try {
+            await deleteCategory(selectedCategory.id);
+            setCategories(categories.filter((c) => c.id !== selectedCategory.id));
+            toast({
+                title: 'Category Deleted',
+                description: `The category "${selectedCategory.name}" has been deleted.`,
+            });
+        } catch (error) {
+            toast({ title: 'Error deleting category', variant: 'destructive' });
+        }
     }
     setDeleteDialogOpen(false);
     setSelectedCategory(null);
   };
 
-  const handleSave = (categoryData: Omit<Category, 'id'> & { id?: string }) => {
-    if (categoryData.id) {
-      // Edit
-      setCategories(
-        categories.map((c) => (c.id === categoryData.id ? { ...c, ...categoryData } : c))
-      );
-      toast({
-        title: 'Category Updated',
-        description: `The category "${categoryData.name}" has been updated.`,
-      });
-    } else {
-      // Add
-      const newCategory: Category = { ...categoryData, id: new Date().toISOString() };
-      setCategories([...categories, newCategory]);
-      toast({
-        title: 'Category Added',
-        description: `The category "${categoryData.name}" has been added.`,
-      });
+  const handleSave = async (categoryData: Omit<Category, 'id'> & { id?: string }) => {
+    try {
+        if (categoryData.id) {
+          // Edit
+          await updateCategory(categoryData.id, { name: categoryData.name, slug: categoryData.slug });
+          setCategories(
+            categories.map((c) => (c.id === categoryData.id ? { ...c, ...categoryData } : c))
+          );
+          toast({
+            title: 'Category Updated',
+            description: `The category "${categoryData.name}" has been updated.`,
+          });
+        } else {
+          // Add
+          const newCategory = await createCategory({ name: categoryData.name, slug: categoryData.slug });
+          setCategories([...categories, newCategory]);
+          toast({
+            title: 'Category Added',
+            description: `The category "${categoryData.name}" has been added.`,
+          });
+        }
+    } catch (error) {
+        toast({ title: 'Error saving category', variant: 'destructive' });
     }
     setDialogOpen(false);
     setSelectedCategory(null);
   };
-  
-  // This is a client-side only random number for display purposes.
-  const [articleCounts] = useState(() => {
-    const counts = new Map<string, number>();
-    placeholderCategories.forEach(cat => {
-      counts.set(cat.id, Math.floor(Math.random() * 100));
-    });
-    return counts;
-  });
 
   return (
     <>
@@ -104,44 +119,50 @@ export default function ManageCategoriesPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Slug</TableHead>
-                  <TableHead>Article Count</TableHead>
-                  <TableHead>
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {categories.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell className="font-medium">{category.name}</TableCell>
-                    <TableCell>{category.slug}</TableCell>
-                    <TableCell>{articleCounts.get(category.id) || 0}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEdit(category)}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(category)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {loading ? (
+                 <div className="flex justify-center items-center h-64">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            ) : (
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Slug</TableHead>
+                    <TableHead>Article Count</TableHead>
+                    <TableHead>
+                        <span className="sr-only">Actions</span>
+                    </TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {categories.map((category) => (
+                    <TableRow key={category.id}>
+                        <TableCell className="font-medium">{category.name}</TableCell>
+                        <TableCell>{category.slug}</TableCell>
+                        <TableCell>0</TableCell>
+                        <TableCell>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEdit(category)}>Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDelete(category)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                Delete
+                            </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            )}
           </CardContent>
         </Card>
       </div>

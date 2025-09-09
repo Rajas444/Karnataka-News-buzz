@@ -1,14 +1,31 @@
 
+'use client';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Tags, Users, Eye } from 'lucide-react';
-import { placeholderArticles, placeholderCategories } from '@/lib/placeholder-data';
+import { useEffect, useState } from 'react';
+import { getArticles } from '@/services/articles';
+import { getCategories } from '@/services/categories';
+import { getUsers } from '@/services/users';
 
 export default function DashboardStats() {
-  const totalArticles = placeholderArticles.length;
-  const totalCategories = placeholderCategories.length;
-  // This value is hardcoded as we don't have a user data source.
-  const totalUsers = 5832; 
-  const totalViews = placeholderArticles.reduce((sum, article) => sum + article.views, 0);
+  const [totalArticles, setTotalArticles] = useState(0);
+  const [totalCategories, setTotalCategories] = useState(0);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalViews, setTotalViews] = useState(0);
+
+  useEffect(() => {
+    async function fetchStats() {
+      const articles = await getArticles();
+      const categories = await getCategories();
+      const users = await getUsers();
+      setTotalArticles(articles.length);
+      setTotalCategories(categories.length);
+      setTotalUsers(users.length);
+      setTotalViews(articles.reduce((sum, article) => sum + (article.views || 0), 0));
+    }
+    fetchStats();
+  }, []);
 
   const formatViews = (num: number) => {
     if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;

@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Search, MoreHorizontal, UserX, Trash2 } from 'lucide-react';
+import { Search, MoreHorizontal, UserX, Trash2, Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -14,21 +14,31 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { UserProfile } from '@/lib/types';
 import { format } from 'date-fns';
-
-const placeholderUsers: (UserProfile & { lastLogin: Date, status: 'active' | 'blocked' })[] = [
-    { uid: 'user1', email: 'sanjana.p@email.com', displayName: 'Sanjana Patil', role: 'user', lastLogin: new Date('2023-10-28T10:00:00Z'), status: 'active' },
-    { uid: 'user2', email: 'vikram.g@email.com', displayName: 'Vikram Gowda', role: 'user', lastLogin: new Date('2023-10-27T15:30:00Z'), status: 'active' },
-    { uid: 'user3', email: 'deepa.r@email.com', displayName: 'Deepa Rao', role: 'user', lastLogin: new Date('2023-10-25T11:00:00Z'), status: 'blocked' },
-    { uid: 'admin1', email: 'rajashekar2002@gmail.com', displayName: 'Rajashekar', role: 'admin', lastLogin: new Date('2023-10-28T12:00:00Z'), status: 'active' },
-];
+import { getUsers } from '@/services/users';
 
 type UserAction = 'block' | 'delete';
 
 export default function ManageUsersPage() {
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [actionType, setActionType] = useState<UserAction | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    async function fetchUsers() {
+        try {
+            const fetchedUsers = await getUsers();
+            setUsers(fetchedUsers);
+        } catch (error) {
+            toast({ title: 'Error fetching users', variant: 'destructive' });
+        } finally {
+            setLoading(false);
+        }
+    }
+    fetchUsers();
+  }, [toast]);
 
   const handleActionClick = (user: UserProfile, action: UserAction) => {
     setSelectedUser(user);
@@ -42,7 +52,7 @@ export default function ManageUsersPage() {
     // In a real app, you would make an API call to perform the action.
     toast({
       title: `User ${actionType === 'block' ? 'Blocked' : 'Deleted'}`,
-      description: `The user "${selectedUser.displayName}" has been ${actionType === 'block' ? 'blocked' : 'deleted'}.`,
+      description: `The user "${selectedUser.displayName}" has been ${actionType === 'block' ? 'blocked' : 'deleted'}. (This is a placeholder)`,
     });
     console.log(`${actionType} user:`, selectedUser.uid);
 
@@ -82,6 +92,11 @@ export default function ManageUsersPage() {
                 </div>
             </CardHeader>
           <CardContent>
+            {loading ? (
+                 <div className="flex justify-center items-center h-64">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -95,7 +110,7 @@ export default function ManageUsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {placeholderUsers.map((user) => (
+                {users.map((user) => (
                   <TableRow key={user.uid}>
                     <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
@@ -115,11 +130,11 @@ export default function ManageUsersPage() {
                       </Badge>
                     </TableCell>
                      <TableCell>
-                      <Badge variant={user.status === 'active' ? 'secondary' : 'default'} className={user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}>
-                        {user.status}
+                       <Badge variant={'secondary'} className={'bg-green-100 text-green-800'}>
+                        active
                       </Badge>
                     </TableCell>
-                    <TableCell>{format(user.lastLogin, 'PP pp')}</TableCell>
+                    <TableCell>Not tracked</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -145,6 +160,7 @@ export default function ManageUsersPage() {
                 ))}
               </TableBody>
             </Table>
+            )}
           </CardContent>
         </Card>
       </div>

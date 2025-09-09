@@ -3,15 +3,48 @@
 
 import { useParams } from 'next/navigation';
 import ArticleForm from '@/components/admin/ArticleForm';
-import { placeholderArticles } from '@/lib/placeholder-data';
-import { Newspaper } from 'lucide-react';
+import { Newspaper, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { getArticle } from '@/services/articles';
+import { useEffect, useState } from 'react';
+import type { Article } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 export default function EditArticlePage() {
   const params = useParams();
   const { id } = params;
+  const [article, setArticle] = useState<Article | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const article = placeholderArticles.find((a) => a.id === id);
+  useEffect(() => {
+      if (typeof id !== 'string') return;
+      
+      async function fetchArticle() {
+          try {
+              const fetchedArticle = await getArticle(id);
+              if (fetchedArticle) {
+                  setArticle(fetchedArticle);
+              } else {
+                  toast({ title: 'Article not found', variant: 'destructive' });
+              }
+          } catch (error) {
+               toast({ title: 'Error fetching article', variant: 'destructive' });
+          } finally {
+              setLoading(false);
+          }
+      }
+      fetchArticle();
+  }, [id, toast]);
+
+  if (loading) {
+      return (
+        <div className="flex flex-col items-center justify-center text-center py-20">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <h2 className="mt-4 text-xl font-semibold">Loading Article...</h2>
+        </div>
+      );
+  }
 
   if (!article) {
     return (

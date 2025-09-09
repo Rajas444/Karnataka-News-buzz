@@ -33,7 +33,8 @@ export default function RegisterPage() {
       // Create a user profile document in Firestore
       const userDocRef = doc(db, 'users', user.uid);
       
-      const isAdmin = email === 'Rajashekardg2002@gmail.com';
+      // Assign 'admin' role if the email matches, otherwise 'user'
+      const isAdmin = email.toLowerCase() === 'admin@example.com';
       const role = isAdmin ? 'admin' : 'user';
 
       await setDoc(userDocRef, {
@@ -41,13 +42,14 @@ export default function RegisterPage() {
         email: user.email,
         displayName: displayName,
         role: role,
+        photoURL: ''
       });
 
       toast({
         title: 'Registration Successful',
         description: 'Please login with your new account.',
       });
-      router.push('/auth/login');
+      router.push('/');
     } catch (error: any) {
       console.error(error);
       if (error.code === 'auth/configuration-not-found') {
@@ -127,7 +129,7 @@ export default function RegisterPage() {
             </form>
              <div className="mt-4 text-center text-sm">
                 Already have an account?{' '}
-                <Link href="/auth/login" className="underline text-primary">
+                <Link href="/" className="underline text-primary">
                     Login
                 </Link>
             </div>

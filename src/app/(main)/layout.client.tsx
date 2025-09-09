@@ -1,18 +1,13 @@
-
 'use client';
-
-import Header from '@/components/shared/Header';
-import Footer from '@/components/shared/Footer';
-import AIChatWidget from '@/components/shared/AIChatWidget';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Newspaper } from 'lucide-react';
 
-export default function MainLayout({
-  children,
+export default function MainLayoutClient({
+    children,
 }: {
-  children: React.ReactNode;
+    children: React.ReactNode;
 }) {
     const { user, loading } = useAuth();
     const router = useRouter();
@@ -34,12 +29,5 @@ export default function MainLayout({
         );
     }
 
-  return (
-    <div className="flex min-h-screen flex-col">
-      <Header />
-      <main className="flex-grow">{children}</main>
-      <Footer />
-      <AIChatWidget />
-    </div>
-  );
+    return <>{children}</>;
 }

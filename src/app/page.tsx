@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
@@ -13,14 +13,22 @@ import { useToast } from '@/hooks/use-toast';
 import { Newspaper } from 'lucide-react';
 import Link from 'next/link';
 import { doc, getDoc } from 'firebase/firestore';
-import type { UserProfile } from '@/lib/types';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace('/home');
+    }
+  }, [user, authLoading, router]);
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,17 +43,12 @@ export default function LoginPage() {
       const userDoc = await getDoc(userDocRef);
 
       if (userDoc.exists()) {
-        const userProfile = userDoc.data() as UserProfile;
         toast({ title: 'Login Successful', description: 'Redirecting...' });
-        if (userProfile.role === 'admin') {
-          router.push('/admin');
-        } else {
-          router.push('/');
-        }
+        router.push('/home');
       } else {
         // Default redirect for users without a profile doc or role
         toast({ title: 'Login Successful', description: 'Redirecting...' });
-        router.push('/');
+        router.push('/home');
       }
     } catch (error: any) {
       console.error(error);
@@ -80,6 +83,18 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+  
+    if (authLoading || user) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <Newspaper className="h-12 w-12 text-primary animate-pulse" />
+                    <p className="text-muted-foreground">Loading...</p>
+                </div>
+            </div>
+        );
+    }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -93,7 +108,7 @@ export default function LoginPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl font-headline">Login</CardTitle>
-            <CardDescription>Enter your credentials to access your account. Admins will be redirected to the dashboard.</CardDescription>
+            <CardDescription>Enter your credentials to access your account.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -126,7 +141,7 @@ export default function LoginPage() {
             </form>
              <div className="mt-4 text-center text-sm">
                 Don't have an account?{' '}
-                <Link href="/auth/register" className="underline text-primary">
+                <Link href="/register" className="underline text-primary">
                     Register
                 </Link>
             </div>

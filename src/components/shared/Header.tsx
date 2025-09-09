@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Menu, Newspaper, Search, Moon, Sun, LogOut, User as UserIcon } from 'lucide-react';
+import { Menu, Newspaper, Search, Moon, Sun, LogOut, User as UserIcon, ShieldCheck } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -26,7 +26,7 @@ import { auth } from '@/lib/firebase';
 import { Skeleton } from '../ui/skeleton';
 
 const navLinks = [
-  { href: '/', label: 'Home' },
+  { href: '/home', label: 'Home' },
   { href: '/categories/politics', label: 'Politics' },
   { href: '/categories/technology', label: 'Technology' },
   { href: '/categories/sports', label: 'Sports' },
@@ -37,8 +37,8 @@ export default function Header() {
   const { user, userProfile, userRole, loading } = useAuth();
   const router = useRouter();
 
-  const handleLogout = () => {
-    auth.signOut();
+  const handleLogout = async () => {
+    await auth.signOut();
     router.push('/');
   };
 
@@ -46,7 +46,7 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
         <div className="mr-4 hidden md:flex">
-          <Link href="/" className="flex items-center space-x-2">
+          <Link href="/home" className="flex items-center space-x-2">
             <Newspaper className="h-6 w-6 text-primary" />
             <span className="font-bold font-headline text-xl">Karnataka News Buzz</span>
           </Link>
@@ -61,7 +61,7 @@ export default function Header() {
           </SheetTrigger>
           <SheetContent side="left">
             <div className="flex flex-col space-y-4 p-4">
-              <Link href="/" className="flex items-center space-x-2">
+              <Link href="/home" className="flex items-center space-x-2">
                 <Newspaper className="h-6 w-6 text-primary" />
                 <span className="font-bold">Karnataka News Buzz</span>
               </Link>
@@ -130,16 +130,16 @@ export default function Header() {
                         </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                     <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer">
-                        <UserIcon className="mr-2 h-4 w-4" />
-                        <span>Profile</span>
-                    </DropdownMenuItem>
                     {userRole === 'admin' && (
                         <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer">
-                            <UserIcon className="mr-2 h-4 w-4" />
-                            <span>Dashboard</span>
+                            <ShieldCheck className="mr-2 h-4 w-4" />
+                            <span>Admin Dashboard</span>
                         </DropdownMenuItem>
                     )}
+                     <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
+                        <UserIcon className="mr-2 h-4 w-4" />
+                        <span>User Profile</span>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                         <LogOut className="mr-2 h-4 w-4" />
@@ -148,7 +148,7 @@ export default function Header() {
                     </DropdownMenuContent>
                 </DropdownMenu>
             ) : (
-                <Button variant="outline" onClick={() => router.push('/auth/login')}>
+                <Button variant="outline" onClick={() => router.push('/')}>
                     Login
                 </Button>
             )}

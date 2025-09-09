@@ -5,12 +5,12 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 export const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "your-api-key",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "your-auth-domain",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "your-project-id",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "your-storage-bucket",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "your-messaging-sender-id",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "your-app-id",
+  projectId: "karnataka-news-buzz",
+  appId: "1:298153641015:web:c285db9ada95a1fbe22bb2",
+  storageBucket: "karnataka-news-buzz.firebasestorage.app",
+  apiKey: "AIzaSyDX_GFsHRhloy9ZceOfEcnFpIX4WiBHf38",
+  authDomain: "karnataka-news-buzz.firebaseapp.com",
+  messagingSenderId: "298153641015",
 };
 
 // Initialize Firebase

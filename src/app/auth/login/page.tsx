@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, db, firebaseConfig } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,19 +25,6 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    // Bypass Firebase if using placeholder config
-    if (firebaseConfig.apiKey === 'your-api-key') {
-      toast({ title: 'Login Successful (Simulated)', description: 'Redirecting...' });
-      if (email === 'Rajashekardg2002@gmail.com') {
-        router.push('/admin');
-      } else {
-        router.push('/');
-      }
-      setLoading(false);
-      return;
-    }
-
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);

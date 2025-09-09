@@ -20,7 +20,7 @@ type FetchNewsResponse = {
 }
 
 export async function fetchNews(categorySlug: string = 'general', district?: string, page?: string | null): Promise<FetchNewsResponse> {
-    const apiKey = process.env.NEWSDATA_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_NEWSDATA_API_KEY;
 
     if (!apiKey) {
         console.error("newsdata.io API key is missing. Falling back to placeholder data.");

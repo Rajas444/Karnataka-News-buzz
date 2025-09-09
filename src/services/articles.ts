@@ -9,7 +9,7 @@ import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storag
 const articlesCollection = collection(db, 'articles');
 
 // CREATE
-export async function createArticle(data: ArticleFormValues): Promise<Article> {
+export async function createArticle(data: ArticleFormValues & { categoryIds: string[] }): Promise<Article> {
   let imageUrl = data.imageUrl || null;
   let imagePath = '';
 
@@ -20,8 +20,10 @@ export async function createArticle(data: ArticleFormValues): Promise<Article> {
     imagePath = snapshot.ref.fullPath;
   }
 
+  const { categoryId, ...restOfData } = data;
+
   const docRef = await addDoc(articlesCollection, {
-    ...data,
+    ...restOfData,
     imageUrl,
     imagePath,
     publishedAt: data.publishedAt ? new Date(data.publishedAt) : serverTimestamp(),
@@ -75,7 +77,7 @@ export async function getArticle(id: string): Promise<Article | null> {
 }
 
 // UPDATE
-export async function updateArticle(id: string, data: ArticleFormValues): Promise<Article> {
+export async function updateArticle(id: string, data: ArticleFormValues & { categoryIds: string[] }): Promise<Article> {
   const docRef = doc(db, 'articles', id);
   let imageUrl = data.imageUrl || null;
   let imagePath = data.imagePath || '';
@@ -91,9 +93,11 @@ export async function updateArticle(id: string, data: ArticleFormValues): Promis
     imageUrl = await getDownloadURL(snapshot.ref);
     imagePath = snapshot.ref.fullPath;
   }
+
+  const { categoryId, ...restOfData } = data;
   
   await updateDoc(docRef, {
-    ...data,
+    ...restOfData,
     imageUrl,
     imagePath,
     publishedAt: data.publishedAt ? new Date(data.publishedAt) : serverTimestamp(),
@@ -118,3 +122,5 @@ export async function deleteArticle(id: string): Promise<void> {
     }
     await deleteDoc(docRef);
 }
+
+    

@@ -39,7 +39,6 @@ import { useToast } from '@/hooks/use-toast';
 import type { Article, Category, District } from '@/lib/types';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Label } from '@/components/ui/label';
 import { createArticle, updateArticle } from '@/services/articles';
 import { getCategories } from '@/services/categories';
 import { getDistricts } from '@/services/districts';
@@ -148,10 +147,14 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
   async function onSubmit(values: ArticleFormValues) {
     setIsSubmitting(true);
     try {
+        const submissionData = {
+          ...values,
+          categoryIds: [values.categoryId],
+        };
         if (initialData) {
-            await updateArticle(initialData.id, values);
+            await updateArticle(initialData.id, submissionData);
         } else {
-            await createArticle(values);
+            await createArticle(submissionData);
         }
         const action = initialData ? 'updated' : 'created';
         toast({
@@ -326,7 +329,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
             <CardHeader><CardTitle>Details</CardTitle></CardHeader>
             <CardContent className="p-6 pt-0 space-y-4">
               <div className="space-y-2">
-                <Label>Featured Image</Label>
+                <FormLabel>Featured Image</FormLabel>
                  <div className="flex flex-col items-center gap-4">
                   {imagePreview ? (
                     <Image src={imagePreview} alt="Image Preview" width={200} height={150} className="rounded-lg object-cover aspect-video w-full" />
@@ -395,5 +398,3 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
     </Form>
   );
 }
-
-    

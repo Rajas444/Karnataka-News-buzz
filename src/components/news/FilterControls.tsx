@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { Category, District } from '@/lib/types';
 import { ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { placeholderCategories } from '@/lib/placeholder-data';
+
 
 interface FilterControlsProps {
   categories: Category[];
@@ -25,13 +27,13 @@ export default function FilterControls({ categories, districts }: FilterControls
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const selectedCategory = searchParams.get('category') || 'all';
+  const selectedCategory = searchParams.get('category') || 'general';
   const selectedDistrict = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value === 'all') {
+      if (value === 'all' || (name === 'category' && value === 'general')) {
         params.delete(name);
       } else {
         params.set(name, value);
@@ -56,7 +58,7 @@ export default function FilterControls({ categories, districts }: FilterControls
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline">
-              Category: {categories.find(c => c.id === selectedCategory)?.name || 'All'}
+              Category: {placeholderCategories.find(c => c.slug === selectedCategory)?.name || 'General'}
               <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -64,9 +66,9 @@ export default function FilterControls({ categories, districts }: FilterControls
              <DropdownMenuLabel>Filter by Category</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuRadioGroup value={selectedCategory} onValueChange={(value) => handleFilterChange('category', value)}>
-              <DropdownMenuRadioItem value="all">All Categories</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="general">All Categories</DropdownMenuRadioItem>
               {categories.map((category) => (
-                <DropdownMenuRadioItem key={category.id} value={category.id}>
+                <DropdownMenuRadioItem key={category.id} value={category.slug}>
                   {category.name}
                 </DropdownMenuRadioItem>
               ))}

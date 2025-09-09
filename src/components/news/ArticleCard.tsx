@@ -18,7 +18,7 @@ export default function ArticleCard({ article }: ArticleCardProps) {
   return (
     <Card className="flex flex-col h-full overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="p-0">
-        <Link href={`/article/${article.id}`} className="block">
+        <Link href={article.id} target="_blank" rel="noopener noreferrer" className="block">
           <div className="relative h-48 w-full">
             <Image
               src={article.imageUrl || 'https://picsum.photos/400/250'}
@@ -32,13 +32,15 @@ export default function ArticleCard({ article }: ArticleCardProps) {
         </Link>
       </CardHeader>
       <CardContent className="flex-grow p-4">
-        <div className="flex flex-wrap gap-2 mb-2">
-            {categories.map(cat => (
-                <Badge key={cat.id} variant="secondary">{cat.name}</Badge>
-            ))}
-        </div>
+        {categories.length > 0 && 
+            <div className="flex flex-wrap gap-2 mb-2">
+                {categories.map(cat => (
+                    <Badge key={cat.id} variant="secondary">{cat.name}</Badge>
+                ))}
+            </div>
+        }
         <CardTitle className="mb-2 text-xl leading-tight font-headline">
-          <Link href={`/article/${article.id}`} className="hover:text-primary transition-colors">
+          <Link href={article.id} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
             {article.title}
           </Link>
         </CardTitle>

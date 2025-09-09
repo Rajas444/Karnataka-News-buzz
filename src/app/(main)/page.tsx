@@ -1,10 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { placeholderArticles, placeholderCategories, placeholderDistricts } from '@/lib/placeholder-data';
+import { placeholderCategories, placeholderDistricts } from '@/lib/placeholder-data';
 import ArticleCard from '@/components/news/ArticleCard';
 import FilterControls from '@/components/news/FilterControls';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
+import { fetchNews } from '@/services/gnews';
+import type { Article } from '@/lib/types';
 
 type HomePageProps = {
   searchParams?: {
@@ -13,18 +15,27 @@ type HomePageProps = {
   };
 };
 
-export default function HomePage({ searchParams }: HomePageProps) {
-  const category = searchParams?.category;
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const category = searchParams?.category || 'general';
   const district = searchParams?.district;
 
-  const filteredArticles = placeholderArticles.filter(article => {
-    const categoryMatch = !category || category === 'all' || article.categoryIds.includes(category);
-    const districtMatch = !district || district === 'all' || article.districtId === district;
-    return categoryMatch && districtMatch;
-  });
+  const districtName = placeholderDistricts.find(d => d.id === district)?.name;
+  
+  const articles = await fetchNews(category, districtName);
 
-  const topArticle = filteredArticles.length > 0 ? filteredArticles[0] : placeholderArticles[0];
-  const recentArticles = filteredArticles.length > 1 ? filteredArticles.slice(1, 5) : placeholderArticles.slice(1, 5);
+  const topArticle: Article | undefined = articles[0];
+  const recentArticles = articles.slice(1, 5);
+
+  if (!topArticle) {
+    return (
+        <div className="container mx-auto px-4 py-8 text-center">
+            <h1 className="text-2xl font-bold mb-4">No Articles Found</h1>
+            <p className="text-muted-foreground">
+                We couldn&apos;t fetch any news at the moment. Please try again later.
+            </p>
+        </div>
+    )
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -49,7 +60,7 @@ export default function HomePage({ searchParams }: HomePageProps) {
               {topArticle.content.substring(0, 150)}...
             </p>
             <Button asChild size="lg">
-              <Link href={`/article/${topArticle.id}`}>
+              <Link href={topArticle.id} target="_blank" rel="noopener noreferrer">
                 Read More <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
@@ -66,9 +77,9 @@ export default function HomePage({ searchParams }: HomePageProps) {
       <section>
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-headline text-3xl font-bold">
-            {category || district ? 'Filtered News' : 'Recent News'}
+            {searchParams?.category || searchParams?.district ? 'Filtered News' : 'Recent News'}
           </h2>
-          {(category || district) && (
+          {(searchParams?.category || searchParams?.district) && (
             <Button variant="ghost" asChild>
               <Link href="/">Clear Filters</Link>
             </Button>

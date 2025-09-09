@@ -56,7 +56,7 @@ const formSchema = z.object({
   seoKeywords: z.string().optional(),
 });
 
-export type ArticleFormValues = z.infer<typeof formSchema>;
+type ArticleFormValues = z.infer<typeof formSchema>;
 
 interface ArticleFormProps {
   initialData?: Article;
@@ -379,7 +379,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a district" />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {districts.map((dist) => (

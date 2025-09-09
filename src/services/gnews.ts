@@ -15,7 +15,7 @@ const categoryMapping: { [key: string]: string } = {
 };
 
 export async function fetchNews(categorySlug: string = 'general', district?: string): Promise<Article[]> {
-    const apiKey = process.env.NEXT_PUBLIC_GNEWS_API_KEY;
+    const apiKey = process.env.GNEWS_API_KEY;
     if (!apiKey) {
         console.error("GNews API key is missing. Falling back to placeholder data.");
         return placeholderArticles;
@@ -30,7 +30,7 @@ export async function fetchNews(categorySlug: string = 'general', district?: str
     }
 
 
-    const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&country=in&category=${gnewsCategory}&apikey=${apiKey}`;
+    const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&country=in&apikey=${apiKey}`;
 
     try {
         const response = await fetch(url);

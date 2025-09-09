@@ -17,6 +17,24 @@ const categoryMapping: { [key: string]: string } = {
 export async function fetchNews(categorySlug: string = 'general', district?: string): Promise<Article[]> {
     const apiKey = process.env.GNEWS_API_KEY;
 
+    // Temporarily bypass the API call to avoid 403 errors and use placeholders.
+    // This allows development to continue while the GNews API key issue is investigated.
+    console.warn("GNews API fetch is temporarily disabled due to a persistent 403 error. Returning placeholder data.");
+    if (true) { // This condition can be removed once the API key issue is resolved.
+        const filteredByCategory = placeholderArticles.filter(article => 
+            categorySlug === 'general' || article.categoryIds.includes(
+                Object.keys(categoryMapping).find(key => categoryMapping[key] === categorySlug) || ''
+            )
+        );
+
+        const filteredByDistrict = district
+            ? filteredByCategory.filter(article => article.districtId === district)
+            : filteredByCategory;
+        
+        return filteredByDistrict.length > 0 ? filteredByDistrict : filteredByCategory;
+    }
+
+
     // Check if the API key is missing.
     if (!apiKey) {
         console.error("GNews API key is missing. Falling back to placeholder data.");

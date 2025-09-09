@@ -6,7 +6,7 @@ import ArticleCard from '@/components/news/ArticleCard';
 import FilterControls from '@/components/news/FilterControls';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
-import { fetchNews } from '@/services/gnews';
+import { fetchNews } from '@/services/news';
 import type { Article } from '@/lib/types';
 
 type HomePageProps = {

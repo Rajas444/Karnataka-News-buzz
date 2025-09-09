@@ -56,6 +56,12 @@ export default function LoginPage() {
             variant: 'destructive',
             duration: 9000,
         });
+      } else if (error.code === 'auth/invalid-credential') {
+        toast({
+            title: 'Login Failed',
+            description: "Invalid credentials. Please check your email and password.",
+            variant: 'destructive',
+        });
       } else {
         toast({
             title: 'Login Failed',

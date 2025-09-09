@@ -101,6 +101,12 @@ export default function Header() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
+             {userRole === 'admin' && (
+                <Button variant="outline" size="sm" onClick={() => router.push('/admin')}>
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    Admin Panel
+                </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -130,12 +136,6 @@ export default function Header() {
                         </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {userRole === 'admin' && (
-                        <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer">
-                            <ShieldCheck className="mr-2 h-4 w-4" />
-                            <span>Admin Dashboard</span>
-                        </DropdownMenuItem>
-                    )}
                      <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
                         <UserIcon className="mr-2 h-4 w-4" />
                         <span>User Profile</span>

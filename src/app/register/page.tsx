@@ -27,19 +27,17 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const isAdmin = email.toLowerCase() === 'rajashekar2002@gmail.com';
-      const role = isAdmin ? 'admin' : 'user';
-      
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // All new users are created with the 'user' role by default.
+      // Admin promotion is handled manually in the Firestore console.
       const userDocRef = doc(db, 'users', user.uid);
-      
       await setDoc(userDocRef, {
         uid: user.uid,
         email: user.email,
         displayName: displayName,
-        role: role,
+        role: 'user', // Default role is 'user'
         photoURL: ''
       });
 
@@ -50,12 +48,8 @@ export default function RegisterPage() {
         title: 'Registration Successful',
         description: 'Please login with your new account.',
       });
-
-      if (isAdmin) {
-          router.push('/auth/admin-login');
-      } else {
-          router.push('/');
-      }
+      
+      router.push('/');
 
     } catch (error: any) {
       console.error(error);

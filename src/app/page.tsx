@@ -38,37 +38,27 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    // Hard-coded check to redirect admin user to the correct login page.
-    if (email.toLowerCase() === 'rajashekar2002@gmail.com') {
-      toast({
-        title: 'Admin Account',
-        description: 'Please use the dedicated admin login page.',
-        variant: 'destructive',
-      });
-      router.push('/auth/admin-login');
-      setLoading(false);
-      return;
-    }
-
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const firestoreUser = userCredential.user;
       
-      const userDocRef = doc(db, 'users', user.uid);
+      const userDocRef = doc(db, 'users', firestoreUser.uid);
       const userDoc = await getDoc(userDocRef);
 
+      // The useAuth hook will handle role checking and redirection via its own useEffect.
+      // We just need to ensure the login is successful.
       if (userDoc.exists()) {
         const profile = userDoc.data();
          if (profile.role === 'admin') {
-            await auth.signOut(); // Log out the user immediately
-            toast({ title: 'Admin Login', description: 'Redirecting to admin login page...' });
-            router.push('/auth/admin-login');
-            setLoading(false);
+            toast({ title: 'Admin Login Detected', description: 'Redirecting to admin dashboard...' });
+            router.push('/admin'); // Redirect admin user
             return;
         }
       }
-        toast({ title: 'Login Successful', description: 'Redirecting...' });
-        router.push('/home');
+      
+      toast({ title: 'Login Successful', description: 'Redirecting...' });
+      router.push('/home'); // Redirect regular user
+
     } catch (error: any) {
       console.error(error);
       if (error.code === 'auth/configuration-not-found') {

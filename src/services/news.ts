@@ -10,9 +10,9 @@ type FetchNewsResponse = {
 
 export async function fetchNews(category?: string, districtName?: string, page?: string | null): Promise<FetchNewsResponse> {
     const apiKey = process.env.NEWSDATA_API_KEY;
-    if (!apiKey) {
+    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
         console.error('Newsdata.io API key is not set.');
-        throw new Error('Failed to load news. API key is missing.');
+        throw new Error('Newsdata.io API key is missing. Please add it to your .env file.');
     }
 
     const url = new URL('https://newsdata.io/api/1/news');
@@ -47,7 +47,7 @@ export async function fetchNews(category?: string, districtName?: string, page?:
                 // Try to parse the error body as JSON
                 const errorBody = await response.json();
                 console.error('Newsdata.io API error:', errorBody);
-                errorMessage = errorBody.results?.message || `API error: ${response.status}`;
+                errorMessage = errorBody.results?.message || `API error: ${response.status}. Check your API key and plan.`;
             } catch (e) {
                 // If parsing fails, the body might not be JSON.
                 console.error('Could not parse Newsdata.io error response as JSON.');

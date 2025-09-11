@@ -40,12 +40,12 @@ export default function ArticleCard({ article }: ArticleCardProps) {
                 ))}
             </div>
         }
-        <CardTitle className="mb-2 text-xl leading-tight font-headline">
+        <CardTitle className="mb-2 text-xl leading-tight font-headline font-kannada">
           <Link href={article.id} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
             {article.title}
           </Link>
         </CardTitle>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-muted-foreground text-sm font-kannada">
           {article.content.substring(0, 100)}...
         </p>
       </CardContent>

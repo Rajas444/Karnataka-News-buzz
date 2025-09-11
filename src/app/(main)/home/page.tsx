@@ -22,7 +22,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const districtName = placeholderDistricts.find(d => d.id === district)?.name;
   
-  const { articles, nextPage } = await fetchNews(category, districtName);
+  const { articles, nextPage } = await fetchNews(category, districtName, null, 'kannada');
 
   const topArticle: Article | undefined = articles[0];
   const initialArticles = articles.slice(1);
@@ -30,9 +30,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   if (!topArticle) {
     return (
         <div className="container mx-auto px-4 py-8 text-center">
-            <h1 className="text-2xl font-bold mb-4">No Articles Found</h1>
-            <p className="text-muted-foreground">
-                We couldn&apos;t fetch any news at the moment. Please try again later.
+            <h1 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಸುದ್ದಿ ಲಭ್ಯವಿಲ್ಲ</h1>
+            <p className="text-muted-foreground font-kannada">
+                ಈ ಸಮಯದಲ್ಲಿ ನಾವು ಯಾವುದೇ ಸುದ್ದಿಗಳನ್ನು ಪಡೆಯಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.
             </p>
         </div>
     )
@@ -56,10 +56,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             />
           </div>
           <div>
-            <h1 className="font-headline text-4xl md:text-5xl font-bold mb-4 leading-tight">
+            <h1 className="font-headline text-4xl md:text-5xl font-bold mb-4 leading-tight font-kannada">
               {topArticle.title}
             </h1>
-            <p className="text-muted-foreground text-lg mb-6">
+            <p className="text-muted-foreground text-lg mb-6 font-kannada">
               {topArticle.content.substring(0, 150)}...
             </p>
             <Button asChild size="lg">

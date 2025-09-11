@@ -19,6 +19,7 @@ export default {
       fontFamily: {
         body: ['Alegreya', 'serif'],
         headline: ['Belleza', 'sans-serif'],
+        kannada: ['"Noto Sans Kannada"', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {

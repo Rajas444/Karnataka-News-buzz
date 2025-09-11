@@ -3,7 +3,7 @@
 
 import { db, storage } from '@/lib/firebase';
 import type { Article, ArticleFormValues } from '@/lib/types';
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 
 const articlesCollection = collection(db, 'articles');
@@ -42,8 +42,21 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
 }
 
 // READ (all)
-export async function getArticles(): Promise<Article[]> {
-    const q = query(articlesCollection, orderBy('createdAt', 'desc'));
+export async function getArticles(options?: { categoryId?: string; districtName?: string; language?: string }): Promise<Article[]> {
+    let q = query(articlesCollection, orderBy('publishedAt', 'desc'));
+
+    if (options?.categoryId) {
+        q = query(q, where('categoryIds', 'array-contains', options.categoryId));
+    }
+    
+    if (options?.districtName) {
+        q = query(q, where('districtName', '==', options.districtName));
+    }
+
+    if (options?.language) {
+        q = query(q, where('language', '==', options.language));
+    }
+
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => {
         const data = doc.data();

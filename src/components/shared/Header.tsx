@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Menu, Newspaper, Search, Moon, Sun, LogOut, User as UserIcon, ShieldCheck } from 'lucide-react';
+import { Menu, Newspaper, Search, Moon, Sun, LogOut, User as UserIcon, ShieldCheck, Briefcase } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -29,6 +29,7 @@ import { placeholderCategories } from '@/lib/placeholder-data';
 
 const navLinks = [
   { href: '/home', label: 'Home' },
+  { href: '/jobs', label: 'Jobs' },
 ];
 
 export default function Header() {

@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, FileText, Settings, ShieldCheck, Users, BarChart2, Tags, MapPin } from "lucide-react";
+import { CheckCircle2, FileText, Settings, ShieldCheck, Users, BarChart2, Tags, MapPin, Briefcase } from "lucide-react";
 import DashboardStats from "@/components/admin/DashboardStats";
 import ActivityLog from "@/components/admin/ActivityLog";
 import AiAssistant from "@/components/admin/AIAssistant";
@@ -13,6 +13,12 @@ const features = [
     title: "Article Management",
     description: "Add, edit, and delete news articles with a rich text editor.",
     href: "/admin/articles"
+  },
+  {
+    icon: Briefcase,
+    title: "Job Management",
+    description: "Create, update, and manage job postings for the jobs section.",
+    href: "/admin/jobs"
   },
   {
     icon: Tags,

@@ -80,3 +80,28 @@ export interface NewsdataResponse {
   results: NewsdataArticle[];
   nextPage: string | null;
 }
+
+
+// Types for Jobs
+export type JobType = 'Government' | 'Private' | 'Fresher' | 'Internship';
+
+export const jobFormSchema = z.object({
+    title: z.string().min(5, 'Title must be at least 5 characters.'),
+    company: z.string().min(2, 'Company must be at least 2 characters.'),
+    location: z.string().min(2, 'Location must be at least 2 characters.'),
+    description: z.string().min(20, 'Description must be at least 20 characters.'),
+    applyLink: z.string().url('Please enter a valid URL.'),
+    jobType: z.enum(['Government', 'Private', 'Fresher', 'Internship']),
+    lastDateToApply: z.date({
+        required_error: 'Last date to apply is required.',
+    }),
+});
+export type JobFormValues = z.infer<typeof jobFormSchema>;
+
+
+export interface Job extends JobFormValues {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    status: 'active' | 'expired';
+}

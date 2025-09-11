@@ -18,6 +18,7 @@ export async function fetchNews(category?: string, districtName?: string, page?:
     const url = new URL('https://newsdata.io/api/1/news');
     url.searchParams.append('apikey', apiKey);
     url.searchParams.append('language', 'kn');
+    url.searchParams.append('q', 'Karnataka'); // Filter for Karnataka news
 
     if(category && category !== 'general') {
         url.searchParams.append('category', category);

@@ -6,39 +6,47 @@ import FilterControls from '@/components/news/FilterControls';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { fetchNews } from '@/services/news';
-import type { Article } from '@/lib/types';
+import type { NewsdataArticle } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
 
-type HomePageProps = {
-  searchParams?: {
-    category?: string;
-    district?: string;
-  };
-};
+export default async function HomePage() {
+  let initialArticles: NewsdataArticle[] = [];
+  let nextPage: string | null = null;
+  let error: string | null = null;
+  let topArticle: NewsdataArticle | undefined;
 
-export default async function HomePage({ searchParams }: HomePageProps) {
-  const category = searchParams?.category || 'general';
-  const district = searchParams?.district;
+  try {
+    const response = await fetchNews();
+    initialArticles = response.articles;
+    nextPage = response.nextPage;
+    topArticle = initialArticles[0];
+  } catch (e: any) {
+    error = e.message || 'An unknown error occurred.';
+  }
 
-  const districtName = placeholderDistricts.find(d => d.id === district)?.name;
-  
-  const { articles, nextPage } = await fetchNews(category, districtName, null, 'kannada');
-
-  const topArticle: Article | undefined = articles[0];
-  const initialArticles = articles.slice(1);
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <h1 className="text-2xl font-bold mb-4 font-kannada">ಸುದ್ದಿ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</h1>
+        <p className="text-muted-foreground font-kannada">
+          {error}
+        </p>
+      </div>
+    );
+  }
 
   if (!topArticle) {
     return (
-        <div className="container mx-auto px-4 py-8 text-center">
-            <h1 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಸುದ್ದಿ ಲಭ್ಯವಿಲ್ಲ</h1>
-            <p className="text-muted-foreground font-kannada">
-                ಈ ಸಮಯದಲ್ಲಿ ನಾವು ಯಾವುದೇ ಸುದ್ದಿಗಳನ್ನು ಪಡೆಯಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.
-            </p>
-        </div>
-    )
+      <div className="container mx-auto px-4 py-8 text-center">
+        <h1 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಸುದ್ದಿ ಲಭ್ಯವಿಲ್ಲ</h1>
+        <p className="text-muted-foreground font-kannada">
+          ಈ ಸಮಯದಲ್ಲಿ ನಾವು ಯಾವುದೇ ಸುದ್ದಿಗಳನ್ನು ಪಡೆಯಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.
+        </p>
+      </div>
+    );
   }
 
-  const hasFilters = !!(searchParams?.category || searchParams?.district);
+  const otherArticles = initialArticles.slice(1);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -47,11 +55,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-card p-8 rounded-lg shadow-lg">
           <div className="relative h-64 md:h-96 rounded-lg overflow-hidden">
             <Image
-              src={topArticle.imageUrl || 'https://picsum.photos/800/600'}
+              src={topArticle.image_url || 'https://picsum.photos/seed/1/800/600'}
               alt={topArticle.title}
               fill
               className="object-cover"
-              data-ai-hint={topArticle['data-ai-hint']}
               sizes="(max-width: 768px) 100vw, 50vw"
             />
           </div>
@@ -60,10 +67,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               {topArticle.title}
             </h1>
             <p className="text-muted-foreground text-lg mb-6 font-kannada">
-              {topArticle.content.substring(0, 150)}...
+              {topArticle.description?.substring(0, 150) ?? 'No description available'}...
             </p>
             <Button asChild size="lg">
-              <Link href={`/article/${topArticle.id}`} rel="noopener noreferrer">
+              <Link href={topArticle.link} target="_blank" rel="noopener noreferrer">
                 Read More <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
@@ -80,20 +87,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section>
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-headline text-3xl font-bold">
-            {hasFilters ? 'Filtered News' : 'Recent News'}
+            Recent News
           </h2>
-          {hasFilters && (
-            <Button variant="ghost" asChild>
-              <Link href="/home">Clear Filters</Link>
-            </Button>
-          )}
         </div>
-         <ArticleList 
-            initialArticles={initialArticles} 
-            initialNextPage={nextPage}
-            category={category}
-            district={district}
-            districtName={districtName}
+        <ArticleList
+          initialArticles={otherArticles}
+          initialNextPage={nextPage}
         />
       </section>
     </div>

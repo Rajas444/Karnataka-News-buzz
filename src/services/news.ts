@@ -1,30 +1,49 @@
 
-import type { Article } from '@/lib/types';
-import { getArticles } from './articles';
-import { placeholderCategories } from '@/lib/placeholder-data';
+'use server';
+
+import type { NewsdataArticle, NewsdataResponse } from '@/lib/types';
 
 type FetchNewsResponse = {
-    articles: Article[];
+    articles: NewsdataArticle[];
     nextPage: string | null;
 }
 
-export async function fetchNews(categorySlug: string = 'general', districtName?: string, page?: string | null, language?: string): Promise<FetchNewsResponse> {
-    
-    try {
-        const category = placeholderCategories.find(c => c.slug === categorySlug);
-        
-        // The user wants to fetch from Firestore, so we'll use getArticles.
-        const articles = await getArticles({
-             // If you have a mapping from slug to ID, you can use it here.
-             categoryId: (category && categorySlug !== 'general') ? category.id : undefined,
-             districtName: districtName,
-             language: language
-        });
+export async function fetchNews(page?: string | null): Promise<FetchNewsResponse> {
+    const apiKey = process.env.NEWSDATA_API_KEY;
+    if (!apiKey) {
+        console.error('Newsdata.io API key is not set.');
+        throw new Error('Failed to load news. API key is missing.');
+    }
 
-        // The getArticles function doesn't support pagination yet, so nextPage is null.
-        return { articles, nextPage: null };
+    const url = new URL('https://newsdata.io/api/1/news');
+    url.searchParams.append('apikey', apiKey);
+    url.searchParams.append('language', 'kn');
+
+    if (page) {
+        url.searchParams.append('page', page);
+    }
+
+    try {
+        const response = await fetch(url.toString());
+
+        if (!response.ok) {
+            const errorBody = await response.json();
+            console.error('Newsdata.io API error:', errorBody);
+            throw new Error(`Failed to fetch news: ${errorBody.results?.message || response.statusText}`);
+        }
+
+        const data: NewsdataResponse = await response.json();
+
+        if (data.status !== 'success') {
+            throw new Error(`API returned status: ${data.status}`);
+        }
+
+        return {
+            articles: data.results || [],
+            nextPage: data.nextPage || null,
+        };
     } catch (error) {
-        console.error("Failed to fetch news from Firestore:", error);
-        return { articles: [], nextPage: null }; // Return empty array on network or other errors
+        console.error("Failed to fetch news from Newsdata.io:", error);
+        throw new Error('Failed to load news. Please try again later.');
     }
 }

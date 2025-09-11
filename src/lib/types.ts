@@ -61,3 +61,22 @@ export const articleFormSchema = z.object({
 });
 
 export type ArticleFormValues = z.infer<typeof articleFormSchema>;
+
+// Types for Newsdata.io
+export interface NewsdataArticle {
+  article_id: string;
+  title: string;
+  link: string;
+  description: string | null;
+  image_url: string | null;
+  pubDate: string;
+  source_id: string;
+  category: string[];
+}
+
+export interface NewsdataResponse {
+  status: string;
+  totalResults: number;
+  results: NewsdataArticle[];
+  nextPage: string | null;
+}

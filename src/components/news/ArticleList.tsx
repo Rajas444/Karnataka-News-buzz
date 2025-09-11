@@ -5,33 +5,36 @@ import { useState } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import type { Article } from '@/lib/types';
+import type { NewsdataArticle } from '@/lib/types';
 import { fetchNews } from '@/services/news';
+import { useToast } from '@/hooks/use-toast';
 
 interface ArticleListProps {
-    initialArticles: Article[];
+    initialArticles: NewsdataArticle[];
     initialNextPage: string | null;
-    category: string;
-    district?: string;
-    districtName?: string;
 }
 
-export default function ArticleList({ initialArticles, initialNextPage, category, districtName }: ArticleListProps) {
-    const [articles, setArticles] = useState<Article[]>(initialArticles);
+export default function ArticleList({ initialArticles, initialNextPage }: ArticleListProps) {
+    const [articles, setArticles] = useState<NewsdataArticle[]>(initialArticles);
     const [nextPage, setNextPage] = useState<string | null>(initialNextPage);
     const [isLoading, setIsLoading] = useState(false);
+    const { toast } = useToast();
 
     const handleLoadMore = async () => {
         if (!nextPage || isLoading) return;
 
         setIsLoading(true);
         try {
-            const { articles: newArticles, nextPage: newNextPage } = await fetchNews(category, districtName, nextPage);
+            const { articles: newArticles, nextPage: newNextPage } = await fetchNews(nextPage);
             setArticles(prev => [...prev, ...newArticles]);
             setNextPage(newNextPage);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to fetch more articles:", error);
-            // Optionally, show a toast notification to the user
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to fetch more articles.',
+                variant: 'destructive',
+            });
         } finally {
             setIsLoading(false);
         }
@@ -42,12 +45,12 @@ export default function ArticleList({ initialArticles, initialNextPage, category
             {articles.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {articles.map((article) => (
-                    <ArticleCard key={article.id} article={article} />
+                        <ArticleCard key={article.article_id} article={article} />
                     ))}
                 </div>
             ) : (
                 <div className="text-center py-12 bg-card rounded-lg">
-                    <p className="text-muted-foreground">No articles found for the selected filters.</p>
+                    <p className="text-muted-foreground">No more articles found.</p>
                 </div>
             )}
             

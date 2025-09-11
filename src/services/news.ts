@@ -22,15 +22,13 @@ export async function fetchNews(category?: string, page?: string | null, distric
 
     const queryParts: string[] = [];
     
-    // When a specific category is selected, don't add "Karnataka" to the query
-    // unless a district is also specified.
     const isGeneralCategory = !category || category === 'general';
 
     if (district && district !== 'all') {
         queryParts.push(district);
     }
     
-    if (isGeneralCategory && !district) {
+    if (isGeneralCategory && (!district || district === 'all')) {
         queryParts.push('Karnataka');
     }
     
@@ -52,30 +50,31 @@ export async function fetchNews(category?: string, page?: string | null, distric
         if (!response.ok) {
             let errorMessage = `API Error: ${response.status} ${response.statusText}`;
             try {
-                // Try to parse the error body as JSON
                 const errorBody = await response.json();
-                console.error('Newsdata.io API error:', errorBody);
+                console.error('Newsdata.io API error response:', errorBody);
 
-                // Newsdata.io error format can vary. Try to find the message.
-                if (errorBody.results && typeof errorBody.results === 'object' && errorBody.results.message) {
+                if (errorBody.results && errorBody.results.message) {
                     errorMessage = errorBody.results.message;
-                } else if (errorBody.results && typeof errorBody.results === 'string') {
+                } else if (typeof errorBody.results === 'string') {
                     errorMessage = errorBody.results;
                 } else if (errorBody.message) {
                     errorMessage = errorBody.message;
                 }
             } catch (e) {
-                // If parsing fails, the body might not be JSON.
                 console.error('Could not parse Newsdata.io error response as JSON.');
             }
-            throw new Error(`Failed to fetch news: ${errorMessage}. Please check your API key and plan.`);
+            throw new Error(`Failed to fetch news: ${errorMessage}`);
         }
 
         const data: NewsdataResponse = await response.json();
 
         if (data.status !== 'success') {
-             console.error('Newsdata.io API non-success status:', data);
-            throw new Error(`API returned status: ${data.status}`);
+            console.error('Newsdata.io API non-success status:', data);
+            // Specifically check for API key issues from their typical response format
+            if ((data as any).results?.code === 'Unauthorized') {
+                 throw new Error(`Newsdata.io Error: Invalid API Key. Please check the key in your .env file.`);
+            }
+            throw new Error(`API returned status: ${data.status}. Check Newsdata.io dashboard for issues.`);
         }
 
         return {
@@ -85,7 +84,8 @@ export async function fetchNews(category?: string, page?: string | null, distric
     } catch (error) {
         console.error("Failed to fetch news from Newsdata.io:", error);
         if (error instanceof Error) {
-            throw new Error(error.message);
+            // Re-throw the original error to preserve the specific message
+            throw error;
         }
         throw new Error('An unknown error occurred while fetching news.');
     }

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -13,15 +13,21 @@ interface ArticleListProps {
     initialArticles: NewsdataArticle[];
     initialNextPage: string | null;
     category?: string;
-    district?: string;
     districtName?: string;
 }
 
-export default function ArticleList({ initialArticles, initialNextPage, category, district, districtName }: ArticleListProps) {
+export default function ArticleList({ initialArticles, initialNextPage, category, districtName }: ArticleListProps) {
     const [articles, setArticles] = useState<NewsdataArticle[]>(initialArticles);
     const [nextPage, setNextPage] = useState<string | null>(initialNextPage);
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
+    
+    // This effect resets the articles when the filters change.
+    useEffect(() => {
+        setArticles(initialArticles);
+        setNextPage(initialNextPage);
+    }, [initialArticles, initialNextPage]);
+
 
     const handleLoadMore = async () => {
         if (!nextPage || isLoading) return;
@@ -53,7 +59,7 @@ export default function ArticleList({ initialArticles, initialNextPage, category
                 </div>
             ) : (
                 <div className="text-center py-12 bg-card rounded-lg">
-                    <p className="text-muted-foreground">No more articles found.</p>
+                    <p className="text-muted-foreground">No articles found for the selected filters.</p>
                 </div>
             )}
             

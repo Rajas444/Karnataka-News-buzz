@@ -49,11 +49,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   if (!topArticle) {
     return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಸುದ್ದಿ ಲಭ್ಯವಿಲ್ಲ</h1>
-        <p className="text-muted-foreground font-kannada">
-          ಈ ಸಮಯದಲ್ಲಿ ನಾವು ಯಾವುದೇ ಸುದ್ದಿಗಳನ್ನು ಪಡೆಯಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.
-        </p>
+      <div className="container mx-auto px-4 py-8">
+        <section className="mb-8">
+          <FilterControls categories={placeholderCategories} districts={placeholderDistricts} />
+        </section>
+        <div className="text-center bg-card p-8 rounded-lg">
+            <h1 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಸುದ್ದಿ ಲಭ್ಯವಿಲ್ಲ</h1>
+            <p className="text-muted-foreground font-kannada">
+              ಈ ಸಮಯದಲ್ಲಿ ನಾವು ಯಾವುದೇ ಸುದ್ದಿಗಳನ್ನು ಪಡೆಯಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.
+            </p>
+        </div>
       </div>
     );
   }
@@ -106,7 +111,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           initialArticles={otherArticles}
           initialNextPage={nextPage}
           category={category}
-          district={districtId}
           districtName={districtName}
         />
       </section>

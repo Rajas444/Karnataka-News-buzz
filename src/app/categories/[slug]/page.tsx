@@ -38,7 +38,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 {category?.name || 'News'}
             </h1>
             <p className="text-muted-foreground text-lg mb-8">
-                Browsing the {category?.name || 'latest'} news.
+                Browsing the {category?.name || 'latest'} news {districtName ? `in ${districtName}`: ''}.
             </p>
 
             {/* Filters */}
@@ -80,7 +80,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 <div className="text-center py-12 bg-card rounded-lg mb-8">
                     <h2 className="text-2xl font-bold mb-4">No Articles Found</h2>
                     <p className="text-muted-foreground">
-                        We couldn't fetch any news for this category at the moment. Please try again later.
+                        We couldn't fetch any news for this category{districtName ? ` in ${districtName}` : ''} at the moment. Please try again later.
                     </p>
                 </div>
             )}
@@ -96,7 +96,6 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                     initialArticles={initialArticles} 
                     initialNextPage={nextPage}
                     category={categorySlug}
-                    district={districtId}
                     districtName={districtName}
                 />
             </section>

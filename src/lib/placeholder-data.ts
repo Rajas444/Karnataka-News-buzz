@@ -2,6 +2,7 @@
 import type { Article, Category, District } from '@/lib/types';
 
 export const placeholderDistricts: District[] = [
+  { id: 'all', name: 'All Districts' },
   { id: '1', name: 'Bagalkote' },
   { id: '2', name: 'Ballari' },
   { id: '3', name: 'Belagavi' },
@@ -33,16 +34,18 @@ export const placeholderDistricts: District[] = [
   { id: '29', name: 'Vijayanagara' },
   { id: '30', name: 'Yadgiri' },
   { id: '31', name: 'Bengaluru' },
+  { id: '32', name: 'Mangaluru' },
+  { id: '33', name: 'Hubballi' },
 ];
 
 export const placeholderCategories: Category[] = [
+  { id: 'general', name: 'All Categories', slug: 'general'},
   { id: '1', name: 'Politics', slug: 'politics' },
   { id: '2', name: 'Technology', slug: 'technology' },
   { id: '3', name: 'Sports', slug: 'sports' },
   { id: '4', name: 'Entertainment', slug: 'entertainment' },
   { id: '5', name: 'Business', slug: 'business' },
   { id: '6', name: 'Local News', slug: 'local-news' },
-  { id: '7', name: 'General', slug: 'general' },
   { id: '8', name: 'Health', slug: 'health' },
   { id: '9', name: 'Science', slug: 'science' },
 ];

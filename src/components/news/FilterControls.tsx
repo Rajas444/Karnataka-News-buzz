@@ -2,7 +2,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -20,7 +20,6 @@ import {
 
 import type { Category, District } from '@/lib/types';
 import { Check, ChevronsUpDown, SlidersHorizontal } from 'lucide-react';
-import { placeholderCategories, placeholderDistricts } from '@/lib/placeholder-data';
 import { cn } from '@/lib/utils';
 
 
@@ -38,51 +37,49 @@ export default function FilterControls({ categories, districts }: FilterControls
   const [openDistrict, setOpenDistrict] = useState(false)
 
   // On a category page like /categories/politics, the category comes from the path
-  const pathCategory = pathname.startsWith('/categories/') 
+  const pathCategorySlug = pathname.startsWith('/categories/') 
     ? pathname.split('/')[2] 
     : null;
 
-  const selectedCategorySlug = pathCategory || searchParams.get('category') || 'general';
+  const selectedCategorySlug = pathCategorySlug || searchParams.get('category') || 'general';
   const selectedDistrictId = searchParams.get('district') || 'all';
 
-  const selectedCategory = placeholderCategories.find(c => c.slug === selectedCategorySlug);
-  const selectedDistrict = placeholderDistricts.find(d => d.id === selectedDistrictId);
+  const [currentCategory, setCurrentCategory] = useState(categories.find(c => c.slug === selectedCategorySlug));
+  const [currentDistrict, setCurrentDistrict] = useState(districts.find(d => d.id === selectedDistrictId));
+  
+   useEffect(() => {
+    setCurrentCategory(categories.find(c => c.slug === selectedCategorySlug));
+    setCurrentDistrict(districts.find(d => d.id === selectedDistrictId));
+  }, [selectedCategorySlug, selectedDistrictId, categories, districts]);
 
 
   const createQueryString = useCallback(
-    (name: string, value: string) => {
+    (updates: { name: string; value: string }[]) => {
       const params = new URLSearchParams(searchParams.toString());
-       // If a category is selected via path, we don't want to add it to query params
-      if (name === 'category' && pathCategory) {
-          // just update the district param if it exists
-           if (value === 'all' || (name === 'category' && value === 'general')) {
-               params.delete(name)
-           } else {
-               params.set(name, value)
-           }
-      } else {
+      updates.forEach(({ name, value }) => {
         if (value === 'all' || (name === 'category' && value === 'general')) {
             params.delete(name);
         } else {
             params.set(name, value);
         }
-      }
+      });
 
       return params.toString();
     },
-    [searchParams, pathCategory]
+    [searchParams]
   );
   
-  const handleFilterChange = (type: 'category' | 'district', value: string) => {
-      if (type === 'category' && !pathCategory) {
-          const newPath = value === 'general' ? '/home' : `/categories/${value}`;
-          const params = new URLSearchParams(searchParams.toString());
-          params.delete('category'); // remove from query if we're moving to path-based
-          const queryString = params.toString();
-          router.push(newPath + (queryString ? '?' + queryString : ''));
-      } else {
-         router.push(pathname + '?' + createQueryString(type, value));
-      }
+  const handleCategoryChange = (slug: string) => {
+    const newPath = slug === 'general' ? '/home' : `/categories/${slug}`;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('category');
+    const queryString = params.toString();
+    router.push(newPath + (queryString ? '?' + queryString : ''));
+  };
+
+  const handleDistrictChange = (districtId: string) => {
+    const queryString = createQueryString([{ name: 'district', value: districtId }]);
+    router.push(pathname + '?' + queryString);
   };
 
 
@@ -101,8 +98,9 @@ export default function FilterControls({ categories, districts }: FilterControls
               role="combobox"
               aria-expanded={openCategory}
               className="w-[200px] justify-between"
+              disabled={!!pathCategorySlug}
             >
-              {selectedCategory ? selectedCategory.name : "Select category..."}
+              {currentCategory ? currentCategory.name : "Select category..."}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
@@ -115,7 +113,7 @@ export default function FilterControls({ categories, districts }: FilterControls
                   <CommandItem
                     value="general"
                     onSelect={() => {
-                      handleFilterChange('category', 'general');
+                      handleCategoryChange('general');
                       setOpenCategory(false);
                     }}
                   >
@@ -132,7 +130,7 @@ export default function FilterControls({ categories, districts }: FilterControls
                       key={category.id}
                       value={category.name}
                       onSelect={(currentValue) => {
-                        handleFilterChange('category', category.slug);
+                        handleCategoryChange(category.slug);
                         setOpenCategory(false);
                       }}
                     >
@@ -160,7 +158,7 @@ export default function FilterControls({ categories, districts }: FilterControls
               aria-expanded={openDistrict}
               className="w-[200px] justify-between"
             >
-              {selectedDistrict ? selectedDistrict.name : "Select district..."}
+              {currentDistrict ? currentDistrict.name : "Select district..."}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
@@ -173,7 +171,7 @@ export default function FilterControls({ categories, districts }: FilterControls
                    <CommandItem
                       value="all"
                       onSelect={() => {
-                        handleFilterChange('district', 'all');
+                        handleDistrictChange('all');
                         setOpenDistrict(false);
                       }}
                     >
@@ -190,7 +188,7 @@ export default function FilterControls({ categories, districts }: FilterControls
                       key={district.id}
                       value={district.name}
                       onSelect={() => {
-                        handleFilterChange('district', district.id);
+                        handleDistrictChange(district.id);
                         setOpenDistrict(false);
                       }}
                     >

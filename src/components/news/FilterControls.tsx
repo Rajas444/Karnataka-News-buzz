@@ -2,25 +2,9 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
-
+import { useCallback } from 'react';
 import type { Category, District } from '@/lib/types';
-import { Check, ChevronsUpDown, Filter, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Filter } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -29,7 +13,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-
 
 interface FilterControlsProps {
   categories: Category[];
@@ -61,7 +44,8 @@ export default function FilterControls({ categories, districts }: FilterControls
   )
 
   const handleCategoryChange = (slug: string) => {
-      const queryString = createQueryString('district', selectedDistrictId);
+      const currentDistrict = searchParams.get('district');
+      const queryString = currentDistrict ? createQueryString('district', currentDistrict) : '';
       const targetPath = slug === 'general' ? '/home' : `/categories/${slug}`;
       router.push(`${targetPath}?${queryString}`);
   }
@@ -83,7 +67,7 @@ export default function FilterControls({ categories, districts }: FilterControls
             {/* Category Filter */}
             <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">Category</label>
-                <Select onValueChange={handleCategoryChange} defaultValue={selectedCategorySlug}>
+                <Select onValueChange={handleCategoryChange} value={selectedCategorySlug}>
                     <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
@@ -99,7 +83,7 @@ export default function FilterControls({ categories, districts }: FilterControls
              {/* District Filter */}
             <div className="flex-1">
                  <label className="text-sm font-medium mb-2 block">District</label>
-                 <Select onValueChange={handleDistrictChange} defaultValue={selectedDistrictId}>
+                 <Select onValueChange={handleDistrictChange} value={selectedDistrictId}>
                     <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select District" />
                     </SelectTrigger>

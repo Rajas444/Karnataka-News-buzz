@@ -21,10 +21,10 @@ type CategoryPageProps = {
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const categorySlug = params.slug;
-  const district = searchParams?.district;
+  const districtId = searchParams?.district;
 
   const category = placeholderCategories.find(c => c.slug === categorySlug);
-  const districtName = placeholderDistricts.find(d => d.id === district)?.name;
+  const districtName = placeholderDistricts.find(d => d.id === districtId)?.name;
   
   const { articles, nextPage } = await fetchNews(categorySlug, districtName);
 
@@ -96,7 +96,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                     initialArticles={initialArticles} 
                     initialNextPage={nextPage}
                     category={categorySlug}
-                    district={district}
+                    district={districtId}
                     districtName={districtName}
                 />
             </section>

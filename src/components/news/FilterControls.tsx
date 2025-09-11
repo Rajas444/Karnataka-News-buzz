@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/command"
 
 import type { Category, District } from '@/lib/types';
-import { Check, ChevronsUpDown, SlidersHorizontal, Filter } from 'lucide-react';
+import { Check, ChevronsUpDown, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 
 interface FilterControlsProps {
@@ -46,7 +47,7 @@ export default function FilterControls({ categories, districts }: FilterControls
     ? pathname.split('/')[2]
     : 'general';
   
-  const selectedDistrictId = searchParams.get('district') || 'all';
+  const selectedDistrictId = searchParams.get('district') || '';
 
   const [currentDistrict, setCurrentDistrict] = useState(districts.find(d => d.id === selectedDistrictId));
   
@@ -58,7 +59,7 @@ export default function FilterControls({ categories, districts }: FilterControls
   const createQueryString = useCallback(
     (name: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value === 'all') {
+      if (!value || value === 'all') {
           params.delete(name);
       } else {
           params.set(name, value);
@@ -85,85 +86,91 @@ export default function FilterControls({ categories, districts }: FilterControls
 
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-4 p-4 bg-card rounded-lg shadow-sm">
-      <div className="flex items-center gap-2 self-start">
-        <Filter className="h-5 w-5 text-muted-foreground" />
-        <h3 className="font-semibold text-lg">Filters</h3>
-      </div>
-      <div className="flex flex-col sm:flex-row w-full sm:w-auto items-center gap-4">
-        {/* Category Filter */}
-         <Select onValueChange={handleCategoryChange} defaultValue={selectedCategorySlug}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Select Category" />
-            </SelectTrigger>
-            <SelectContent>
-                {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.slug}>
-                        {category.name}
-                    </SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
+    <Card>
+        <CardHeader className="flex flex-row items-center gap-2">
+            <Filter className="h-5 w-5" />
+            <CardTitle className="font-headline text-2xl">Filters</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+            {/* Category Filter */}
+            <div>
+                <label className="text-sm font-medium mb-2 block">Category</label>
+                <Select onValueChange={handleCategoryChange} defaultValue={selectedCategorySlug}>
+                    <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.slug}>
+                                {category.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
 
 
-        {/* District Filter */}
-        <Popover open={openDistrict} onOpenChange={setOpenDistrict}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={openDistrict}
-              className="w-full sm:w-[200px] justify-between"
-            >
-              {currentDistrict ? currentDistrict.name : "Select district..."}
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[200px] p-0">
-            <Command>
-              <CommandInput placeholder="Search district..." />
-              <CommandList>
-                <CommandEmpty>No district found.</CommandEmpty>
-                <CommandGroup>
-                   <CommandItem
-                      value="all"
-                      onSelect={() => {
-                        handleDistrictChange('all');
-                        setOpenDistrict(false);
-                      }}
+            {/* District Filter */}
+            <div>
+                <label className="text-sm font-medium mb-2 block">District</label>
+                <Popover open={openDistrict} onOpenChange={setOpenDistrict}>
+                <PopoverTrigger asChild>
+                    <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openDistrict}
+                    className="w-full justify-between"
                     >
-                       <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            selectedDistrictId === 'all' ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                      All Districts
-                    </CommandItem>
-                  {districts.map((district) => (
-                    <CommandItem
-                      key={district.id}
-                      value={district.name}
-                      onSelect={() => {
-                        handleDistrictChange(district.id);
-                        setOpenDistrict(false);
-                      }}
-                    >
-                       <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            selectedDistrictId === district.id ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                      {district.name}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      </div>
-    </div>
+                    {currentDistrict ? currentDistrict.name : "All Districts"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                    <CommandInput placeholder="Search district..." />
+                    <CommandList>
+                        <CommandEmpty>No district found.</CommandEmpty>
+                        <CommandGroup>
+                        <CommandItem
+                            value="all-districts"
+                            onSelect={() => {
+                                handleDistrictChange('');
+                                setOpenDistrict(false);
+                            }}
+                            >
+                            <Check
+                                className={cn(
+                                "mr-2 h-4 w-4",
+                                !selectedDistrictId ? "opacity-100" : "opacity-0"
+                                )}
+                            />
+                            All Districts
+                            </CommandItem>
+                        {districts.map((district) => (
+                            <CommandItem
+                            key={district.id}
+                            value={district.name}
+                            onSelect={() => {
+                                handleDistrictChange(district.id);
+                                setOpenDistrict(false);
+                            }}
+                            >
+                            <Check
+                                className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedDistrictId === district.id ? "opacity-100" : "opacity-0"
+                                )}
+                                />
+                            {district.name}
+                            </CommandItem>
+                        ))}
+                        </CommandGroup>
+                    </CommandList>
+                    </Command>
+                </PopoverContent>
+                </Popover>
+            </div>
+        </CardContent>
+    </Card>
   );
 }

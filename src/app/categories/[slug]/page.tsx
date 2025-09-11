@@ -1,4 +1,5 @@
 
+
 import { placeholderCategories, placeholderDistricts } from '@/lib/placeholder-data';
 import FilterControls from '@/components/news/FilterControls';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { getCategories } from '@/services/categories';
 import { getDistricts } from '@/services/districts';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import KarnatakaMap from '@/components/news/KarnatakaMap';
+
 
 type CategoryPageProps = {
   params: {
@@ -62,11 +66,6 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
             <p className="text-muted-foreground text-lg mb-8">
                 Browsing the {category?.name || 'latest'} news {districtName ? `in ${districtName}`: ''}.
             </p>
-
-            {/* Filters */}
-            <section className="mb-8">
-                <FilterControls categories={categories} districts={districts} />
-            </section>
             
             {error && (
                 <div className="text-center py-12 bg-card rounded-lg mb-8">
@@ -74,6 +73,24 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                     <p className="text-muted-foreground">{error}</p>
                 </div>
             )}
+
+            {/* Featured Section with Map and Filters */}
+            <section className="mb-12">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <Card className="lg:col-span-2">
+                        <CardHeader>
+                            <CardTitle className="font-headline text-2xl">District News Map</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-muted-foreground mb-4">Click on a district to view its news.</p>
+                            <KarnatakaMap districts={districts} />
+                        </CardContent>
+                    </Card>
+                    <div className="lg:col-span-1">
+                        <FilterControls categories={categories} districts={districts} />
+                    </div>
+                </div>
+            </section>
             
             {!error && topArticle ? (
                 <>
@@ -119,7 +136,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 <section>
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="font-headline text-3xl font-bold">
-                            More in {category?.name}
+                             {districtName ? `More in ${category?.name} from ${districtName}`: `More in ${category?.name}`}
                         </h2>
                     </div>
                     <ArticleList 

@@ -2,7 +2,6 @@
 import type { Article, Category, District } from '@/lib/types';
 
 export const placeholderDistricts: District[] = [
-  { id: 'all', name: 'All Districts' },
   { id: '1', name: 'Bagalkote' },
   { id: '2', name: 'Ballari' },
   { id: '3', name: 'Belagavi' },
@@ -39,14 +38,15 @@ export const placeholderDistricts: District[] = [
 ];
 
 export const placeholderCategories: Category[] = [
-  { id: '1', name: 'Political', slug: 'political' },
-  { id: '2', name: 'Technology', slug: 'technology' },
-  { id: '3', name: 'Sports', slug: 'sports' },
-  { id: '4', name: 'Entertainment', slug: 'entertainment' },
-  { id: '5', name: 'Business', slug: 'business' },
-  { id: '6', name: 'Local News', slug: 'local-news' },
-  { id: '8', name: 'Health', slug: 'health' },
-  { id: '9', name: 'Science', slug: 'science' },
+    { id: '1', name: 'General News', slug: 'general-news' },
+    { id: '2', name: 'Politics', slug: 'politics' },
+    { id: '3', name: 'Business & Economy', slug: 'business-economy' },
+    { id: '4', name: 'Education', slug: 'education' },
+    { id: '5', name: 'Technology', slug: 'technology' },
+    { id: '6', name: 'Sports', slug: 'sports' },
+    { id: '7', name: 'Entertainment', slug: 'entertainment' },
+    { id: '8', name: 'Crime & Law', slug: 'crime-law' },
+    { id: '9', name: 'Weather & Environment', slug: 'weather-environment' },
 ];
 
 export const placeholderArticles: Article[] = [];

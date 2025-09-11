@@ -43,7 +43,16 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
 
 // READ (all)
 export async function getArticles(options?: { categoryId?: string; districtName?: string; language?: string }): Promise<Article[]> {
-    let q = query(articlesCollection, orderBy('publishedAt', 'desc'));
+    
+    let q;
+
+    if (options?.language) {
+        // Querying by language and ordering by another field requires a composite index.
+        // To avoid this error without manual index creation, we remove the ordering for this specific case.
+        q = query(articlesCollection, where('language', '==', options.language));
+    } else {
+        q = query(articlesCollection, orderBy('publishedAt', 'desc'));
+    }
 
     if (options?.categoryId) {
         q = query(q, where('categoryIds', 'array-contains', options.categoryId));
@@ -51,10 +60,6 @@ export async function getArticles(options?: { categoryId?: string; districtName?
     
     if (options?.districtName) {
         q = query(q, where('districtName', '==', options.districtName));
-    }
-
-    if (options?.language) {
-        q = query(q, where('language', '==', options.language));
     }
 
     const snapshot = await getDocs(q);

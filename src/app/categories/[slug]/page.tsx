@@ -7,6 +7,7 @@ import MainLayout from '@/app/(main)/layout';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getCategories } from '@/services/categories';
+import { getDistricts } from '@/services/districts';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import FilterControls from '@/components/news/FilterControls';
@@ -16,18 +17,23 @@ type CategoryPageProps = {
   params: {
     slug: string;
   };
+  searchParams?: {
+    district?: string;
+  };
 };
 
-export default async function CategoryPage({ params }: CategoryPageProps) {
+export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const categorySlug = params.slug;
+  const district = searchParams?.district;
   
   let articles: NewsdataArticle[] = [];
   let nextPage: string | null = null;
   let error: string | null = null;
   let categories = [];
+  let districts = [];
 
   try {
-      categories = await getCategories();
+      [categories, districts] = await Promise.all([getCategories(), getDistricts()]);
   } catch(e) {
       console.error("Failed to load filter data", e);
   }
@@ -35,7 +41,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const category = categories.find(c => c.slug === categorySlug);
 
   try {
-      const response = await fetchNews(categorySlug);
+      const response = await fetchNews(categorySlug, null, district);
       articles = response.articles;
       nextPage = response.nextPage;
   } catch (e: any) {
@@ -64,7 +70,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
             {/* Filters Section */}
             <section className="mb-12">
-                <FilterControls categories={categories} />
+                <FilterControls categories={categories} districts={districts} />
             </section>
             
             {!error && topArticle ? (
@@ -118,6 +124,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                         initialArticles={initialArticles} 
                         initialNextPage={nextPage}
                         category={categorySlug}
+                        district={district}
                     />
                 </section>
             )}

@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, MapPin } from 'lucide-react';
 import { fetchNews } from '@/services/news';
 import type { NewsdataArticle } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
@@ -16,7 +16,6 @@ type HomePageProps = {
     district?: string;
   };
 };
-
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   let initialArticles: NewsdataArticle[] = [];
@@ -39,27 +38,50 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const districtName = districts.find(d => d.id === districtId)?.name;
 
-
-  try {
-    const response = await fetchNews('general', districtName);
-    initialArticles = response.articles;
-    nextPage = response.nextPage;
-    topArticle = initialArticles[0];
-  } catch (e: any) {
-    error = e.message || 'An unknown error occurred.';
+  if (districtName) {
+    try {
+      const response = await fetchNews('general', districtName);
+      initialArticles = response.articles;
+      nextPage = response.nextPage;
+      topArticle = initialArticles[0];
+    } catch (e: any) {
+      error = e.message || 'An unknown error occurred.';
+    }
   }
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-2xl font-bold mb-4 font-kannada">ಸುದ್ದಿ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</h1>
-        <p className="text-muted-foreground font-kannada">
-          {error}
-        </p>
+      <div className="container mx-auto px-4 py-8">
+        <section className="mb-8">
+          <FilterControls categories={categories} districts={districts} />
+        </section>
+        <div className="text-center bg-card p-8 rounded-lg">
+          <h1 className="text-2xl font-bold mb-4 font-kannada">ಸುದ್ದಿ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</h1>
+          <p className="text-muted-foreground font-kannada">
+            {error}
+          </p>
+        </div>
       </div>
     );
   }
 
+  if (!districtName) {
+     return (
+        <div className="container mx-auto px-4 py-8">
+          <section className="mb-8">
+            <FilterControls categories={categories} districts={districts} />
+          </section>
+          <div className="text-center bg-card p-8 rounded-lg min-h-[40vh] flex flex-col justify-center items-center">
+              <MapPin className="h-12 w-12 text-primary mb-4" />
+              <h1 className="text-2xl font-bold mb-4 font-headline">Please select a district</h1>
+              <p className="text-muted-foreground max-w-md">
+                To get started, please choose a district from the filter above to view its news.
+              </p>
+          </div>
+        </div>
+     );
+  }
+  
   if (!topArticle) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -80,6 +102,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Filters */}
+      <section className="mb-12">
+          <FilterControls categories={categories} districts={districts} />
+      </section>
+
       {/* Hero Section */}
       <section className="mb-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-card p-8 rounded-lg shadow-lg">
@@ -106,11 +133,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </Button>
           </div>
         </div>
-      </section>
-
-      {/* Filters */}
-      <section className="mb-12">
-          <FilterControls categories={categories} districts={districts} />
       </section>
 
       {/* Recent Articles */}

@@ -8,12 +8,10 @@ import type { NewsdataArticle } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
 import FilterControls from '@/components/news/FilterControls';
 import { getCategories } from '@/services/categories';
-import { getDistricts } from '@/services/districts';
 
 type HomePageProps = {
   searchParams?: {
     category?: string;
-    district?: string;
   };
 };
 
@@ -22,24 +20,18 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   let nextPage: string | null = null;
   let error: string | null = null;
   let topArticle: NewsdataArticle | undefined;
-  let categories, districts = [];
+  let categories = [];
 
   const category = searchParams?.category;
-  const districtId = searchParams?.district;
 
   try {
-      [categories, districts] = await Promise.all([
-          getCategories(),
-          getDistricts()
-      ]);
+      categories = await getCategories();
   } catch (e) {
       console.error("Failed to fetch filters data", e);
   }
 
-  const districtName = districts.find(d => d.id === districtId)?.name;
-
   try {
-    const response = await fetchNews('general', districtName);
+    const response = await fetchNews('general');
     initialArticles = response.articles;
     nextPage = response.nextPage;
     topArticle = initialArticles[0];
@@ -52,7 +44,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     return (
       <div className="container mx-auto px-4 py-8">
         <section className="mb-8">
-          <FilterControls categories={categories} districts={districts} />
+          <FilterControls categories={categories} />
         </section>
         <div className="text-center bg-card p-8 rounded-lg">
           <h1 className="text-2xl font-bold mb-4 font-kannada">ಸುದ್ದಿ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</h1>
@@ -68,7 +60,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     return (
       <div className="container mx-auto px-4 py-8">
          <section className="mb-8">
-          <FilterControls categories={categories} districts={districts} />
+          <FilterControls categories={categories} />
         </section>
         <div className="text-center bg-card p-8 rounded-lg">
             <h1 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಸುದ್ದಿ ಲಭ್ಯವಿಲ್ಲ</h1>
@@ -86,7 +78,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     <div className="container mx-auto px-4 py-8">
       {/* Filters */}
       <section className="mb-12">
-          <FilterControls categories={categories} districts={districts} />
+          <FilterControls categories={categories} />
       </section>
 
       {/* Hero Section */}
@@ -121,14 +113,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section>
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-headline text-3xl font-bold">
-            {districtName ? `News from ${districtName}` : 'Recent News'}
+            Recent News
           </h2>
         </div>
         <ArticleList
           initialArticles={otherArticles}
           initialNextPage={nextPage}
           category={category}
-          districtName={districtName}
         />
       </section>
     </div>

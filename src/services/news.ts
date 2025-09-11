@@ -8,7 +8,7 @@ type FetchNewsResponse = {
     nextPage: string | null;
 }
 
-export async function fetchNews(category?: string, districtName?: string, page?: string | null): Promise<FetchNewsResponse> {
+export async function fetchNews(category?: string, page?: string | null): Promise<FetchNewsResponse> {
     const apiKey = process.env.NEWSDATA_API_KEY;
     if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
         console.error('Newsdata.io API key is not set.');
@@ -21,11 +21,6 @@ export async function fetchNews(category?: string, districtName?: string, page?:
     url.searchParams.append('country', 'in');
 
     const queryParts: string[] = ['Karnataka'];
-    
-    if (districtName && districtName !== 'All Districts') {
-      // Prioritize district news if selected
-      queryParts.push(districtName);
-    }
     
     // Using q instead of qInTitle to allow for broader search within content
     url.searchParams.append('q', queryParts.join(' AND '));

@@ -1,9 +1,5 @@
 
 
-import { placeholderCategories, placeholderDistricts } from '@/lib/placeholder-data';
-import FilterControls from '@/components/news/FilterControls';
-import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
 import { fetchNews } from '@/services/news';
 import type { NewsdataArticle } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
@@ -12,7 +8,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { getCategories } from '@/services/categories';
 import { getDistricts } from '@/services/districts';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ArrowRight } from 'lucide-react';
+import FilterControls from '@/components/news/FilterControls';
 
 
 type CategoryPageProps = {

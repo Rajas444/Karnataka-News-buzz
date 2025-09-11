@@ -91,9 +91,9 @@ export default function FilterControls({ categories, districts }: FilterControls
             <Filter className="h-5 w-5" />
             <CardTitle className="font-headline text-2xl">Filters</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        <CardContent className="flex flex-col md:flex-row gap-4">
             {/* Category Filter */}
-            <div>
+            <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">Category</label>
                 <Select onValueChange={handleCategoryChange} defaultValue={selectedCategorySlug}>
                     <SelectTrigger className="w-full">
@@ -111,7 +111,7 @@ export default function FilterControls({ categories, districts }: FilterControls
 
 
             {/* District Filter */}
-            <div>
+            <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">District</label>
                 <Popover open={openDistrict} onOpenChange={setOpenDistrict}>
                 <PopoverTrigger asChild>

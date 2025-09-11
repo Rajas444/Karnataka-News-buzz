@@ -1,7 +1,6 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { placeholderCategories, placeholderDistricts } from '@/lib/placeholder-data';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { fetchNews } from '@/services/news';
@@ -10,7 +9,6 @@ import ArticleList from '@/components/news/ArticleList';
 import FilterControls from '@/components/news/FilterControls';
 import { getCategories } from '@/services/categories';
 import { getDistricts } from '@/services/districts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type HomePageProps = {
   searchParams?: {
@@ -43,7 +41,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
 
   try {
-    const response = await fetchNews(category, districtName);
+    const response = await fetchNews('general', districtName);
     initialArticles = response.articles;
     nextPage = response.nextPage;
     topArticle = initialArticles[0];

@@ -6,6 +6,7 @@ export const placeholderDistricts: District[] = [
   { id: '1', name: 'Bagalkote' },
   { id: '2', name: 'Ballari' },
   { id: '3', name: 'Belagavi' },
+  { id: '31', name: 'Bengaluru' },
   { id: '4', name: 'Bengaluru Rural' },
   { id: '5', name: 'Bengaluru Urban' },
   { id: '6', name: 'Bidar' },
@@ -19,11 +20,13 @@ export const placeholderDistricts: District[] = [
   { id: '14', name: 'Gadag' },
   { id: '15', 'name': 'Hassan' },
   { id: '16', name: 'Haveri' },
+  { id: '33', name: 'Hubballi' },
   { id: '17', name: 'Kalaburagi' },
   { id: '18', name: 'Kodagu' },
   { id: '19', name: 'Kolar' },
   { id: '20', name: 'Koppala' },
   { id: '21', name: 'Mandya' },
+  { id: '32', name: 'Mangaluru' },
   { id: '22', name: 'Mysuru' },
   { id: '23', name: 'Raichuru' },
   { id: '24', name: 'Ramanagara' },
@@ -33,9 +36,6 @@ export const placeholderDistricts: District[] = [
   { id: '28', name: 'Uttara Kannada' },
   { id: '29', name: 'Vijayanagara' },
   { id: '30', name: 'Yadgiri' },
-  { id: '31', name: 'Bengaluru' },
-  { id: '32', name: 'Mangaluru' },
-  { id: '33', name: 'Hubballi' },
 ];
 
 export const placeholderCategories: Category[] = [

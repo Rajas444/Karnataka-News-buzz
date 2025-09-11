@@ -9,14 +9,26 @@ import { fetchNews } from '@/services/news';
 import type { NewsdataArticle } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
 
-export default async function HomePage() {
+type HomePageProps = {
+  searchParams?: {
+    category?: string;
+    district?: string;
+  };
+};
+
+
+export default async function HomePage({ searchParams }: HomePageProps) {
   let initialArticles: NewsdataArticle[] = [];
   let nextPage: string | null = null;
   let error: string | null = null;
   let topArticle: NewsdataArticle | undefined;
 
+  const category = searchParams?.category;
+  const districtId = searchParams?.district;
+  const districtName = placeholderDistricts.find(d => d.id === districtId)?.name;
+
   try {
-    const response = await fetchNews();
+    const response = await fetchNews(category, districtName);
     initialArticles = response.articles;
     nextPage = response.nextPage;
     topArticle = initialArticles[0];
@@ -93,6 +105,9 @@ export default async function HomePage() {
         <ArticleList
           initialArticles={otherArticles}
           initialNextPage={nextPage}
+          category={category}
+          district={districtId}
+          districtName={districtName}
         />
       </section>
     </div>

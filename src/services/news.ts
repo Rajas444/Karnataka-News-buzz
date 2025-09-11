@@ -8,7 +8,7 @@ type FetchNewsResponse = {
     nextPage: string | null;
 }
 
-export async function fetchNews(page?: string | null): Promise<FetchNewsResponse> {
+export async function fetchNews(category?: string, districtName?: string, page?: string | null): Promise<FetchNewsResponse> {
     const apiKey = process.env.NEWSDATA_API_KEY;
     if (!apiKey) {
         console.error('Newsdata.io API key is not set.');
@@ -19,6 +19,15 @@ export async function fetchNews(page?: string | null): Promise<FetchNewsResponse
     url.searchParams.append('apikey', apiKey);
     url.searchParams.append('language', 'kn');
 
+    if(category && category !== 'general') {
+        url.searchParams.append('category', category);
+    }
+
+    if (districtName) {
+        // Use qInTitle to search for the district name in the article title
+        url.searchParams.append('qInTitle', districtName);
+    }
+
     if (page) {
         url.searchParams.append('page', page);
     }
@@ -27,9 +36,17 @@ export async function fetchNews(page?: string | null): Promise<FetchNewsResponse
         const response = await fetch(url.toString());
 
         if (!response.ok) {
-            const errorBody = await response.json();
-            console.error('Newsdata.io API error:', errorBody);
-            throw new Error(`Failed to fetch news: ${errorBody.results?.message || response.statusText}`);
+            let errorMessage = response.statusText;
+            try {
+                // Try to parse the error body as JSON
+                const errorBody = await response.json();
+                console.error('Newsdata.io API error:', errorBody);
+                errorMessage = errorBody.results?.message || errorMessage;
+            } catch (e) {
+                // If parsing fails, the body might not be JSON. We'll stick with the status text.
+                console.error('Could not parse Newsdata.io error response as JSON.');
+            }
+            throw new Error(`Failed to fetch news: ${errorMessage}`);
         }
 
         const data: NewsdataResponse = await response.json();

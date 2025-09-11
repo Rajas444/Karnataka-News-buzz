@@ -12,9 +12,12 @@ import { useToast } from '@/hooks/use-toast';
 interface ArticleListProps {
     initialArticles: NewsdataArticle[];
     initialNextPage: string | null;
+    category?: string;
+    district?: string;
+    districtName?: string;
 }
 
-export default function ArticleList({ initialArticles, initialNextPage }: ArticleListProps) {
+export default function ArticleList({ initialArticles, initialNextPage, category, district, districtName }: ArticleListProps) {
     const [articles, setArticles] = useState<NewsdataArticle[]>(initialArticles);
     const [nextPage, setNextPage] = useState<string | null>(initialNextPage);
     const [isLoading, setIsLoading] = useState(false);
@@ -25,7 +28,7 @@ export default function ArticleList({ initialArticles, initialNextPage }: Articl
 
         setIsLoading(true);
         try {
-            const { articles: newArticles, nextPage: newNextPage } = await fetchNews(nextPage);
+            const { articles: newArticles, nextPage: newNextPage } = await fetchNews(category, districtName, nextPage);
             setArticles(prev => [...prev, ...newArticles]);
             setNextPage(newNextPage);
         } catch (error: any) {

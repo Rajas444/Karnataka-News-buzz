@@ -4,7 +4,7 @@ import FilterControls from '@/components/news/FilterControls';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { fetchNews } from '@/services/news';
-import type { Article } from '@/lib/types';
+import type { NewsdataArticle } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
 import MainLayout from '@/app/(main)/layout';
 import Image from 'next/image';
@@ -28,7 +28,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   
   const { articles, nextPage } = await fetchNews(categorySlug, districtName);
 
-  const topArticle: Article | undefined = articles[0];
+  const topArticle: NewsdataArticle | undefined = articles[0];
   const initialArticles = articles.slice(1);
 
   return (
@@ -53,11 +53,10 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-card p-8 rounded-lg shadow-lg">
                     <div className="relative h-64 md:h-96 rounded-lg overflow-hidden">
                         <Image
-                        src={topArticle.imageUrl || 'https://picsum.photos/800/600'}
+                        src={topArticle.image_url || 'https://picsum.photos/800/600'}
                         alt={topArticle.title}
                         fill
                         className="object-cover"
-                        data-ai-hint={topArticle['data-ai-hint']}
                         sizes="(max-width: 768px) 100vw, 50vw"
                         />
                     </div>
@@ -66,10 +65,10 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                         {topArticle.title}
                         </h2>
                         <p className="text-muted-foreground text-lg mb-6">
-                        {topArticle.content.substring(0, 150)}...
+                        {topArticle.description?.substring(0, 150) ?? 'No description available.'}...
                         </p>
                         <Button asChild size="lg">
-                        <Link href={`/article/${topArticle.id}`} rel="noopener noreferrer">
+                        <Link href={topArticle.link} target="_blank" rel="noopener noreferrer">
                             Read More <ArrowRight className="ml-2 h-5 w-5" />
                         </Link>
                         </Button>

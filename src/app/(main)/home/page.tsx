@@ -38,16 +38,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const districtName = districts.find(d => d.id === districtId)?.name;
 
-  if (districtName) {
-    try {
-      const response = await fetchNews('general', districtName);
-      initialArticles = response.articles;
-      nextPage = response.nextPage;
-      topArticle = initialArticles[0];
-    } catch (e: any) {
-      error = e.message || 'An unknown error occurred.';
-    }
+  try {
+    const response = await fetchNews('general', districtName);
+    initialArticles = response.articles;
+    nextPage = response.nextPage;
+    topArticle = initialArticles[0];
+  } catch (e: any) {
+    error = e.message || 'An unknown error occurred.';
   }
+
 
   if (error) {
     return (
@@ -63,23 +62,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </div>
       </div>
     );
-  }
-
-  if (!districtName) {
-     return (
-        <div className="container mx-auto px-4 py-8">
-          <section className="mb-8">
-            <FilterControls categories={categories} districts={districts} />
-          </section>
-          <div className="text-center bg-card p-8 rounded-lg min-h-[40vh] flex flex-col justify-center items-center">
-              <MapPin className="h-12 w-12 text-primary mb-4" />
-              <h1 className="text-2xl font-bold mb-4 font-headline">Please select a district</h1>
-              <p className="text-muted-foreground max-w-md">
-                To get started, please choose a district from the filter above to view its news.
-              </p>
-          </div>
-        </div>
-     );
   }
   
   if (!topArticle) {

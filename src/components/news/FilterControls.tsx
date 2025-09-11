@@ -45,12 +45,12 @@ export default function FilterControls({ categories, districts }: FilterControls
     ? pathname.split('/')[2]
     : 'general';
   
-  const selectedDistrictId = searchParams.get('district') || '';
+  const selectedDistrictId = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString())
-      if (value) {
+      if (value && value !== 'all') {
         params.set(name, value)
       } else {
         params.delete(name)
@@ -61,11 +61,9 @@ export default function FilterControls({ categories, districts }: FilterControls
   )
 
   const handleCategoryChange = (slug: string) => {
-      if (slug === 'general') {
-          router.push(`/home?${createQueryString('category', '')}`);
-      } else {
-          router.push(`/categories/${slug}?${searchParams.toString()}`);
-      }
+      const queryString = createQueryString('district', selectedDistrictId);
+      const targetPath = slug === 'general' ? '/home' : `/categories/${slug}`;
+      router.push(`${targetPath}?${queryString}`);
   }
 
   const handleDistrictChange = (districtId: string) => {
@@ -73,7 +71,7 @@ export default function FilterControls({ categories, districts }: FilterControls
   }
 
   const allCategories = [{ id: 'general', name: 'General', slug: 'general' }, ...categories];
-  const allDistricts = [{ id: '', name: 'All Districts' }, ...districts];
+  const allDistricts = [{ id: 'all', name: 'All Districts' }, ...districts];
 
   return (
     <Card>

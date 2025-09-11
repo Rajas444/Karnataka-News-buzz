@@ -22,7 +22,8 @@ export async function fetchNews(category?: string, page?: string | null, distric
 
     const queryParts: string[] = [];
     
-    // When a category is selected, don't add "Karnataka" to the query.
+    // When a specific category is selected, don't add "Karnataka" to the query
+    // unless a district is also specified.
     const isGeneralCategory = !category || category === 'general';
 
     if (district && district !== 'all') {
@@ -49,17 +50,25 @@ export async function fetchNews(category?: string, page?: string | null, distric
         const response = await fetch(url.toString(), { cache: 'no-store' });
 
         if (!response.ok) {
-            let errorMessage = response.statusText;
+            let errorMessage = `API Error: ${response.status} ${response.statusText}`;
             try {
                 // Try to parse the error body as JSON
                 const errorBody = await response.json();
                 console.error('Newsdata.io API error:', errorBody);
-                errorMessage = errorBody.results?.message || `API error: ${response.status}. Check your API key and plan.`;
+
+                // Newsdata.io error format can vary. Try to find the message.
+                if (errorBody.results && typeof errorBody.results === 'object' && errorBody.results.message) {
+                    errorMessage = errorBody.results.message;
+                } else if (errorBody.results && typeof errorBody.results === 'string') {
+                    errorMessage = errorBody.results;
+                } else if (errorBody.message) {
+                    errorMessage = errorBody.message;
+                }
             } catch (e) {
                 // If parsing fails, the body might not be JSON.
                 console.error('Could not parse Newsdata.io error response as JSON.');
             }
-            throw new Error(`Failed to fetch news: ${errorMessage}`);
+            throw new Error(`Failed to fetch news: ${errorMessage}. Please check your API key and plan.`);
         }
 
         const data: NewsdataResponse = await response.json();

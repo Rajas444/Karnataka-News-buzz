@@ -21,8 +21,8 @@ export async function getDistricts(): Promise<District[]> {
 
     if (snapshot.empty) {
         console.log('No districts found in Firestore, using placeholder data.');
-        // The placeholder data includes an "All Districts" option which we don't want here.
-        return placeholderDistricts.filter(d => d.id !== 'all');
+        // Ensure placeholder data is also sorted alphabetically as a safeguard.
+        return [...placeholderDistricts].sort((a, b) => a.name.localeCompare(b.name));
     }
 
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as District));

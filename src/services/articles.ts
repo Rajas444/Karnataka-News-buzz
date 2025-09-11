@@ -145,5 +145,3 @@ export async function deleteArticle(id: string): Promise<void> {
     }
     await deleteDoc(docRef);
 }
-
-    

@@ -84,6 +84,7 @@ export default function FilterControls({ categories, districts }: FilterControls
     router.push(pathname + '?' + queryString);
   };
 
+  const allCategories = [{ id: 'general', name: 'General', slug: 'general' }, ...categories];
 
   return (
     <Card>
@@ -100,7 +101,7 @@ export default function FilterControls({ categories, districts }: FilterControls
                         <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent>
-                        {categories.map((category) => (
+                        {allCategories.map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
                                 {category.name}
                             </SelectItem>

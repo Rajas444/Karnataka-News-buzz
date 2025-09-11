@@ -8,7 +8,7 @@ type FetchNewsResponse = {
     nextPage: string | null;
 }
 
-export async function fetchNews(category?: string, page?: string | null): Promise<FetchNewsResponse> {
+export async function fetchNews(category?: string, page?: string | null, district?: string): Promise<FetchNewsResponse> {
     const apiKey = process.env.NEWSDATA_API_KEY;
     if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
         console.error('Newsdata.io API key is not set.');
@@ -20,19 +20,24 @@ export async function fetchNews(category?: string, page?: string | null): Promis
     url.searchParams.append('language', 'kn');
     url.searchParams.append('country', 'in');
 
-    const isGeneralCategory = !category || category === 'general';
+    const queryParts: string[] = [];
+    if (district && district !== 'all') {
+        queryParts.push(district);
+    }
 
-    if (isGeneralCategory) {
-        // For general news, focus on Karnataka
-        const queryParts: string[] = ['Karnataka'];
+    const isGeneralCategory = !category || category === 'general';
+    if (isGeneralCategory && !district) {
+        queryParts.push('Karnataka');
+    }
+    
+    if (queryParts.length > 0) {
         url.searchParams.append('q', queryParts.join(' AND '));
-    } else {
-        // For specific categories, don't restrict to "Karnataka" keyword
-        // to ensure results are returned. The country is already 'in'.
+    }
+
+    if (category && category !== 'general') {
         url.searchParams.append('category', category);
     }
     
-
     if (page) {
         url.searchParams.append('page', page);
     }

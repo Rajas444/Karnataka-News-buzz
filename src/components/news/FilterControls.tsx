@@ -13,6 +13,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { ScrollArea, ScrollBar } from '../ui/scroll-area';
+import { Button } from '../ui/button';
+import { cn } from '@/lib/utils';
 
 interface FilterControlsProps {
   categories: Category[];
@@ -63,12 +66,12 @@ export default function FilterControls({ categories, districts }: FilterControls
             <Filter className="h-5 w-5" />
             <CardTitle className="font-headline text-2xl">Filters</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col md:flex-row gap-4">
-            {/* Category Filter */}
+        <CardContent className="flex flex-col gap-4">
+             {/* Category Filter */}
             <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">Category</label>
                 <Select onValueChange={handleCategoryChange} value={selectedCategorySlug}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full md:w-1/2">
                         <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -81,20 +84,22 @@ export default function FilterControls({ categories, districts }: FilterControls
                 </Select>
             </div>
              {/* District Filter */}
-            <div className="flex-1">
+            <div className="flex-1 space-y-2">
                  <label className="text-sm font-medium mb-2 block">District</label>
-                 <Select onValueChange={handleDistrictChange} value={selectedDistrictId}>
-                    <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select District" />
-                    </SelectTrigger>
-                    <SelectContent>
+                 <ScrollArea className="w-full whitespace-nowrap rounded-md">
+                    <div className="flex w-max space-x-2 pb-2">
                         {allDistricts.map((district) => (
-                            <SelectItem key={district.id} value={district.id}>
+                            <Button 
+                                key={district.id}
+                                variant={district.id === selectedDistrictId ? 'default' : 'outline'}
+                                onClick={() => handleDistrictChange(district.id)}
+                            >
                                 {district.name}
-                            </SelectItem>
+                            </Button>
                         ))}
-                    </SelectContent>
-                </Select>
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                 </ScrollArea>
             </div>
         </CardContent>
     </Card>

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type { Category } from '@/lib/types';
 import { Filter } from 'lucide-react';
 import {
@@ -20,7 +20,6 @@ interface FilterControlsProps {
 export default function FilterControls({ categories }: FilterControlsProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   
   const selectedCategorySlug = pathname.startsWith('/categories/') 
     ? pathname.split('/')[2]

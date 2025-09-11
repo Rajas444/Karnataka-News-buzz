@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, MapPin } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { fetchNews } from '@/services/news';
 import type { NewsdataArticle } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/command"
 
 import type { Category, District } from '@/lib/types';
-import { Check, ChevronsUpDown, Filter } from 'lucide-react';
+import { Check, ChevronsUpDown, Filter, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -45,16 +45,35 @@ export default function FilterControls({ categories, districts }: FilterControls
     ? pathname.split('/')[2]
     : 'general';
   
-  const handleCategoryChange = (slug: string) => {
-      const currentQuery = new URLSearchParams(searchParams.toString()).toString();
-      if (slug === 'general') {
-          router.push(`/home?${currentQuery}`);
+  const selectedDistrictId = searchParams.get('district') || '';
+
+  const createQueryString = useCallback(
+    (name: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (value) {
+        params.set(name, value)
       } else {
-          router.push(`/categories/${slug}?${currentQuery}`);
+        params.delete(name)
+      }
+      return params.toString()
+    },
+    [searchParams]
+  )
+
+  const handleCategoryChange = (slug: string) => {
+      if (slug === 'general') {
+          router.push(`/home?${createQueryString('category', '')}`);
+      } else {
+          router.push(`/categories/${slug}?${searchParams.toString()}`);
       }
   }
 
+  const handleDistrictChange = (districtId: string) => {
+      router.push(pathname + '?' + createQueryString('district', districtId))
+  }
+
   const allCategories = [{ id: 'general', name: 'General', slug: 'general' }, ...categories];
+  const allDistricts = [{ id: '', name: 'All Districts' }, ...districts];
 
   return (
     <Card>
@@ -74,6 +93,22 @@ export default function FilterControls({ categories, districts }: FilterControls
                         {allCategories.map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
                                 {category.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+             {/* District Filter */}
+            <div className="flex-1">
+                 <label className="text-sm font-medium mb-2 block">District</label>
+                 <Select onValueChange={handleDistrictChange} defaultValue={selectedDistrictId}>
+                    <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select District" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {allDistricts.map((district) => (
+                            <SelectItem key={district.id} value={district.id}>
+                                {district.name}
                             </SelectItem>
                         ))}
                     </SelectContent>

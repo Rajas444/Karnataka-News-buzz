@@ -18,16 +18,20 @@ export async function fetchNews(category?: string, page?: string | null): Promis
     const url = new URL('https://newsdata.io/api/1/news');
     url.searchParams.append('apikey', apiKey);
     url.searchParams.append('language', 'kn');
-    url.searchParams.append('country', 'in');
+    url.search_params.append('country', 'in');
 
-    const queryParts: string[] = ['Karnataka'];
-    
-    // Using q instead of qInTitle to allow for broader search within content
-    url.searchParams.append('q', queryParts.join(' AND '));
-    
-    if(category && category !== 'general') {
+    const isGeneralCategory = !category || category === 'general';
+
+    if (isGeneralCategory) {
+        // For general news, focus on Karnataka
+        const queryParts: string[] = ['Karnataka'];
+        url.searchParams.append('q', queryParts.join(' AND '));
+    } else {
+        // For specific categories, don't restrict to "Karnataka" keyword
+        // to ensure results are returned. The country is already 'in'.
         url.searchParams.append('category', category);
     }
+    
 
     if (page) {
         url.searchParams.append('page', page);

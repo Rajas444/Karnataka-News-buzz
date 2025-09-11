@@ -26,7 +26,17 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const category = placeholderCategories.find(c => c.slug === categorySlug);
   const districtName = placeholderDistricts.find(d => d.id === districtId)?.name;
   
-  const { articles, nextPage } = await fetchNews(categorySlug, districtName);
+  let articles: NewsdataArticle[] = [];
+  let nextPage: string | null = null;
+  let error: string | null = null;
+
+  try {
+      const response = await fetchNews(categorySlug, districtName);
+      articles = response.articles;
+      nextPage = response.nextPage;
+  } catch (e: any) {
+      error = e.message || 'An unknown error occurred.';
+  }
 
   const topArticle: NewsdataArticle | undefined = articles[0];
   const initialArticles = articles.slice(1);
@@ -46,7 +56,14 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 <FilterControls categories={placeholderCategories} districts={placeholderDistricts} />
             </section>
             
-            {topArticle ? (
+            {error && (
+                <div className="text-center py-12 bg-card rounded-lg mb-8">
+                    <h2 className="text-2xl font-bold mb-4">Failed to Load News</h2>
+                    <p className="text-muted-foreground">{error}</p>
+                </div>
+            )}
+            
+            {!error && topArticle ? (
                 <>
                 {/* Top Article for Category */}
                 <section className="mb-12">
@@ -76,29 +93,31 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                     </div>
                 </section>
                 </>
-            ) : (
+            ) : !error ? (
                 <div className="text-center py-12 bg-card rounded-lg mb-8">
                     <h2 className="text-2xl font-bold mb-4">No Articles Found</h2>
                     <p className="text-muted-foreground">
                         We couldn't fetch any news for this category{districtName ? ` in ${districtName}` : ''} at the moment. Please try again later.
                     </p>
                 </div>
-            )}
+            ) : null}
 
             {/* Article List */}
-            <section>
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="font-headline text-3xl font-bold">
-                        More in {category?.name}
-                    </h2>
-                </div>
-                <ArticleList 
-                    initialArticles={initialArticles} 
-                    initialNextPage={nextPage}
-                    category={categorySlug}
-                    districtName={districtName}
-                />
-            </section>
+            {!error && (
+                <section>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="font-headline text-3xl font-bold">
+                            More in {category?.name}
+                        </h2>
+                    </div>
+                    <ArticleList 
+                        initialArticles={initialArticles} 
+                        initialNextPage={nextPage}
+                        category={categorySlug}
+                        districtName={districtName}
+                    />
+                </section>
+            )}
         </div>
     </MainLayout>
   );

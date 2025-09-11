@@ -13,9 +13,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { ScrollArea, ScrollBar } from '../ui/scroll-area';
-import { Button } from '../ui/button';
-import { cn } from '@/lib/utils';
 
 interface FilterControlsProps {
   categories: Category[];
@@ -66,12 +63,12 @@ export default function FilterControls({ categories, districts }: FilterControls
             <Filter className="h-5 w-5" />
             <CardTitle className="font-headline text-2xl">Filters</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        <CardContent className="flex flex-col md:flex-row gap-4">
              {/* Category Filter */}
             <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">Category</label>
                 <Select onValueChange={handleCategoryChange} value={selectedCategorySlug}>
-                    <SelectTrigger className="w-full md:w-1/2">
+                    <SelectTrigger>
                         <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -84,22 +81,20 @@ export default function FilterControls({ categories, districts }: FilterControls
                 </Select>
             </div>
              {/* District Filter */}
-            <div className="flex-1 space-y-2">
+            <div className="flex-1">
                  <label className="text-sm font-medium mb-2 block">District</label>
-                 <ScrollArea className="w-full whitespace-nowrap rounded-md">
-                    <div className="flex w-max space-x-2 pb-2">
+                 <Select onValueChange={handleDistrictChange} value={selectedDistrictId}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select District" />
+                    </SelectTrigger>
+                    <SelectContent>
                         {allDistricts.map((district) => (
-                            <Button 
-                                key={district.id}
-                                variant={district.id === selectedDistrictId ? 'default' : 'outline'}
-                                onClick={() => handleDistrictChange(district.id)}
-                            >
+                            <SelectItem key={district.id} value={district.id}>
                                 {district.name}
-                            </Button>
+                            </SelectItem>
                         ))}
-                    </div>
-                    <ScrollBar orientation="horizontal" />
-                 </ScrollArea>
+                    </SelectContent>
+                </Select>
             </div>
         </CardContent>
     </Card>

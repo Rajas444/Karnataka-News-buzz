@@ -4,6 +4,7 @@
 import { db } from '@/lib/firebase';
 import type { Category } from '@/lib/types';
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { placeholderCategories } from '@/lib/placeholder-data';
 
 const categoriesCollection = collection(db, 'categories');
 
@@ -17,6 +18,12 @@ export async function createCategory(data: Omit<Category, 'id'>): Promise<Catego
 export async function getCategories(): Promise<Category[]> {
     const q = query(categoriesCollection, orderBy('name'));
     const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+        console.log('No categories found in Firestore, using placeholder data.');
+        return placeholderCategories;
+    }
+
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
 }
 

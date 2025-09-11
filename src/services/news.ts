@@ -21,11 +21,14 @@ export async function fetchNews(category?: string, page?: string | null, distric
     url.searchParams.append('country', 'in');
 
     const queryParts: string[] = [];
+    
+    // When a category is selected, don't add "Karnataka" to the query.
+    const isGeneralCategory = !category || category === 'general';
+
     if (district && district !== 'all') {
         queryParts.push(district);
     }
-
-    const isGeneralCategory = !category || category === 'general';
+    
     if (isGeneralCategory && !district) {
         queryParts.push('Karnataka');
     }

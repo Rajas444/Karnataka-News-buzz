@@ -41,33 +41,9 @@ export default function FilterControls({ categories, districts }: FilterControls
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  const [openDistrict, setOpenDistrict] = useState(false)
-
   const selectedCategorySlug = pathname.startsWith('/categories/') 
     ? pathname.split('/')[2]
     : 'general';
-  
-  const selectedDistrictId = searchParams.get('district') || '';
-
-  const [currentDistrict, setCurrentDistrict] = useState(districts.find(d => d.id === selectedDistrictId));
-  
-   useEffect(() => {
-    setCurrentDistrict(districts.find(d => d.id === selectedDistrictId));
-  }, [selectedDistrictId, districts]);
-
-
-  const createQueryString = useCallback(
-    (name: string, value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (!value || value === 'all') {
-          params.delete(name);
-      } else {
-          params.set(name, value);
-      }
-      return params.toString();
-    },
-    [searchParams]
-  );
   
   const handleCategoryChange = (slug: string) => {
       const currentQuery = new URLSearchParams(searchParams.toString()).toString();
@@ -77,12 +53,6 @@ export default function FilterControls({ categories, districts }: FilterControls
           router.push(`/categories/${slug}?${currentQuery}`);
       }
   }
-
-  const handleDistrictChange = (districtId: string) => {
-    const queryString = createQueryString('district', districtId);
-    // We want to stay on the current page (home or a category page) and just update the query string
-    router.push(pathname + '?' + queryString);
-  };
 
   const allCategories = [{ id: 'general', name: 'General', slug: 'general' }, ...categories];
 
@@ -108,68 +78,6 @@ export default function FilterControls({ categories, districts }: FilterControls
                         ))}
                     </SelectContent>
                 </Select>
-            </div>
-
-
-            {/* District Filter */}
-            <div className="flex-1">
-                <label className="text-sm font-medium mb-2 block">District</label>
-                <Popover open={openDistrict} onOpenChange={setOpenDistrict}>
-                <PopoverTrigger asChild>
-                    <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openDistrict}
-                    className="w-full justify-between"
-                    >
-                    {currentDistrict ? currentDistrict.name : "All Districts"}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    <Command>
-                    <CommandInput placeholder="Search district..." />
-                    <CommandList>
-                        <CommandEmpty>No district found.</CommandEmpty>
-                        <CommandGroup>
-                        <CommandItem
-                            value="all-districts"
-                            onSelect={() => {
-                                handleDistrictChange('');
-                                setOpenDistrict(false);
-                            }}
-                            >
-                            <Check
-                                className={cn(
-                                "mr-2 h-4 w-4",
-                                !selectedDistrictId ? "opacity-100" : "opacity-0"
-                                )}
-                            />
-                            All Districts
-                            </CommandItem>
-                        {districts.map((district) => (
-                            <CommandItem
-                            key={district.id}
-                            value={district.name}
-                            onSelect={() => {
-                                handleDistrictChange(district.id);
-                                setOpenDistrict(false);
-                            }}
-                            >
-                            <Check
-                                className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedDistrictId === district.id ? "opacity-100" : "opacity-0"
-                                )}
-                                />
-                            {district.name}
-                            </CommandItem>
-                        ))}
-                        </CommandGroup>
-                    </CommandList>
-                    </Command>
-                </PopoverContent>
-                </Popover>
             </div>
         </CardContent>
     </Card>

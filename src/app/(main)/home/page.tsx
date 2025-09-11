@@ -2,12 +2,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { placeholderCategories, placeholderDistricts } from '@/lib/placeholder-data';
-import FilterControls from '@/components/news/FilterControls';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { fetchNews } from '@/services/news';
 import type { NewsdataArticle } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
+import FilterControls from '@/components/news/FilterControls';
 
 type HomePageProps = {
   searchParams?: {

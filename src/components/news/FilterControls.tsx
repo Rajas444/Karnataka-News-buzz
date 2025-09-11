@@ -19,8 +19,15 @@ import {
 } from "@/components/ui/command"
 
 import type { Category, District } from '@/lib/types';
-import { Check, ChevronsUpDown, SlidersHorizontal } from 'lucide-react';
+import { Check, ChevronsUpDown, SlidersHorizontal, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 
 interface FilterControlsProps {
@@ -35,6 +42,10 @@ export default function FilterControls({ categories, districts }: FilterControls
   
   const [openDistrict, setOpenDistrict] = useState(false)
 
+  const selectedCategorySlug = pathname.startsWith('/categories/') 
+    ? pathname.split('/')[2]
+    : 'general';
+  
   const selectedDistrictId = searchParams.get('district') || 'all';
 
   const [currentDistrict, setCurrentDistrict] = useState(districts.find(d => d.id === selectedDistrictId));
@@ -45,34 +56,56 @@ export default function FilterControls({ categories, districts }: FilterControls
 
 
   const createQueryString = useCallback(
-    (updates: { name: string; value: string }[]) => {
+    (name: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      updates.forEach(({ name, value }) => {
-        if (value === 'all') {
-            params.delete(name);
-        } else {
-            params.set(name, value);
-        }
-      });
-
+      if (value === 'all') {
+          params.delete(name);
+      } else {
+          params.set(name, value);
+      }
       return params.toString();
     },
     [searchParams]
   );
+  
+  const handleCategoryChange = (slug: string) => {
+      const currentQuery = new URLSearchParams(searchParams.toString()).toString();
+      if (slug === 'general') {
+          router.push(`/home?${currentQuery}`);
+      } else {
+          router.push(`/categories/${slug}?${currentQuery}`);
+      }
+  }
 
   const handleDistrictChange = (districtId: string) => {
-    const queryString = createQueryString([{ name: 'district', value: districtId }]);
+    const queryString = createQueryString('district', districtId);
+    // We want to stay on the current page (home or a category page) and just update the query string
     router.push(pathname + '?' + queryString);
   };
 
 
   return (
-    <div className="flex flex-wrap items-center gap-4 p-4 bg-card rounded-lg shadow-sm">
-      <div className="flex items-center gap-2">
-        <SlidersHorizontal className="h-5 w-5 text-muted-foreground" />
-        <h3 className="font-semibold text-lg">Filter by District</h3>
+    <div className="flex flex-col sm:flex-row items-center gap-4 p-4 bg-card rounded-lg shadow-sm">
+      <div className="flex items-center gap-2 self-start">
+        <Filter className="h-5 w-5 text-muted-foreground" />
+        <h3 className="font-semibold text-lg">Filters</h3>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col sm:flex-row w-full sm:w-auto items-center gap-4">
+        {/* Category Filter */}
+         <Select onValueChange={handleCategoryChange} defaultValue={selectedCategorySlug}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Select Category" />
+            </SelectTrigger>
+            <SelectContent>
+                {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.slug}>
+                        {category.name}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+
+
         {/* District Filter */}
         <Popover open={openDistrict} onOpenChange={setOpenDistrict}>
           <PopoverTrigger asChild>
@@ -80,7 +113,7 @@ export default function FilterControls({ categories, districts }: FilterControls
               variant="outline"
               role="combobox"
               aria-expanded={openDistrict}
-              className="w-[200px] justify-between"
+              className="w-full sm:w-[200px] justify-between"
             >
               {currentDistrict ? currentDistrict.name : "Select district..."}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

@@ -8,6 +8,8 @@ import { fetchNews } from '@/services/news';
 import type { NewsdataArticle } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
 import FilterControls from '@/components/news/FilterControls';
+import { getCategories } from '@/services/categories';
+import { getDistricts } from '@/services/districts';
 
 type HomePageProps = {
   searchParams?: {
@@ -22,10 +24,22 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   let nextPage: string | null = null;
   let error: string | null = null;
   let topArticle: NewsdataArticle | undefined;
+  let categories, districts = [];
 
   const category = searchParams?.category;
   const districtId = searchParams?.district;
-  const districtName = placeholderDistricts.find(d => d.id === districtId)?.name;
+
+  try {
+      [categories, districts] = await Promise.all([
+          getCategories(),
+          getDistricts()
+      ]);
+  } catch (e) {
+      console.error("Failed to fetch filters data", e);
+  }
+
+  const districtName = districts.find(d => d.id === districtId)?.name;
+
 
   try {
     const response = await fetchNews(category, districtName);
@@ -50,6 +64,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   if (!topArticle) {
     return (
       <div className="container mx-auto px-4 py-8">
+         <section className="mb-8">
+          <FilterControls categories={categories} districts={districts} />
+        </section>
         <div className="text-center bg-card p-8 rounded-lg">
             <h1 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಸುದ್ದಿ ಲಭ್ಯವಿಲ್ಲ</h1>
             <p className="text-muted-foreground font-kannada">
@@ -90,6 +107,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </Button>
           </div>
         </div>
+      </section>
+      
+       <section className="mb-8">
+         <FilterControls categories={categories} districts={districts} />
       </section>
 
       {/* Recent Articles */}

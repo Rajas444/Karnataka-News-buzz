@@ -9,6 +9,8 @@ import ArticleList from '@/components/news/ArticleList';
 import MainLayout from '@/app/(main)/layout';
 import Image from 'next/image';
 import Link from 'next/link';
+import { getCategories } from '@/services/categories';
+import { getDistricts } from '@/services/districts';
 
 type CategoryPageProps = {
   params: {
@@ -22,13 +24,23 @@ type CategoryPageProps = {
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const categorySlug = params.slug;
   const districtId = searchParams?.district;
-
-  const category = placeholderCategories.find(c => c.slug === categorySlug);
-  const districtName = placeholderDistricts.find(d => d.id === districtId)?.name;
   
   let articles: NewsdataArticle[] = [];
   let nextPage: string | null = null;
   let error: string | null = null;
+  let categories, districts = [];
+
+  try {
+      [categories, districts] = await Promise.all([
+          getCategories(),
+          getDistricts()
+      ]);
+  } catch(e) {
+      console.error("Failed to load filter data", e);
+  }
+
+  const category = categories.find(c => c.slug === categorySlug);
+  const districtName = districts.find(d => d.id === districtId)?.name;
 
   try {
       const response = await fetchNews(categorySlug, districtName);
@@ -53,7 +65,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
 
             {/* Filters */}
             <section className="mb-8">
-                <FilterControls categories={placeholderCategories} districts={placeholderDistricts} />
+                <FilterControls categories={categories} districts={districts} />
             </section>
             
             {error && (

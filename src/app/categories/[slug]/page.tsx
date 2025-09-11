@@ -13,7 +13,6 @@ import Link from 'next/link';
 import { getCategories } from '@/services/categories';
 import { getDistricts } from '@/services/districts';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import KarnatakaMap from '@/components/news/KarnatakaMap';
 
 
 type CategoryPageProps = {
@@ -74,22 +73,9 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 </div>
             )}
 
-            {/* Featured Section with Map and Filters */}
+            {/* Filters Section */}
             <section className="mb-12">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <Card className="lg:col-span-2">
-                        <CardHeader>
-                            <CardTitle className="font-headline text-2xl">District News Map</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-muted-foreground mb-4">Click on a district to view its news.</p>
-                            <KarnatakaMap districts={districts} />
-                        </CardContent>
-                    </Card>
-                    <div className="lg:col-span-1">
-                        <FilterControls categories={categories} districts={districts} />
-                    </div>
-                </div>
+                <FilterControls categories={categories} districts={districts} />
             </section>
             
             {!error && topArticle ? (

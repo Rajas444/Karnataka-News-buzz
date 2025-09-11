@@ -67,12 +67,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-          <div className="flex items-center gap-3 p-2">
-            <Newspaper className="w-8 h-8 text-primary" />
-            <div className="flex flex-col">
-              <span className="text-lg font-headline font-semibold">KNB Admin</span>
-            </div>
-          </div>
+            <Link href="/home" className="flex items-center gap-3 p-2 hover:bg-sidebar-accent rounded-md transition-colors">
+                <Newspaper className="w-8 h-8 text-primary" />
+                <div className="flex flex-col">
+                <span className="text-lg font-headline font-semibold">KNB Admin</span>
+                </div>
+            </Link>
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>

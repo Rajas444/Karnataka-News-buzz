@@ -46,13 +46,17 @@ export async function getArticles(options?: { categoryId?: string; districtName?
     
     const constraints: QueryConstraint[] = [];
 
-    if (options?.language) {
-        constraints.push(where('language', '==', options.language));
-    } else {
-        // Only order by publishedAt if no language is specified to avoid composite index requirement
-        constraints.push(orderBy('publishedAt', 'desc'));
+    // Don't apply sorting if filtering by category or language to avoid needing composite indexes by default
+    const shouldSort = !options?.categoryId && !options?.language;
+
+    if (shouldSort) {
+      constraints.push(orderBy('publishedAt', 'desc'));
     }
 
+    if (options?.language) {
+        constraints.push(where('language', '==', options.language));
+    }
+    
     if (options?.categoryId) {
         constraints.push(where('categoryIds', 'array-contains', options.categoryId));
     }

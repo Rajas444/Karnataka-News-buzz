@@ -1,6 +1,7 @@
 
 import type { Article } from '@/lib/types';
 import { getArticles } from './articles';
+import { placeholderCategories } from '@/lib/placeholder-data';
 
 type FetchNewsResponse = {
     articles: Article[];
@@ -10,12 +11,12 @@ type FetchNewsResponse = {
 export async function fetchNews(categorySlug: string = 'general', districtName?: string, page?: string | null, language?: string): Promise<FetchNewsResponse> {
     
     try {
-        const categoryId = 'some-category-id'; // This needs to be resolved if you filter by category slug
+        const category = placeholderCategories.find(c => c.slug === categorySlug);
         
         // The user wants to fetch from Firestore, so we'll use getArticles.
         const articles = await getArticles({
              // If you have a mapping from slug to ID, you can use it here.
-             // categoryId: categorySlug !== 'general' ? findCategoryIdBySlug(categorySlug) : undefined,
+             categoryId: (category && categorySlug !== 'general') ? category.id : undefined,
              districtName: districtName,
              language: language
         });

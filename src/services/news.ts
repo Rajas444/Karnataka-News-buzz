@@ -18,7 +18,7 @@ export async function fetchNews(category?: string, page?: string | null): Promis
     const url = new URL('https://newsdata.io/api/1/news');
     url.searchParams.append('apikey', apiKey);
     url.searchParams.append('language', 'kn');
-    url.search_params.append('country', 'in');
+    url.searchParams.append('country', 'in');
 
     const isGeneralCategory = !category || category === 'general';
 

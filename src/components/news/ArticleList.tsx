@@ -13,9 +13,10 @@ interface ArticleListProps {
     initialArticles: NewsdataArticle[];
     initialNextPage: string | null;
     category?: string;
+    district?: string;
 }
 
-export default function ArticleList({ initialArticles, initialNextPage, category }: ArticleListProps) {
+export default function ArticleList({ initialArticles, initialNextPage, category, district }: ArticleListProps) {
     const [articles, setArticles] = useState<NewsdataArticle[]>(initialArticles);
     const [nextPage, setNextPage] = useState<string | null>(initialNextPage);
     const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +34,7 @@ export default function ArticleList({ initialArticles, initialNextPage, category
 
         setIsLoading(true);
         try {
-            const { articles: newArticles, nextPage: newNextPage } = await fetchNews(category, nextPage);
+            const { articles: newArticles, nextPage: newNextPage } = await fetchNews(category, district, nextPage);
             setArticles(prev => [...prev, ...newArticles]);
             setNextPage(newNextPage);
         } catch (error: any) {
@@ -51,7 +52,7 @@ export default function ArticleList({ initialArticles, initialNextPage, category
     return (
         <div>
             {articles.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {articles.map((article) => (
                         <ArticleCard key={article.article_id} article={article} />
                     ))}

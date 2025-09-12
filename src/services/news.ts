@@ -8,7 +8,7 @@ type FetchNewsResponse = {
     nextPage: string | null;
 }
 
-export async function fetchNews(category?: string, page?: string | null): Promise<FetchNewsResponse> {
+export async function fetchNews(category?: string, district?: string, page?: string | null): Promise<FetchNewsResponse> {
     const apiKey = process.env.NEWSDATA_API_KEY;
     if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
         console.error('Newsdata.io API key is not set.');
@@ -22,11 +22,13 @@ export async function fetchNews(category?: string, page?: string | null): Promis
 
     const queryParts: string[] = [];
     
-    // If a specific category is chosen, don't limit the query to "Karnataka"
-    // to get broader results for that category from all of India.
     const isGeneralCategory = !category || category === 'general';
     if (isGeneralCategory) {
         queryParts.push('Karnataka');
+    }
+    
+    if (district && district !== 'all') {
+        queryParts.push(district);
     }
     
     if (queryParts.length > 0) {
@@ -70,7 +72,6 @@ export async function fetchNews(category?: string, page?: string | null): Promis
 
         if (data.status !== 'success') {
             console.error('Newsdata.io API non-success status:', data);
-            // Specifically check for API key issues from their typical response format
             if ((data as any).results?.code === 'Unauthorized') {
                  throw new Error(`Newsdata.io Error: Invalid API Key. Please check the key in your .env file.`);
             }
@@ -84,7 +85,6 @@ export async function fetchNews(category?: string, page?: string | null): Promis
     } catch (error) {
         console.error("Failed to fetch news from Newsdata.io:", error);
         if (error instanceof Error) {
-            // Re-throw the original error to preserve the specific message
             throw error;
         }
         throw new Error('An unknown error occurred while fetching news.');

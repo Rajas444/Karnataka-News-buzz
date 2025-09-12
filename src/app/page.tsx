@@ -154,12 +154,6 @@ export default function LoginPage() {
                     Register
                 </Link>
             </div>
-            <div className="mt-2 text-center text-sm">
-                Are you an admin?{' '}
-                <Link href="/auth/admin-login" className="underline text-primary">
-                    Admin Login
-                </Link>
-            </div>
           </CardContent>
         </Card>
       </div>

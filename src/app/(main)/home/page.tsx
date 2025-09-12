@@ -9,15 +9,6 @@ import ArticleList from '@/components/news/ArticleList';
 import FilterControls from '@/components/news/FilterControls';
 import { getCategories } from '@/services/categories';
 import { getDistricts } from '@/services/districts';
-import CreatePost from '@/components/posts/CreatePost';
-import PostList from '@/components/posts/PostList';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 
 type HomePageProps = {
   searchParams?: {

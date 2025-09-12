@@ -18,11 +18,13 @@ type CategoryPageProps = {
     slug: string;
   };
   searchParams?: {
+    district?: string;
   };
 };
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const categorySlug = params.slug;
+  const district = searchParams?.district;
   
   let articles: NewsdataArticle[] = [];
   let nextPage: string | null = null;
@@ -39,7 +41,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const category = categories.find(c => c.slug === categorySlug);
 
   try {
-      const response = await fetchNews(categorySlug);
+      const response = await fetchNews(categorySlug, district);
       articles = response.articles;
       nextPage = response.nextPage;
   } catch (e: any) {
@@ -59,7 +61,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 Browsing the {category?.name || 'latest'} news.
             </p>
             
-            {error && (
+            {error && !topArticle && (
                 <div className="text-center py-12 bg-card rounded-lg mb-8">
                     <h2 className="text-2xl font-bold mb-4">Failed to Load News</h2>
                     <p className="text-muted-foreground">{error}</p>
@@ -105,13 +107,13 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 <div className="text-center py-12 bg-card rounded-lg mb-8">
                     <h2 className="text-2xl font-bold mb-4">No Articles Found</h2>
                     <p className="text-muted-foreground">
-                        We couldn't fetch any news for this category at the moment. Please try again later.
+                        We couldn't fetch any news for this category and district at the moment. Please try again later.
                     </p>
                 </div>
             ) : null}
 
             {/* Article List */}
-            {!error && (
+            {(initialArticles.length > 0) && (
                 <section>
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="font-headline text-3xl font-bold">
@@ -122,6 +124,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                         initialArticles={initialArticles} 
                         initialNextPage={nextPage}
                         category={categorySlug}
+                        district={district}
                     />
                 </section>
             )}

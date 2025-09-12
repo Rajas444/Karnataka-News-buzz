@@ -22,16 +22,15 @@ export async function fetchNews(category?: string, district?: string, page?: str
 
     const queryParts: string[] = [];
     
-    const isGeneralCategory = !category || category === 'general';
-    if (isGeneralCategory) {
+    // Always include Karnataka for relevance, unless a very specific district is chosen
+    if (district && district !== 'all') {
+        queryParts.push(district);
+    } else {
         queryParts.push('Karnataka');
     }
     
-    if (district && district !== 'all') {
-        queryParts.push(district);
-    }
-    
     if (queryParts.length > 0) {
+        // Use "OR" for broader results if desired, but "AND" is better for filtering
         url.searchParams.append('q', queryParts.join(' AND '));
     }
 

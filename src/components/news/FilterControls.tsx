@@ -24,11 +24,13 @@ export default function FilterControls({ categories, districts }: FilterControls
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  const selectedCategorySlug = searchParams.get('category') || 'general';
+  // Use category from URL slug if available, otherwise from search params
+  const categorySlugFromPath = pathname.startsWith('/categories/') ? pathname.split('/')[2] : null;
+  const selectedCategorySlug = categorySlugFromPath || searchParams.get('category') || 'general';
   const selectedDistrict = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
-    (paramsToUpdate: Record<string, string>) => {
+    (paramsToUpdate: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams.toString());
       Object.entries(paramsToUpdate).forEach(([key, value]) => {
         if (value && value !== 'all' && value !== 'general') {
@@ -43,16 +45,19 @@ export default function FilterControls({ categories, districts }: FilterControls
   );
 
   const handleCategoryChange = (slug: string) => {
-    const newQueryString = createQueryString({ category: slug });
-    const targetPath = (slug && slug !== 'general') ? `/categories/${slug}` : '/home';
+    // When changing category, we decide the base path and the query string.
+    const isGeneral = slug === 'general';
+    const targetPath = isGeneral ? '/home' : `/categories/${slug}`;
+    // We preserve the district filter when changing category.
+    const newQueryString = createQueryString({ category: isGeneral ? null : slug, district: selectedDistrict });
     router.push(`${targetPath}?${newQueryString}`);
   };
 
   const handleDistrictChange = (districtName: string) => {
-    const newQueryString = createQueryString({ 
-        category: selectedCategorySlug,
-        district: districtName 
-    });
+    // When changing district, we stay on the current path (either /home or /categories/slug)
+    // and just update the search params.
+    const isAllDistricts = districtName === 'all';
+    const newQueryString = createQueryString({ district: isAllDistricts ? null : districtName });
     router.push(`${pathname}?${newQueryString}`);
   };
 
@@ -92,7 +97,7 @@ export default function FilterControls({ categories, districts }: FilterControls
                     </SelectTrigger>
                     <SelectContent>
                         {allDistricts.map((district) => (
-                            <SelectItem key={district.id} value={district.name}>
+                            <SelectItem key={district.id} value={district.name === 'All Districts' ? 'all' : district.name}>
                                 {district.name}
                             </SelectItem>
                         ))}

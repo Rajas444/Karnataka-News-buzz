@@ -97,84 +97,57 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <FilterControls categories={categories} districts={districts} />
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        <div className="lg:col-span-2 space-y-12">
-            {/* Hero Section */}
-            {topArticle && (
-                <section>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-card p-8 rounded-lg shadow-lg">
-                    <div className="relative h-64 md:h-96 rounded-lg overflow-hidden">
-                        <Image
-                        src={topArticle.image_url || 'https://picsum.photos/seed/1/800/600'}
-                        alt={topArticle.title}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        />
-                    </div>
-                    <div>
-                        <h1 className="font-headline text-4xl md:text-5xl font-bold mb-4 leading-tight font-kannada">
-                        {topArticle.title}
-                        </h1>
-                        <p className="text-muted-foreground text-lg mb-6 font-kannada">
-                        {topArticle.description?.substring(0, 150) ?? 'No description available'}...
-                        </p>
-                        <Button asChild size="lg">
-                        <Link href={topArticle.link} target="_blank" rel="noopener noreferrer">
-                            Read More <ArrowRight className="ml-2 h-5 w-5" />
-                        </Link>
-                        </Button>
-                    </div>
-                    </div>
-                </section>
-            )}
-
-            {/* Recent Articles */}
+      <div className="space-y-12">
+        {/* Hero Section */}
+        {topArticle && (
             <section>
-                <div className="flex justify-between items-center mb-6">
-                <h2 className="font-headline text-3xl font-bold">
-                    Recent News
-                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-card p-8 rounded-lg shadow-lg">
+                <div className="relative h-64 md:h-96 rounded-lg overflow-hidden">
+                    <Image
+                    src={topArticle.image_url || 'https://picsum.photos/seed/1/800/600'}
+                    alt={topArticle.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
                 </div>
-                 {error && (
-                    <div className="text-center bg-card p-8 rounded-lg mb-8">
-                        <h2 className="text-xl font-bold mb-2 font-kannada">ಸುದ್ದಿ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</h2>
-                        <p className="text-muted-foreground text-sm font-kannada">{error}</p>
-                    </div>
-                )}
-                <ArticleList
-                    initialArticles={otherArticles}
-                    initialNextPage={nextPage}
-                    category={category}
-                    district={district}
-                />
+                <div>
+                    <h1 className="font-headline text-4xl md:text-5xl font-bold mb-4 leading-tight font-kannada">
+                    {topArticle.title}
+                    </h1>
+                    <p className="text-muted-foreground text-lg mb-6 font-kannada">
+                    {topArticle.description?.substring(0, 150) ?? 'No description available'}...
+                    </p>
+                    <Button asChild size="lg">
+                    <Link href={topArticle.link} target="_blank" rel="noopener noreferrer">
+                        Read More <ArrowRight className="ml-2 h-5 w-5" />
+                    </Link>
+                    </Button>
+                </div>
+                </div>
             </section>
-        </div>
+        )}
 
-        <aside className="lg:col-span-1 space-y-8">
-            <section>
-                <Dialog>
-                    <DialogTrigger asChild>
-                        <Button className="w-full rounded-full" size="lg">
-                            <PlusCircle className="mr-2 h-5 w-5" />
-                            Create Post
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[625px]">
-                         <DialogHeader>
-                            <DialogTitle>Create Community Post</DialogTitle>
-                         </DialogHeader>
-                        <CreatePost />
-                    </DialogContent>
-                </Dialog>
-            </section>
-            <section>
-                <h2 className="font-headline text-3xl font-bold mb-6">
-                    Community Updates
-                </h2>
-                <PostList />
-            </section>
-        </aside>
+        {/* Recent Articles */}
+        <section>
+            <div className="flex justify-between items-center mb-6">
+            <h2 className="font-headline text-3xl font-bold">
+                Recent News
+            </h2>
+            </div>
+             {error && (
+                <div className="text-center bg-card p-8 rounded-lg mb-8">
+                    <h2 className="text-xl font-bold mb-2 font-kannada">ಸುದ್ದಿ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</h2>
+                    <p className="text-muted-foreground text-sm font-kannada">{error}</p>
+                </div>
+            )}
+            <ArticleList
+                initialArticles={otherArticles}
+                initialNextPage={nextPage}
+                category={category}
+                district={district}
+            />
+        </section>
       </div>
 
     </div>

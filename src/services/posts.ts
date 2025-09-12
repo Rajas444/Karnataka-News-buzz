@@ -9,6 +9,12 @@ import { auth } from '@/lib/firebase';
 
 const postsCollection = collection(db, 'posts');
 
+// NOTE: If you are seeing "Firebase storage/unknown" errors when uploading images,
+// it is likely due to missing CORS configuration on your Firebase Storage bucket.
+// Please see the instructions in `storage.cors.json` at the root of the project
+// or run the following gcloud command:
+// gcloud storage buckets update gs://<your-storage-bucket-url> --cors-file=storage.cors.json
+
 // CREATE
 export async function createPost(data: PostFormValues, author: { uid: string, displayName: string | null, photoURL: string | null }): Promise<Post> {
   let imageUrl = data.imageUrl || null;

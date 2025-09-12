@@ -28,7 +28,7 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="siteName">Site Name</Label>
-                <Input id="siteName" defaultValue="Karnataka News Hound" />
+                <Input id="siteName" defaultValue="Karnataka News Pulse" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="siteDescription">Site Description</Label>

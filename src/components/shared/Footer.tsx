@@ -10,7 +10,7 @@ export default function Footer() {
           <div className="space-y-4">
             <Link href="/" className="flex items-center space-x-2">
               <Newspaper className="h-6 w-6 text-primary" />
-              <span className="font-bold text-foreground font-headline text-lg">Karnataka News Buzz</span>
+              <span className="font-bold text-foreground font-headline text-lg">Karnataka News Pulse</span>
             </Link>
             <p className="text-sm">Your daily source for news and updates from across Karnataka.</p>
           </div>
@@ -38,7 +38,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="mt-8 border-t pt-8 text-center text-sm">
-          <p>&copy; {new Date().getFullYear()} Karnataka News Buzz. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Karnataka News Pulse. All rights reserved.</p>
         </div>
       </div>
     </footer>

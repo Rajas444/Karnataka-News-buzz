@@ -157,7 +157,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     <DialogTrigger asChild>
                         <Button className="w-full" size="lg">
                             <PlusCircle className="mr-2 h-5 w-5" />
-                            Create Community Post
+                            Create Post
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[625px]">

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 
 export const metadata: Metadata = {
-  title: 'Karnataka News Buzz',
+  title: 'Karnataka News Pulse',
   description: 'Your daily source for news from Karnataka.',
 };
 

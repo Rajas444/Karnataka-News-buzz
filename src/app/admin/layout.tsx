@@ -71,7 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/home" className="flex items-center gap-3 p-2 hover:bg-sidebar-accent rounded-md transition-colors">
                 <Newspaper className="w-8 h-8 text-primary" />
                 <div className="flex flex-col">
-                <span className="text-lg font-headline font-semibold">KNB Admin</span>
+                <span className="text-lg font-headline font-semibold">KNP Admin</span>
                 </div>
             </Link>
         </SidebarHeader>

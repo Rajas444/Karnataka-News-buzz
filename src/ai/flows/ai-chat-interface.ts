@@ -36,7 +36,7 @@ const prompt = ai.definePrompt({
   name: 'aiChatPrompt',
   input: {schema: AIChatInputSchema},
   output: {schema: z.object({ summary: z.string(), relatedArticles: z.array(RelatedArticleSchema).optional() })},
-  prompt: `You are a helpful AI news assistant for the Karnataka News Buzz website.
+  prompt: `You are a helpful AI news assistant for the Karnataka News Pulse website.
 
 Your goal is to answer user questions about news, current events, or any other general queries they may have.
 

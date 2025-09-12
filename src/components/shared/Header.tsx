@@ -48,7 +48,7 @@ export default function Header() {
         <div className="mr-4 hidden md:flex">
           <Link href="/home" className="flex items-center space-x-2">
             <Newspaper className="h-6 w-6 text-primary" />
-            <span className="font-bold font-headline text-xl">Karnataka News Buzz</span>
+            <span className="font-bold font-headline text-xl">Karnataka News Pulse</span>
           </Link>
         </div>
 
@@ -63,7 +63,7 @@ export default function Header() {
             <div className="flex flex-col space-y-4 p-4">
               <Link href="/home" className="flex items-center space-x-2">
                 <Newspaper className="h-6 w-6 text-primary" />
-                <span className="font-bold">Karnataka News Buzz</span>
+                <span className="font-bold">Karnataka News Pulse</span>
               </Link>
               <nav className="flex flex-col space-y-2">
                 {navLinks.map((link) => (

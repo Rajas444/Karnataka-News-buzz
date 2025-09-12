@@ -111,7 +111,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
             <Link href="/" className="flex items-center justify-center space-x-2">
                 <Newspaper className="h-8 w-8 text-primary" />
-                <span className="font-bold font-headline text-2xl">Karnataka News Buzz</span>
+                <span className="font-bold font-headline text-2xl">Karnataka News Pulse</span>
             </Link>
         </div>
         <Card>

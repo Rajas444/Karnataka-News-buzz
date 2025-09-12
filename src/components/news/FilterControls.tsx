@@ -3,7 +3,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { Category, District } from '@/lib/types';
-import { Filter } from 'lucide-react';
+import { Filter, MapPin } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -25,12 +25,13 @@ export default function FilterControls({ categories, districts }: FilterControls
   const searchParams = useSearchParams();
   
   const selectedCategorySlug = searchParams.get('category') || 'general';
+  const selectedDistrict = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
     (paramsToUpdate: Record<string, string>) => {
       const params = new URLSearchParams(searchParams.toString());
       Object.entries(paramsToUpdate).forEach(([key, value]) => {
-        if (value) {
+        if (value && value !== 'all' && value !== 'general') {
           params.set(key, value);
         } else {
           params.delete(key);
@@ -42,13 +43,21 @@ export default function FilterControls({ categories, districts }: FilterControls
   );
 
   const handleCategoryChange = (slug: string) => {
-    const newCategory = slug === 'general' ? '' : slug;
-    const queryString = createQueryString({ category: newCategory });
-    const targetPath = newCategory ? `/categories/${newCategory}` : '/home';
-    router.push(`${targetPath}?${queryString}`);
+    const newQueryString = createQueryString({ category: slug });
+    const targetPath = (slug && slug !== 'general') ? `/categories/${slug}` : '/home';
+    router.push(`${targetPath}?${newQueryString}`);
   };
 
-  const allCategories = [{ id: 'general', name: 'General', slug: 'general' }, ...categories];
+  const handleDistrictChange = (districtName: string) => {
+    const newQueryString = createQueryString({ 
+        category: selectedCategorySlug,
+        district: districtName 
+    });
+    router.push(`${pathname}?${newQueryString}`);
+  };
+
+  const allCategories = [{ id: 'general', name: 'All Categories', slug: 'general' }, ...categories];
+  const allDistricts = [{ id: 'all', name: 'All Districts' }, ...districts];
 
   return (
     <Card>
@@ -67,6 +76,24 @@ export default function FilterControls({ categories, districts }: FilterControls
                         {allCategories.map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
                                 {category.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+             <div className="flex-1">
+                 <label className="text-sm font-medium mb-2 block">District</label>
+                <Select onValueChange={handleDistrictChange} value={selectedDistrict}>
+                    <SelectTrigger>
+                        <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <SelectValue placeholder="Select District" />
+                        </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                        {allDistricts.map((district) => (
+                            <SelectItem key={district.id} value={district.name}>
+                                {district.name}
                             </SelectItem>
                         ))}
                     </SelectContent>

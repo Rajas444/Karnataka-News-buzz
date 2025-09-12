@@ -13,10 +13,9 @@ interface ArticleListProps {
     initialArticles: NewsdataArticle[];
     initialNextPage: string | null;
     category?: string;
-    district?: string;
 }
 
-export default function ArticleList({ initialArticles, initialNextPage, category, district }: ArticleListProps) {
+export default function ArticleList({ initialArticles, initialNextPage, category }: ArticleListProps) {
     const [articles, setArticles] = useState<NewsdataArticle[]>(initialArticles);
     const [nextPage, setNextPage] = useState<string | null>(initialNextPage);
     const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +33,7 @@ export default function ArticleList({ initialArticles, initialNextPage, category
 
         setIsLoading(true);
         try {
-            const { articles: newArticles, nextPage: newNextPage } = await fetchNews(category, nextPage, district);
+            const { articles: newArticles, nextPage: newNextPage } = await fetchNews(category, nextPage);
             setArticles(prev => [...prev, ...newArticles]);
             setNextPage(newNextPage);
         } catch (error: any) {

@@ -9,11 +9,12 @@ import ArticleList from '@/components/news/ArticleList';
 import FilterControls from '@/components/news/FilterControls';
 import { getCategories } from '@/services/categories';
 import { getDistricts } from '@/services/districts';
+import CreatePost from '@/components/posts/CreatePost';
+import PostList from '@/components/posts/PostList';
 
 type HomePageProps = {
   searchParams?: {
     category?: string;
-    district?: string;
   };
 };
 
@@ -26,7 +27,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   let districts = [];
 
   const category = searchParams?.category;
-  const district = searchParams?.district;
 
   try {
       [categories, districts] = await Promise.all([
@@ -38,7 +38,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   try {
-    const response = await fetchNews(category, null, district);
+    const response = await fetchNews(category);
     initialArticles = response.articles;
     nextPage = response.nextPage;
     topArticle = initialArticles[0];
@@ -82,6 +82,21 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      
+      {/* Create Post Section */}
+      <section className="mb-12">
+        <CreatePost />
+      </section>
+      
+      {/* User Posts Feed */}
+      <section className="mb-12">
+        <h2 className="font-headline text-3xl font-bold mb-6">
+            Community Updates
+        </h2>
+        <PostList />
+      </section>
+
+
       {/* Filters */}
       <section className="mb-12">
           <FilterControls categories={categories} districts={districts} />
@@ -126,7 +141,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           initialArticles={otherArticles}
           initialNextPage={nextPage}
           category={category}
-          district={district}
         />
       </section>
     </div>

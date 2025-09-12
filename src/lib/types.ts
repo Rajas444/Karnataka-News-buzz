@@ -106,3 +106,22 @@ export interface Job extends JobFormValues {
     updatedAt: Date;
     status: 'active' | 'expired';
 }
+
+// User-generated Posts
+export const postFormSchema = z.object({
+  title: z.string().min(5, 'Please provide a brief headline or title.'),
+  description: z.string().min(10, 'Please provide more details.'),
+  location: z.string().optional(),
+  imageUrl: z.string().nullable().optional(),
+  imagePath: z.string().optional(),
+});
+
+export type PostFormValues = z.infer<typeof postFormSchema>;
+
+export interface Post extends PostFormValues {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorPhotoURL: string;
+  createdAt: Date;
+}

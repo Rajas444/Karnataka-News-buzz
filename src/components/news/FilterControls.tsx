@@ -25,7 +25,6 @@ export default function FilterControls({ categories, districts }: FilterControls
   const searchParams = useSearchParams();
   
   const selectedCategorySlug = searchParams.get('category') || 'general';
-  const selectedDistrict = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
     (paramsToUpdate: Record<string, string>) => {
@@ -49,13 +48,7 @@ export default function FilterControls({ categories, districts }: FilterControls
     router.push(`${targetPath}?${queryString}`);
   };
 
-  const handleDistrictChange = (district: string) => {
-    const newDistrict = district === 'all' ? '' : district;
-    router.push(`${pathname}?${createQueryString({ district: newDistrict })}`);
-  };
-
   const allCategories = [{ id: 'general', name: 'General', slug: 'general' }, ...categories];
-  const allDistricts = [{ id: 'all', name: 'All Karnataka' }, ...districts];
 
   return (
     <Card>
@@ -74,21 +67,6 @@ export default function FilterControls({ categories, districts }: FilterControls
                         {allCategories.map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
                                 {category.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-             <div className="flex-1">
-                <label className="text-sm font-medium mb-2 block">District</label>
-                <Select onValueChange={handleDistrictChange} value={selectedDistrict}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select a district (e.g., Bagalkote, Bengaluru)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                         {allDistricts.map((district) => (
-                            <SelectItem key={district.id} value={district.id === 'all' ? 'all' : district.name}>
-                                {district.name}
                             </SelectItem>
                         ))}
                     </SelectContent>

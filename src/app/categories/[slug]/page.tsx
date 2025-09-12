@@ -18,13 +18,11 @@ type CategoryPageProps = {
     slug: string;
   };
   searchParams?: {
-    district?: string;
   };
 };
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const categorySlug = params.slug;
-  const district = searchParams?.district;
   
   let articles: NewsdataArticle[] = [];
   let nextPage: string | null = null;
@@ -41,7 +39,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const category = categories.find(c => c.slug === categorySlug);
 
   try {
-      const response = await fetchNews(categorySlug, null, district);
+      const response = await fetchNews(categorySlug);
       articles = response.articles;
       nextPage = response.nextPage;
   } catch (e: any) {
@@ -124,7 +122,6 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                         initialArticles={initialArticles} 
                         initialNextPage={nextPage}
                         category={categorySlug}
-                        district={district}
                     />
                 </section>
             )}

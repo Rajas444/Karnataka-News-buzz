@@ -155,7 +155,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <section>
                 <Dialog>
                     <DialogTrigger asChild>
-                        <Button className="w-full" size="lg">
+                        <Button className="w-full rounded-full" size="lg">
                             <PlusCircle className="mr-2 h-5 w-5" />
                             Create Post
                         </Button>

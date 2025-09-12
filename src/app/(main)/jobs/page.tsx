@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Briefcase, Building, Calendar, Globe, Loader2, MapPin } from 'lucide-react';
+import { Briefcase, Building, Calendar, Globe, Loader2, MapPin, BookUser } from 'lucide-react';
 import type { Job, JobType } from '@/lib/types';
 import { getJobs } from '@/services/jobs';
 import { useToast } from '@/hooks/use-toast';
@@ -88,6 +88,10 @@ export default function JobsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 flex-grow">
+                 <div className="flex items-center text-sm text-muted-foreground gap-2">
+                    <BookUser className="h-4 w-4" />
+                    <span>{job.qualification}</span>
+                </div>
                 <div className="flex items-center text-sm text-muted-foreground gap-2">
                     <MapPin className="h-4 w-4" />
                     <span>{job.location}</span>

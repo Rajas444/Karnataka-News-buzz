@@ -56,6 +56,7 @@ export default function JobForm({ initialData }: JobFormProps) {
       title: initialData?.title || '',
       company: initialData?.company || '',
       location: initialData?.location || '',
+      qualification: initialData?.qualification || '',
       description: initialData?.description || '',
       applyLink: initialData?.applyLink || '',
       jobType: initialData?.jobType || 'Government',
@@ -130,6 +131,19 @@ export default function JobForm({ initialData }: JobFormProps) {
                         <FormLabel>Location</FormLabel>
                         <FormControl>
                             <Input placeholder="e.g., Bengaluru" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="qualification"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Qualification</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., B.E in Computer Science, PUC" {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>

@@ -2,9 +2,10 @@
 import type { Post } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin } from 'lucide-react';
+import { MapPin, Tag } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import Image from 'next/image';
+import { Badge } from '../ui/badge';
 
 interface PostCardProps {
   post: Post;
@@ -14,17 +15,23 @@ export default function PostCard({ post }: PostCardProps) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center gap-3">
-          <Avatar>
-            <AvatarImage src={post.authorPhotoURL || undefined} />
-            <AvatarFallback>{post.authorName.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-semibold">{post.authorName}</p>
-            <p className="text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
-            </p>
-          </div>
+        <div className="flex justify-between items-start">
+            <div className="flex items-center gap-3">
+            <Avatar>
+                <AvatarImage src={post.authorPhotoURL || undefined} />
+                <AvatarFallback>{post.authorName.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div>
+                <p className="font-semibold">{post.authorName}</p>
+                <p className="text-xs text-muted-foreground">
+                {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                </p>
+            </div>
+            </div>
+             <Badge variant="secondary" className="flex items-center gap-1.5">
+                <Tag className="h-3 w-3" />
+                {post.category}
+            </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

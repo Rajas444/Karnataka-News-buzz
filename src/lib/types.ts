@@ -108,9 +108,13 @@ export interface Job extends JobFormValues {
 }
 
 // User-generated Posts
+export const postCategories = ["Incident", "Event", "Alert", "Local News"] as const;
+export type PostCategory = typeof postCategories[number];
+
 export const postFormSchema = z.object({
   title: z.string().min(5, 'Please provide a brief headline or title.'),
   description: z.string().min(10, 'Please provide more details.'),
+  category: z.enum(postCategories),
   location: z.string().optional(),
   imageUrl: z.string().nullable().optional(),
   imagePath: z.string().optional(),

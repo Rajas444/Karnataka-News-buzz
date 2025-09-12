@@ -4,17 +4,18 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { postFormSchema, type PostFormValues } from '@/lib/types';
+import { postFormSchema, postCategories, type PostFormValues } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { createPost } from '@/services/posts';
 
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Image as ImageIcon, Loader2, MapPin, Send, X } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -32,6 +33,7 @@ export default function CreatePost() {
     defaultValues: {
       title: '',
       description: '',
+      category: 'Incident',
       location: '',
       imageUrl: null,
     },
@@ -55,7 +57,6 @@ export default function CreatePost() {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
-          // Simple reverse geocoding to get a city/area name
            try {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
             const data = await response.json();
@@ -107,16 +108,16 @@ export default function CreatePost() {
 
   return (
     <Card>
-      <CardHeader className="p-4">
-        <div className="flex items-center gap-4">
+      <CardHeader className="p-6">
+        <div className="flex items-start gap-4">
           <Avatar>
             <AvatarImage src={userProfile?.photoURL || undefined} />
             <AvatarFallback>{userProfile?.displayName?.charAt(0) || 'U'}</AvatarFallback>
           </Avatar>
-          <p className="font-semibold text-lg">What's on your mind, {userProfile?.displayName?.split(' ')[0] || 'User'}?</p>
+           <CardTitle>What's on your mind, {userProfile?.displayName?.split(' ')[0] || 'User'}?</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-0">
+      <CardContent className="p-6 pt-0">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -124,20 +125,44 @@ export default function CreatePost() {
               name="title"
               render={({ field }) => (
                 <FormItem>
+                  <FormLabel>Title / Headline</FormLabel>
                   <FormControl>
-                    <Input placeholder="Add a short headline..." {...field} />
+                    <Input placeholder="A short, clear headline for the update" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+             <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        {postCategories.map(cat => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
             <FormField
               control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
+                  <FormLabel>Details</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Share details about an incident or update..." {...field} />
+                    <Textarea placeholder="Share all the details about what's happening..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -159,36 +184,41 @@ export default function CreatePost() {
                 </Button>
               </div>
             )}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Input
-                    id="image-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                />
-                <Button variant="ghost" size="icon" asChild>
-                    <label htmlFor="image-upload" className="cursor-pointer"><ImageIcon /></label>
-                </Button>
-                <Button variant="ghost" size="icon" onClick={handleLocationDetect} type="button">
-                    <MapPin />
-                </Button>
+            <div className="grid grid-cols-2 gap-4">
                  <FormField
                     control={form.control}
                     name="location"
                     render={({ field }) => (
                         <FormItem>
+                        <FormLabel>Location</FormLabel>
                         <FormControl>
-                            <Input placeholder="Location (optional)" {...field} className="w-40 h-9" />
+                            <div className="relative">
+                               <Input placeholder="e.g., Cubbon Park, Bengaluru" {...field} className="pr-10" />
+                               <Button size="icon" variant="ghost" type="button" onClick={handleLocationDetect} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
+                                   <MapPin className="h-4 w-4" />
+                               </Button>
+                            </div>
                         </FormControl>
+                         <FormMessage />
                         </FormItem>
                     )}
                     />
-              </div>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />}
-                <span className="ml-2">Post</span>
+                 <FormItem>
+                    <FormLabel>Attach a Photo</FormLabel>
+                     <FormControl>
+                        <Input
+                            id="image-upload-structured"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                        />
+                    </FormControl>
+                 </FormItem>
+            </div>
+            <div className="flex justify-end pt-4">
+              <Button type="submit" disabled={isSubmitting} size="lg">
+                {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Send className="mr-2" />}
+                Submit Post
               </Button>
             </div>
           </form>

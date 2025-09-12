@@ -33,7 +33,15 @@ export async function createPost(data: PostFormValues, author: { uid: string, di
 
   const docRef = await addDoc(postsCollection, newPost);
 
-  return { id: docRef.id, ...data, ...newPost, createdAt: new Date() } as Post;
+  const docSnap = await getDoc(docRef);
+  const createdData = docSnap.data();
+
+
+  return { 
+    id: docRef.id, 
+    ...createdData,
+    createdAt: createdData?.createdAt.toDate(),
+   } as Post;
 }
 
 // READ (all)

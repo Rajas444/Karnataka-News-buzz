@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, PlusCircle } from 'lucide-react';
 import { fetchNews } from '@/services/news';
 import type { NewsdataArticle } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
@@ -11,6 +11,13 @@ import { getCategories } from '@/services/categories';
 import { getDistricts } from '@/services/districts';
 import CreatePost from '@/components/posts/CreatePost';
 import PostList from '@/components/posts/PostList';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 type HomePageProps = {
   searchParams?: {
@@ -146,7 +153,20 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
         <aside className="lg:col-span-1 space-y-8">
             <section>
-                <CreatePost />
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button className="w-full" size="lg">
+                            <PlusCircle className="mr-2 h-5 w-5" />
+                            Create Community Post
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[625px]">
+                         <DialogHeader>
+                            <DialogTitle>Create Community Post</DialogTitle>
+                         </DialogHeader>
+                        <CreatePost />
+                    </DialogContent>
+                </Dialog>
             </section>
             <section>
                 <h2 className="font-headline text-3xl font-bold mb-6">

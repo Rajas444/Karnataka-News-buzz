@@ -9,7 +9,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { createPost } from '@/services/posts';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -103,21 +102,22 @@ export default function CreatePost() {
   };
 
   if (!user) {
-    return null; // Don't show the component if user is not logged in
+    return (
+        <div className="text-center p-4">
+            <p>Please log in to create a post.</p>
+        </div>
+    );
   }
 
   return (
-    <Card>
-      <CardHeader className="p-6">
-        <div className="flex items-start gap-4">
+    <div className="p-1">
+        <div className="flex items-center gap-4 mb-6">
           <Avatar>
             <AvatarImage src={userProfile?.photoURL || undefined} />
             <AvatarFallback>{userProfile?.displayName?.charAt(0) || 'U'}</AvatarFallback>
           </Avatar>
-           <CardTitle>What's on your mind, {userProfile?.displayName?.split(' ')[0] || 'User'}?</CardTitle>
+           <p className="font-semibold">What's on your mind, {userProfile?.displayName?.split(' ')[0] || 'User'}?</p>
         </div>
-      </CardHeader>
-      <CardContent className="p-6 pt-0">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -223,7 +223,6 @@ export default function CreatePost() {
             </div>
           </form>
         </Form>
-      </CardContent>
-    </Card>
+    </div>
   );
 }

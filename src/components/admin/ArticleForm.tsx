@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -321,7 +322,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                 )}
                  <Button type="submit" className="w-full" disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isSubmitting ? 'Saving...' : (initialData ? 'Update Article' : 'Save Article')}
+                    {isSubmitting ? 'Saving...' : (initialData ? 'Update Article' : 'Post Article')}
                 </Button>
                 </CardContent>
             </Card>
@@ -398,3 +399,4 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
     </Form>
   );
 }
+

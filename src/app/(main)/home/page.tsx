@@ -9,6 +9,7 @@ import ArticleList from '@/components/news/ArticleList';
 import FilterControls from '@/components/news/FilterControls';
 import { getCategories } from '@/services/categories';
 import { getDistricts } from '@/services/districts';
+import CommunityHighlights from '@/components/posts/CommunityHighlights';
 
 type HomePageProps = {
   searchParams?: {
@@ -138,6 +139,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 category={category}
                 district={district}
             />
+        </section>
+
+        {/* Community Highlights */}
+        <section>
+          <CommunityHighlights />
         </section>
       </div>
 

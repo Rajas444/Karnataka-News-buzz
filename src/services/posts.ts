@@ -3,7 +3,7 @@
 
 import { db, storage } from '@/lib/firebase';
 import type { Post, PostFormValues } from '@/lib/types';
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, limit as firestoreLimit } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { auth } from '@/lib/firebase';
 
@@ -49,6 +49,21 @@ export async function getPosts(): Promise<Post[]> {
     const q = query(postsCollection, orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
     
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate(),
+        } as Post;
+    });
+}
+
+// READ (recent)
+export async function getRecentPosts(count: number): Promise<Post[]> {
+    const q = query(postsCollection, orderBy('createdAt', 'desc'), firestoreLimit(count));
+    const snapshot = await getDocs(q);
+
     return snapshot.docs.map(doc => {
         const data = doc.data();
         return {

@@ -2,8 +2,8 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { Category, District } from '@/lib/types';
-import { Filter, MapPin } from 'lucide-react';
+import type { Category } from '@/lib/types';
+import { Filter } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -16,10 +16,9 @@ import { useCallback } from 'react';
 
 interface FilterControlsProps {
   categories: Category[];
-  districts: District[];
 }
 
-export default function FilterControls({ categories, districts }: FilterControlsProps) {
+export default function FilterControls({ categories }: FilterControlsProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -27,7 +26,6 @@ export default function FilterControls({ categories, districts }: FilterControls
   // Use category from URL slug if available, otherwise from search params
   const categorySlugFromPath = pathname.startsWith('/categories/') ? pathname.split('/')[2] : null;
   const selectedCategorySlug = categorySlugFromPath || searchParams.get('category') || 'general';
-  const selectedDistrict = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
     (paramsToUpdate: Record<string, string | null>) => {
@@ -45,24 +43,13 @@ export default function FilterControls({ categories, districts }: FilterControls
   );
 
   const handleCategoryChange = (slug: string) => {
-    // When changing category, we decide the base path and the query string.
     const isGeneral = slug === 'general';
     const targetPath = isGeneral ? '/home' : `/categories/${slug}`;
-    // We preserve the district filter when changing category.
-    const newQueryString = createQueryString({ category: isGeneral ? null : slug, district: selectedDistrict });
+    const newQueryString = createQueryString({ category: isGeneral ? null : slug });
     router.push(`${targetPath}?${newQueryString}`);
   };
 
-  const handleDistrictChange = (districtName: string) => {
-    // When changing district, we stay on the current path (either /home or /categories/slug)
-    // and just update the search params.
-    const isAllDistricts = districtName === 'all';
-    const newQueryString = createQueryString({ district: isAllDistricts ? null : districtName });
-    router.push(`${pathname}?${newQueryString}`);
-  };
-
   const allCategories = [{ id: 'general', name: 'All Categories', slug: 'general' }, ...categories];
-  const allDistricts = [{ id: 'all', name: 'All Districts' }, ...districts];
 
   return (
     <Card>
@@ -81,24 +68,6 @@ export default function FilterControls({ categories, districts }: FilterControls
                         {allCategories.map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
                                 {category.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-             <div className="flex-1">
-                 <label className="text-sm font-medium mb-2 block">District</label>
-                <Select onValueChange={handleDistrictChange} value={selectedDistrict}>
-                    <SelectTrigger>
-                        <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <SelectValue placeholder="Select District" />
-                        </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                        {allDistricts.map((district) => (
-                            <SelectItem key={district.id} value={district.name === 'All Districts' ? 'all' : district.name}>
-                                {district.name}
                             </SelectItem>
                         ))}
                     </SelectContent>

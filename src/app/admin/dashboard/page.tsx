@@ -27,12 +27,6 @@ const features = [
     href: "/admin/categories"
   },
   {
-    icon: MapPin,
-    title: "District Filtering",
-    description: "Manage districts to allow for location-based news filtering.",
-    href: "/admin/districts"
-  },
-  {
     icon: Users,
     title: "User Management",
     description: "View, block, or remove users to maintain a healthy community.",

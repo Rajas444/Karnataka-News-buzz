@@ -7,7 +7,6 @@ import MainLayout from '@/app/(main)/layout';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getCategories } from '@/services/categories';
-import { getDistricts } from '@/services/districts';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import FilterControls from '@/components/news/FilterControls';
@@ -30,10 +29,9 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   let nextPage: string | null = null;
   let error: string | null = null;
   let categories = [];
-  let districts = [];
 
   try {
-      [categories, districts] = await Promise.all([getCategories(), getDistricts()]);
+      categories = await getCategories();
   } catch(e) {
       console.error("Failed to load filter data", e);
   }
@@ -70,7 +68,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
 
             {/* Filters Section */}
             <section className="mb-12">
-                <FilterControls categories={categories} districts={districts} />
+                <FilterControls categories={categories} />
             </section>
             
             {!error && topArticle ? (
@@ -107,7 +105,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 <div className="text-center py-12 bg-card rounded-lg mb-8">
                     <h2 className="text-2xl font-bold mb-4">No Articles Found</h2>
                     <p className="text-muted-foreground">
-                        We couldn't fetch any news for this category and district at the moment. Please try again later.
+                        We couldn't fetch any news for this category at the moment. Please try again later.
                     </p>
                 </div>
             ) : null}

@@ -17,11 +17,6 @@ export interface Category {
   slug: string;
 }
 
-export interface District {
-  id: string;
-  name: string;
-}
-
 const articleSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -32,7 +27,6 @@ const articleSchema = z.object({
   author: z.string(),
   authorId: z.string(),
   categoryIds: z.array(z.string()),
-  districtId: z.string(),
   status: z.enum(['published', 'draft', 'scheduled']),
   publishedAt: z.date(),
   createdAt: z.date(),
@@ -52,7 +46,6 @@ export const articleFormSchema = z.object({
   content: z.string().min(50, 'Content must be at least 50 characters long.'),
   status: z.enum(['draft', 'published', 'scheduled']),
   categoryId: z.string().nonempty('Please select a category.'),
-  districtId: z.string().nonempty('Please select a district.'),
   publishedAt: z.date().optional(),
   imageUrl: z.string().nullable().optional(),
   imagePath: z.string().optional(),

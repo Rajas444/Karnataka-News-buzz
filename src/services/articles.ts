@@ -48,7 +48,7 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
 }
 
 // READ (all)
-export async function getArticles(options?: { categoryId?: string; districtName?: string; language?: string }): Promise<Article[]> {
+export async function getArticles(options?: { categoryId?: string; language?: string }): Promise<Article[]> {
     
     const constraints: QueryConstraint[] = [];
 
@@ -65,10 +65,6 @@ export async function getArticles(options?: { categoryId?: string; districtName?
     
     if (options?.categoryId) {
         constraints.push(where('categoryIds', 'array-contains', options.categoryId));
-    }
-    
-    if (options?.districtName) {
-        constraints.push(where('districtName', '==', options.districtName));
     }
 
     const q = query(articlesCollection, ...constraints);

@@ -27,7 +27,6 @@ const navItems = [
   { href: '/admin/articles', label: 'Articles', icon: FileText },
   { href: '/admin/jobs', label: 'Jobs', icon: Briefcase },
   { href: '/admin/categories', label: 'Categories', icon: Tags },
-  { href: '/admin/districts', label: 'Districts', icon: Map },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/admin/settings', label: 'Settings', icon: Settings },

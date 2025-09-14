@@ -47,7 +47,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   } catch (e: any) {
     error = e.message || 'An unknown error occurred.';
   }
-
+  
   if (error && initialArticles.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">

@@ -2,11 +2,10 @@
 'use server';
 
 import { db, storage } from '@/lib/firebase';
-import type { Article, ArticleFormValues, NewsdataArticle } from '@/lib/types';
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint, Timestamp, limit, startAfter, getCountFromServer, and } from 'firebase/firestore';
+import type { Article, ArticleFormValues } from '@/lib/types';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint, Timestamp, limit, startAfter } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
-import { getCategories } from './categories';
 
 const articlesCollection = collection(db, 'articles');
 
@@ -58,48 +57,14 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
   return { id: docRef.id, ...data, imageUrl, publishedAt: new Date() } as Article;
 }
 
-// CREATE (from News Collector)
-export async function storeCollectedArticle(articleData: NewsdataArticle, collectedDate: Date, categoryId?: string): Promise<string> {
-    const docRef = await addDoc(articlesCollection, {
-        title: articleData.title,
-        content: articleData.description || 'No content available.',
-        imageUrl: articleData.image_url,
-        sourceUrl: articleData.link,
-        status: 'published',
-        publishedAt: new Date(articleData.pubDate),
-        collectedDate: Timestamp.fromDate(collectedDate),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        author: articleData.source_id,
-        authorId: articleData.source_id,
-        categoryIds: categoryId ? [categoryId] : [],
-        views: 0,
-        seo: { keywords: [], metaDescription: '' },
-    });
-    return docRef.id;
-}
-
 
 // READ (all with pagination)
-export async function getArticles(options?: { categoryId?: string; date?: Date; lastVisible?: any; pageSize?: number }): Promise<{ articles: Article[], lastVisible: any | null }> {
+export async function getArticles(options?: { lastVisible?: any; pageSize?: number }): Promise<{ articles: Article[], lastVisible: any | null }> {
     
     const constraints: QueryConstraint[] = [];
     const pageSize = options?.pageSize || 10;
 
     let q = query(articlesCollection, orderBy('publishedAt', 'desc'), limit(pageSize));
-
-    if (options?.date) {
-        const startOfDay = new Date(options.date);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(options.date);
-        endOfDay.setHours(23, 59, 59, 999);
-        constraints.push(where('collectedDate', '>=', startOfDay));
-        constraints.push(where('collectedDate', '<=', endOfDay));
-    }
-    
-    if (options?.categoryId && options.categoryId !== 'general') {
-        constraints.push(where('categoryIds', 'array-contains', options.categoryId));
-    }
 
     if (options?.lastVisible) {
         constraints.push(startAfter(options.lastVisible));
@@ -116,7 +81,6 @@ export async function getArticles(options?: { categoryId?: string; date?: Date; 
             publishedAt: data.publishedAt?.toDate(),
             createdAt: data.createdAt?.toDate(),
             updatedAt: data.updatedAt?.toDate(),
-            collectedDate: data.collectedDate?.toDate(),
         } as Article;
     });
 
@@ -139,7 +103,6 @@ export async function getArticle(id: string): Promise<Article | null> {
         publishedAt: data.publishedAt?.toDate(),
         createdAt: data.createdAt?.toDate(),
         updatedAt: data.updatedAt?.toDate(),
-        collectedDate: data.collectedDate?.toDate(),
     } as Article;
   } else {
     return null;
@@ -198,11 +161,4 @@ export async function deleteArticle(id: string): Promise<void> {
         await deleteObject(imageRef).catch(e => console.error("Error deleting image:", e));
     }
     await deleteDoc(docRef);
-}
-
-// Check if an article with a given source URL already exists
-export async function articleExists(sourceUrl: string): Promise<boolean> {
-  const q = query(collection(db, 'articles'), where('sourceUrl', '==', sourceUrl), limit(1));
-  const snapshot = await getCountFromServer(q);
-  return snapshot.data().count > 0;
 }

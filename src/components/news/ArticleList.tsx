@@ -5,58 +5,44 @@ import { useState, useEffect } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import type { Article, Category } from '@/lib/types';
-import { getArticles } from '@/services/articles';
-import { getCategories } from '@/services/categories';
+import type { NewsdataArticle } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { fetchNews } from '@/services/news';
 
 interface ArticleListProps {
-    initialArticles: Article[];
-    initialLastVisible: any | null;
+    initialArticles: NewsdataArticle[];
+    initialNextPage: string | null;
     category?: string;
     district?: string;
     date?: Date;
 }
 
-export default function ArticleList({ initialArticles, initialLastVisible, category, district, date }: ArticleListProps) {
-    const [articles, setArticles] = useState<Article[]>(initialArticles);
-    const [lastVisible, setLastVisible] = useState<any | null>(initialLastVisible);
+export default function ArticleList({ initialArticles, initialNextPage, category, district, date }: ArticleListProps) {
+    const [articles, setArticles] = useState<NewsdataArticle[]>(initialArticles);
+    const [nextPage, setNextPage] = useState<string | null>(initialNextPage);
     const [isLoading, setIsLoading] = useState(false);
-    const [allCategories, setAllCategories] = useState<Category[]>([]);
     const { toast } = useToast();
-
-    useEffect(() => {
-        async function fetchCategories() {
-            try {
-                const cats = await getCategories();
-                setAllCategories(cats);
-            } catch (error) {
-                toast({ title: 'Failed to load categories', variant: 'destructive' });
-            }
-        }
-        fetchCategories();
-    }, [toast]);
     
     // This effect resets the articles when the filters change.
     useEffect(() => {
         setArticles(initialArticles);
-        setLastVisible(initialLastVisible);
-    }, [initialArticles, initialLastVisible]);
+        setNextPage(initialNextPage);
+    }, [initialArticles, initialNextPage]);
 
 
     const handleLoadMore = async () => {
-        if (!lastVisible || isLoading) return;
+        if (!nextPage || isLoading) return;
 
         setIsLoading(true);
         try {
-            const { articles: newArticles, lastVisible: newLastVisible } = await getArticles({
+            const { articles: newArticles, nextPage: newNextPage } = await fetchNews(
                 category,
-                date,
-                lastVisible: lastVisible,
-                pageSize: 10
-            });
+                district,
+                nextPage,
+                date
+            );
             setArticles(prev => [...prev, ...newArticles]);
-            setLastVisible(newLastVisible);
+            setNextPage(newNextPage);
         } catch (error: any) {
             console.error("Failed to fetch more articles:", error);
             toast({
@@ -74,7 +60,7 @@ export default function ArticleList({ initialArticles, initialLastVisible, categ
             {articles.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {articles.map((article) => (
-                        <ArticleCard key={article.id} article={article} allCategories={allCategories} />
+                        <ArticleCard key={article.article_id} article={article} />
                     ))}
                 </div>
             ) : (
@@ -83,7 +69,7 @@ export default function ArticleList({ initialArticles, initialLastVisible, categ
                 </div>
             )}
             
-            {lastVisible && (
+            {nextPage && (
                  <div className="text-center mt-12">
                     <Button variant="outline" size="lg" onClick={handleLoadMore} disabled={isLoading}>
                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

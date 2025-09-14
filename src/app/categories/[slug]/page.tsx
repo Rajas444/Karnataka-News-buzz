@@ -1,6 +1,5 @@
 
-import { getArticles } from '@/services/articles';
-import type { Article } from '@/lib/types';
+import type { NewsdataArticle } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
 import MainLayout from '@/app/(main)/layout';
 import Image from 'next/image';
@@ -11,6 +10,8 @@ import { ArrowRight } from 'lucide-react';
 import FilterControls from '@/components/news/FilterControls';
 import { getDistricts } from '@/services/districts';
 import { format } from 'date-fns';
+import { fetchNews } from '@/services/news';
+
 
 type CategoryPageProps = {
   params: {
@@ -27,8 +28,8 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const district = searchParams?.district;
   const selectedDate = searchParams?.date ? new Date(searchParams.date) : new Date();
 
-  let articles: Article[] = [];
-  let lastVisible: any | null = null;
+  let articles: NewsdataArticle[] = [];
+  let nextPage: string | null = null;
   let error: string | null = null;
   let categories = [];
   let districts = [];
@@ -43,18 +44,19 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const category = categories.find(c => c.slug === categorySlug);
 
   try {
-      const response = await getArticles({ 
-          categoryId: category?.id, 
-          date: selectedDate, 
-          pageSize: 11
-      });
+      const response = await fetchNews(
+          category?.slug, 
+          district,
+          null,
+          selectedDate, 
+      );
       articles = response.articles;
-      lastVisible = response.lastVisible;
+      nextPage = response.nextPage;
   } catch (e: any) {
       error = e.message || 'An unknown error occurred.';
   }
 
-  const topArticle: Article | undefined = articles[0];
+  const topArticle: NewsdataArticle | undefined = articles[0];
   const initialArticles = articles.slice(1);
 
   return (
@@ -86,7 +88,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-card p-8 rounded-lg shadow-lg">
                     <div className="relative h-64 md:h-96 rounded-lg overflow-hidden">
                         <Image
-                        src={topArticle.imageUrl || 'https://picsum.photos/800/600'}
+                        src={topArticle.image_url || 'https://picsum.photos/800/600'}
                         alt={topArticle.title}
                         fill
                         className="object-cover"
@@ -98,10 +100,10 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                         {topArticle.title}
                         </h2>
                         <p className="text-muted-foreground text-lg mb-6">
-                        {topArticle.content?.substring(0, 150) ?? 'No description available.'}...
+                        {topArticle.description?.substring(0, 150) ?? 'No description available.'}...
                         </p>
                         <Button asChild size="lg">
-                        <Link href={`/article/${topArticle.id}`}>
+                        <Link href={topArticle.link} target='_blank' rel='noopener noreferrer'>
                             Read More <ArrowRight className="ml-2 h-5 w-5" />
                         </Link>
                         </Button>
@@ -128,8 +130,8 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                     </div>
                     <ArticleList 
                         initialArticles={initialArticles} 
-                        initialLastVisible={lastVisible}
-                        category={category?.id}
+                        initialNextPage={nextPage}
+                        category={category?.slug}
                         district={district}
                         date={selectedDate}
                     />

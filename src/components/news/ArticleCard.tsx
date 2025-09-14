@@ -3,26 +3,23 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { Article } from '@/lib/types';
+import type { NewsdataArticle } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { Calendar } from 'lucide-react';
-import { getCategories } from '@/services/categories';
 
 interface ArticleCardProps {
-  article: Article;
-  allCategories: any[];
+  article: NewsdataArticle;
 }
 
-export default function ArticleCard({ article, allCategories }: ArticleCardProps) {
-  const category = allCategories.find(c => article.categoryIds.includes(c.id));
+export default function ArticleCard({ article }: ArticleCardProps) {
 
   return (
     <Card className="flex flex-col h-full overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="p-0">
-        <Link href={`/article/${article.id}`} className="block">
+        <Link href={article.link} target="_blank" rel="noopener noreferrer" className="block">
           <div className="relative h-48 w-full">
             <Image
-              src={article.imageUrl || 'https://picsum.photos/seed/' + article.id + '/400/250'}
+              src={article.image_url || 'https://picsum.photos/seed/' + article.article_id + '/400/250'}
               alt={article.title}
               fill
               className="object-cover"
@@ -32,24 +29,24 @@ export default function ArticleCard({ article, allCategories }: ArticleCardProps
         </Link>
       </CardHeader>
       <CardContent className="flex-grow p-4">
-        {category && 
+        {article.category && 
             <div className="flex flex-wrap gap-2 mb-2">
-                <Badge variant="secondary">{category.name}</Badge>
+               {article.category.map(cat => <Badge key={cat} variant="secondary">{cat}</Badge>)}
             </div>
         }
         <CardTitle className="mb-2 text-xl leading-tight font-headline font-kannada">
-          <Link href={`/article/${article.id}`} className="hover:text-primary transition-colors">
+          <Link href={article.link} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
             {article.title}
           </Link>
         </CardTitle>
         <p className="text-muted-foreground text-sm font-kannada">
-          {article.content?.substring(0, 100) ?? 'No description available.'}...
+          {article.description?.substring(0, 100) ?? 'No description available.'}...
         </p>
       </CardContent>
       <CardFooter className="p-4 bg-muted/50 text-xs text-muted-foreground flex justify-end">
         <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            <span>{formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}</span>
+            <span>{formatDistanceToNow(new Date(article.pubDate), { addSuffix: true })}</span>
         </div>
       </CardFooter>
     </Card>

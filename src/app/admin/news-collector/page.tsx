@@ -26,22 +26,11 @@ export default function NewsCollectorPage() {
     }
 
     setIsLoading(true);
-    try {
-      const result = await collectNewsForDate({ date: date.toISOString() });
-      toast({
-        title: 'News Collection Complete',
-        description: `Successfully collected and stored ${result.articlesStored} new articles for ${format(date, 'PPP')}.`,
-      });
-    } catch (error) {
-      console.error('Failed to collect news:', error);
-      toast({
-        title: 'News Collection Failed',
-        description: error instanceof Error ? error.message : 'An unknown error occurred.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    toast({
+        title: 'Feature Not Active',
+        description: 'The news collection feature is currently disabled.',
+    });
+    setIsLoading(false);
   };
 
   return (
@@ -49,7 +38,7 @@ export default function NewsCollectorPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight font-headline">News Collector</h1>
         <p className="text-muted-foreground">
-          Fetch news articles from a specific date and store them in your database.
+          This feature for collecting news articles is currently disabled.
         </p>
       </div>
 
@@ -57,7 +46,7 @@ export default function NewsCollectorPage() {
         <CardHeader>
           <CardTitle>Select a Date</CardTitle>
           <CardDescription>
-            Choose a date to fetch news from. The collector will scan for articles and save new ones to your database.
+            Choose a date to fetch news from.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-6">
@@ -68,13 +57,9 @@ export default function NewsCollectorPage() {
             className="rounded-md border"
             disabled={(day) => day > new Date()}
           />
-          <Button onClick={handleCollectNews} disabled={isLoading || !date} className="w-full" size="lg">
-            {isLoading ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              <DownloadCloud className="mr-2 h-5 w-5" />
-            )}
-            {isLoading ? 'Collecting News...' : `Collect News for ${date ? format(date, 'PPP') : ''}`}
+          <Button onClick={handleCollectNews} disabled={true} className="w-full" size="lg">
+            <DownloadCloud className="mr-2 h-5 w-5" />
+            Collect News
           </Button>
         </CardContent>
       </Card>

@@ -52,16 +52,23 @@ export async function fetchNews(category?: string, district?: string, page?: str
 
     try {
         const response = await fetch(url.toString(), { cache: 'no-store' });
+        
+        if (response.status === 401) {
+            throw new Error(`Newsdata.io Error: Invalid API Key. Please check the key in your .env file.`);
+        }
+
         const data: NewsdataResponse = await response.json();
 
         if (data.status !== 'success') {
             console.error('Newsdata.io API non-success status:', data);
             
             const results = (data as any).results;
+            const errorMessage = results?.message || `API returned status: ${data.status}. Check Newsdata.io dashboard for issues.`;
+
             if (results?.code === 'Unauthorized') {
                  throw new Error(`Newsdata.io Error: Invalid API Key. Please check the key in your .env file.`);
             }
-            const errorMessage = results?.message || `API returned status: ${data.status}. Check Newsdata.io dashboard for issues.`;
+            
             throw new Error(errorMessage);
         }
 

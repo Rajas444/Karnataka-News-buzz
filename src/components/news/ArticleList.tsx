@@ -23,7 +23,7 @@ export default function ArticleList({ initialArticles, initialNextPage, category
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
     
-    // This effect resets the articles when the filters change.
+    // This effect resets the articles when the filters change by listening to the initial props.
     useEffect(() => {
         setArticles(initialArticles);
         setNextPage(initialNextPage);

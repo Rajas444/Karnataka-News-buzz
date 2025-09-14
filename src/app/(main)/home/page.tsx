@@ -24,7 +24,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   let initialArticles: NewsdataArticle[] = [];
   let nextPage: string | null = null;
   let error: string | null = null;
-  let topArticle: NewsdataArticle | undefined;
   let categories = [];
   let districts = [];
 
@@ -43,11 +42,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     const response = await fetchNews(category, district, null, selectedDate);
     initialArticles = response.articles;
     nextPage = response.nextPage;
-    topArticle = initialArticles[0];
   } catch (e: any) {
     error = e.message || 'An unknown error occurred.';
   }
   
+  const topArticle = initialArticles.length > 0 ? initialArticles[0] : undefined;
+  const otherArticles = initialArticles.length > 1 ? initialArticles.slice(1) : [];
+
   if (error && initialArticles.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -79,8 +80,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       </div>
     );
   }
-
-  const otherArticles = initialArticles.slice(1);
 
   return (
     <div className="container mx-auto px-4 py-8">

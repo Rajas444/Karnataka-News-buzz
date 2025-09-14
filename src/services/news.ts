@@ -55,22 +55,27 @@ export async function fetchNews(category?: string, district?: string, page?: str
 
         if (!response.ok) {
             let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+            
+            // Specifically handle 401 Unauthorized errors for clearer feedback
+            if (response.status === 401) {
+                errorMessage = 'Newsdata.io Error: Invalid API Key. Please check the key in your .env file.';
+                 throw new Error(errorMessage);
+            }
+
             try {
                 const errorBody = await response.json();
                 console.error('Newsdata.io API error response:', errorBody);
 
-                if (errorBody.results && errorBody.results.message) {
+                if (errorBody?.results?.message) {
                     errorMessage = errorBody.results.message;
-                } else if (typeof errorBody.results === 'string') {
+                } else if (typeof errorBody?.results === 'string') {
                     errorMessage = errorBody.results;
-                } else if (errorBody.message) {
+                } else if (errorBody?.message) {
                     errorMessage = errorBody.message;
                 }
             } catch (e) {
-                console.error('Could not parse Newsdata.io error response as JSON.');
-            }
-             if (response.status === 401) {
-                errorMessage = 'Newsdata.io Error: Invalid API Key. Please check the key in your .env file.';
+                // This catch block handles cases where the error response is not valid JSON
+                console.error('Could not parse Newsdata.io error response as JSON. The response may be empty or malformed.');
             }
             throw new Error(`Failed to fetch news: ${errorMessage}`);
         }

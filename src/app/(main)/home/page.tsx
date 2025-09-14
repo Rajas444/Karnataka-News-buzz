@@ -9,6 +9,7 @@ import ArticleList from '@/components/news/ArticleList';
 import FilterControls from '@/components/news/FilterControls';
 import { getCategories } from '@/services/categories';
 import CommunityHighlights from '@/components/posts/CommunityHighlights';
+import { getDistricts } from '@/services/districts';
 
 type HomePageProps = {
   searchParams?: {
@@ -23,12 +24,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   let error: string | null = null;
   let topArticle: NewsdataArticle | undefined;
   let categories = [];
+  let districts = [];
 
   const category = searchParams?.category;
   const district = searchParams?.district;
 
   try {
       categories = await getCategories();
+      districts = await getDistricts();
   } catch (e) {
       console.error("Failed to fetch filters data", e);
   }
@@ -46,7 +49,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     return (
       <div className="container mx-auto px-4 py-8">
         <section className="mb-8">
-          <FilterControls categories={categories} />
+          <FilterControls categories={categories} districts={districts} />
         </section>
         <div className="text-center bg-card p-8 rounded-lg">
           <h1 className="text-2xl font-bold mb-4 font-kannada">ಸುದ್ದಿ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</h1>
@@ -62,7 +65,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     return (
       <div className="container mx-auto px-4 py-8">
          <section className="mb-8">
-          <FilterControls categories={categories} />
+          <FilterControls categories={categories} districts={districts} />
         </section>
         <div className="text-center bg-card p-8 rounded-lg">
             <h1 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಸುದ್ದಿ ಲಭ್ಯವಿಲ್ಲ</h1>
@@ -81,7 +84,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       
       {/* Filters */}
       <section className="mb-12">
-          <FilterControls categories={categories} />
+          <FilterControls categories={categories} districts={districts} />
       </section>
 
       <div className="space-y-12">

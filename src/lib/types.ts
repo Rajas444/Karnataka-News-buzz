@@ -17,6 +17,12 @@ export interface Category {
   slug: string;
 }
 
+export interface District {
+  id: string;
+  name: string;
+}
+
+
 const articleSchema = z.object({
   id: z.string(),
   title: z.string(),

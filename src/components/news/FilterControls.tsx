@@ -2,7 +2,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { Category } from '@/lib/types';
+import type { Category, District } from '@/lib/types';
 import { Filter } from 'lucide-react';
 import {
   Select,
@@ -16,9 +16,10 @@ import { useCallback } from 'react';
 
 interface FilterControlsProps {
   categories: Category[];
+  districts: District[];
 }
 
-export default function FilterControls({ categories }: FilterControlsProps) {
+export default function FilterControls({ categories, districts }: FilterControlsProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -26,6 +27,7 @@ export default function FilterControls({ categories }: FilterControlsProps) {
   // Use category from URL slug if available, otherwise from search params
   const categorySlugFromPath = pathname.startsWith('/categories/') ? pathname.split('/')[2] : null;
   const selectedCategorySlug = categorySlugFromPath || searchParams.get('category') || 'general';
+  const selectedDistrict = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
     (paramsToUpdate: Record<string, string | null>) => {
@@ -44,12 +46,19 @@ export default function FilterControls({ categories }: FilterControlsProps) {
 
   const handleCategoryChange = (slug: string) => {
     const isGeneral = slug === 'general';
+    // When changing category, we preserve the district filter.
     const targetPath = isGeneral ? '/home' : `/categories/${slug}`;
     const newQueryString = createQueryString({ category: isGeneral ? null : slug });
     router.push(`${targetPath}?${newQueryString}`);
   };
 
+  const handleDistrictChange = (slug: string) => {
+     const newQueryString = createQueryString({ district: slug });
+     router.push(`${pathname}?${newQueryString}`);
+  };
+
   const allCategories = [{ id: 'general', name: 'All Categories', slug: 'general' }, ...categories];
+  const allDistricts = [{ id: 'all', name: 'All Districts' }, ...districts];
 
   return (
     <Card>
@@ -68,6 +77,21 @@ export default function FilterControls({ categories }: FilterControlsProps) {
                         {allCategories.map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
                                 {category.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+             <div className="flex-1">
+                 <label className="text-sm font-medium mb-2 block">District</label>
+                <Select onValueChange={handleDistrictChange} value={selectedDistrict}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select District" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {allDistricts.map((district) => (
+                            <SelectItem key={district.id} value={district.id}>
+                                {district.name}
                             </SelectItem>
                         ))}
                     </SelectContent>

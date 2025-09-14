@@ -10,6 +10,7 @@ import { getCategories } from '@/services/categories';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import FilterControls from '@/components/news/FilterControls';
+import { getDistricts } from '@/services/districts';
 
 
 type CategoryPageProps = {
@@ -29,9 +30,11 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   let nextPage: string | null = null;
   let error: string | null = null;
   let categories = [];
+  let districts = [];
 
   try {
       categories = await getCategories();
+      districts = await getDistricts();
   } catch(e) {
       console.error("Failed to load filter data", e);
   }
@@ -68,7 +71,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
 
             {/* Filters Section */}
             <section className="mb-12">
-                <FilterControls categories={categories} />
+                <FilterControls categories={categories} districts={districts} />
             </section>
             
             {!error && topArticle ? (

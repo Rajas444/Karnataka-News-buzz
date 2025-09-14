@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import type { NewsdataArticle } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
-import { Calendar, Globe } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
 interface ArticleCardProps {
   article: NewsdataArticle;
@@ -44,11 +44,7 @@ export default function ArticleCard({ article }: ArticleCardProps) {
           {article.description?.substring(0, 100) ?? 'No description available.'}...
         </p>
       </CardContent>
-      <CardFooter className="p-4 bg-muted/50 text-xs text-muted-foreground flex justify-between">
-        <div className="flex items-center gap-1">
-            <Globe className="h-3 w-3" />
-            <span>{article.source_id}</span>
-        </div>
+      <CardFooter className="p-4 bg-muted/50 text-xs text-muted-foreground flex justify-end">
         <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             <span>{formatDistanceToNow(new Date(article.pubDate), { addSuffix: true })}</span>

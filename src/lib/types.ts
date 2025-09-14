@@ -37,6 +37,8 @@ const articleSchema = z.object({
   publishedAt: z.date(),
   createdAt: z.date(),
   updatedAt: z.date(),
+  collectedDate: z.date().optional(), // New field
+  sourceUrl: z.string().url().optional(),
   seo: z.object({
     keywords: z.array(z.string()),
     metaDescription: z.string(),

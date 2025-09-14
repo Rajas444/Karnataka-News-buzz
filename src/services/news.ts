@@ -2,13 +2,14 @@
 'use server';
 
 import type { NewsdataArticle, NewsdataResponse } from '@/lib/types';
+import { format } from 'date-fns';
 
 type FetchNewsResponse = {
     articles: NewsdataArticle[];
     nextPage: string | null;
 }
 
-export async function fetchNews(category?: string, district?: string, page?: string | null): Promise<FetchNewsResponse> {
+export async function fetchNews(category?: string, district?: string, page?: string | null, date?: Date): Promise<FetchNewsResponse> {
     const apiKey = process.env.NEWSDATA_API_KEY;
     if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
         console.error('Newsdata.io API key is not set.');
@@ -38,6 +39,13 @@ export async function fetchNews(category?: string, district?: string, page?: str
         url.searchParams.append('category', category);
     }
     
+    if (date) {
+        // Newsdata.io seems to work best with YYYY-MM-DD for their date filters.
+        const formattedDate = format(date, 'yyyy-MM-dd');
+        url.searchParams.append('from_date', formattedDate);
+        url.searchParams.append('to_date', formattedDate);
+    }
+
     if (page) {
         url.searchParams.append('page', page);
     }

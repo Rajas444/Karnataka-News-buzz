@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Newspaper, LayoutDashboard, FileText, Tags, Map, BarChart2, LogOut, Settings, Users, Briefcase } from 'lucide-react';
+import { Newspaper, LayoutDashboard, FileText, Tags, Map, BarChart2, LogOut, Settings, Users, Briefcase, DownloadCloud } from 'lucide-react';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
 import AIChatWidget from '@/components/shared/AIChatWidget';
@@ -27,6 +27,7 @@ const navItems = [
   { href: '/admin/articles', label: 'Articles', icon: FileText },
   { href: '/admin/jobs', label: 'Jobs', icon: Briefcase },
   { href: '/admin/categories', label: 'Categories', icon: Tags },
+  { href: '/admin/news-collector', label: 'News Collector', icon: DownloadCloud },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/admin/settings', label: 'Settings', icon: Settings },

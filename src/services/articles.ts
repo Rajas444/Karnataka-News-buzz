@@ -5,6 +5,7 @@ import { db, storage } from '@/lib/firebase';
 import type { Article, ArticleFormValues } from '@/lib/types';
 import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
+import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 
 const articlesCollection = collection(db, 'articles');
 
@@ -20,8 +21,16 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
   let imagePath = '';
 
   if (data.imageUrl && data.imageUrl.startsWith('data:')) {
+
+    const watermarkedImageResult = await watermarkImage({
+      imageDataUri: data.imageUrl,
+      watermarkText: 'Karnataka News Pulse',
+    });
+    
+    const watermarkedImageDataUri = watermarkedImageResult.imageDataUri;
+
     const storageRef = ref(storage, `articles/${Date.now()}_${Math.random().toString(36).substring(2)}`);
-    const snapshot = await uploadString(storageRef, data.imageUrl, 'data_url');
+    const snapshot = await uploadString(storageRef, watermarkedImageDataUri, 'data_url');
     imageUrl = await getDownloadURL(snapshot.ref);
     imagePath = snapshot.ref.fullPath;
   }
@@ -108,13 +117,20 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
   let imagePath = data.imagePath || '';
 
   if (data.imageUrl && data.imageUrl.startsWith('data:')) {
+    
+    const watermarkedImageResult = await watermarkImage({
+      imageDataUri: data.imageUrl,
+      watermarkText: 'Karnataka News Pulse',
+    });
+    const watermarkedImageDataUri = watermarkedImageResult.imageDataUri;
+    
     if (imagePath) {
       // Delete old image
       const oldImageRef = ref(storage, imagePath);
       await deleteObject(oldImageRef).catch(e => console.warn("Old image not found, could not delete:", e.message));
     }
     const storageRef = ref(storage, `articles/${Date.now()}_${Math.random().toString(36).substring(2)}`);
-    const snapshot = await uploadString(storageRef, data.imageUrl, 'data_url');
+    const snapshot = await uploadString(storageRef, watermarkedImageDataUri, 'data_url');
     imageUrl = await getDownloadURL(snapshot.ref);
     imagePath = snapshot.ref.fullPath;
   }

@@ -66,7 +66,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 {category?.name || 'News'}
             </h1>
             <p className="text-muted-foreground text-lg mb-8">
-                Browsing the {category?.name || 'latest'} news for {format(selectedDate, 'PPP')}.
+                Browsing the {category?.name || 'latest'} news.
             </p>
             
             {error && !topArticle && (
@@ -115,7 +115,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 <div className="text-center py-12 bg-card rounded-lg mb-8">
                     <h2 className="text-2xl font-bold mb-4">No Articles Found</h2>
                     <p className="text-muted-foreground">
-                        We couldn't find any news for this category on the selected date. Please try another date.
+                        We couldn't find any news for this category. Please try a different filter.
                     </p>
                 </div>
             ) : null}

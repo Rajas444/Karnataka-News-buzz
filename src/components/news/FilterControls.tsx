@@ -57,8 +57,12 @@ export default function FilterControls({ categories, districts }: FilterControls
 
   const handleCategoryChange = (slug: string) => {
     const isGeneral = slug === 'general';
+    // When changing category, remove the district filter to avoid empty results
+    const newQueryString = createQueryString({ 
+        category: isGeneral ? null : slug,
+        district: null 
+    });
     const targetPath = isGeneral ? '/home' : `/categories/${slug}`;
-    const newQueryString = createQueryString({ category: isGeneral ? null : slug });
     router.push(`${targetPath}?${newQueryString}`);
   };
 
@@ -76,33 +80,7 @@ export default function FilterControls({ categories, districts }: FilterControls
             <Filter className="h-5 w-5" />
             <CardTitle className="font-headline text-2xl">Filter News</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-                 <label className="text-sm font-medium mb-2 block">Date</label>
-                 <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                        variant={"outline"}
-                        className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !selectedDate && "text-muted-foreground"
-                        )}
-                        >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                        <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={handleDateChange}
-                        initialFocus
-                        disabled={(day) => day > new Date()}
-                        />
-                    </PopoverContent>
-                </Popover>
-            </div>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                  <label className="text-sm font-medium mb-2 block">Category</label>
                 <Select onValueChange={handleCategoryChange} value={selectedCategorySlug}>

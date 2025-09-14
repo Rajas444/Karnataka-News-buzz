@@ -74,7 +74,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <div className="text-center bg-card p-8 rounded-lg">
             <h1 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಸುದ್ದಿ ಲಭ್ಯವಿಲ್ಲ</h1>
             <p className="text-muted-foreground font-kannada">
-              Please select a different date or check your news API.
+              Please try different filter options or check your news API.
             </p>
         </div>
       </div>

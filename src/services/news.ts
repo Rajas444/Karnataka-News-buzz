@@ -39,12 +39,12 @@ export async function fetchNews(category?: string, district?: string, page?: str
         url.searchParams.append('category', category);
     }
     
-    if (date) {
-        // Newsdata.io seems to work best with YYYY-MM-DD for their date filters.
-        const formattedDate = format(date, 'yyyy-MM-dd');
-        url.searchParams.append('from_date', formattedDate);
-        url.searchParams.append('to_date', formattedDate);
-    }
+    // The API plan does not support date filtering.
+    // if (date) {
+    //     const formattedDate = format(date, 'yyyy-MM-dd');
+    //     url.searchParams.append('from_date', formattedDate);
+    //     url.searchParams.append('to_date', formattedDate);
+    // }
 
     if (page) {
         url.searchParams.append('page', page);

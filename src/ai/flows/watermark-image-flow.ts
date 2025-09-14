@@ -10,7 +10,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { createCanvas, loadImage } from 'canvas';
 
 const WatermarkImageInputSchema = z.object({
   imageDataUri: z.string().describe(
@@ -38,35 +37,25 @@ const watermarkImageFlow = ai.defineFlow(
   },
   async ({ imageDataUri, watermarkText }) => {
     
-    const image = await loadImage(imageDataUri);
-    const canvas = createCanvas(image.width, image.height);
-    const ctx = canvas.getContext('2d');
+    // Use an image-to-image model to "draw" the watermark.
+    // This is more reliable in environments where canvas/native libraries are not available.
+    const { media } = await ai.generate({
+        model: 'googleai/gemini-2.5-flash-image-preview',
+        prompt: [
+            { media: { url: imageDataUri } },
+            { text: `Overlay the following text as a semi-transparent watermark on the bottom-right corner of this image: "${watermarkText}"` },
+        ],
+        config: {
+            responseModalities: ['IMAGE'],
+        },
+    });
 
-    // Draw the original image
-    ctx.drawImage(image, 0, 0);
+    if (!media?.url) {
+        // If the AI fails, return the original image to avoid breaking the upload process.
+        console.warn("Watermarking failed. Returning original image.");
+        return { imageDataUri };
+    }
 
-    // Prepare watermark text
-    const fontSize = Math.max(12, Math.min(image.width / 20, image.height / 15));
-    ctx.font = `bold ${fontSize}px Arial`;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'top';
-
-    // Add a slight shadow for better visibility
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-    ctx.shadowBlur = 5;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
-
-    // Draw text at top-right corner
-    ctx.fillText(watermarkText, canvas.width - 10, 10);
-    
-    // Also draw at bottom-left corner for good measure
-    ctx.textAlign = 'left';
-    ctx.fillText(watermarkText, 10, canvas.height - fontSize - 10);
-
-    const watermarkedImage = canvas.toDataURL(imageDataUri.split(';')[0].split(':')[1]);
-
-    return { imageDataUri: watermarkedImage };
+    return { imageDataUri: media.url };
   }
 );

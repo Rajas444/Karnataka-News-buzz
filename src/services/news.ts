@@ -52,53 +52,31 @@ export async function fetchNews(category?: string, district?: string, page?: str
 
     try {
         const response = await fetch(url.toString(), { cache: 'no-store' });
-
-        if (!response.ok) {
-            let errorMessage = `API Error: ${response.status} ${response.statusText}`;
-            
-            // Specifically handle 401 Unauthorized errors for clearer feedback
-            if (response.status === 401) {
-                errorMessage = 'Newsdata.io Error: Invalid API Key. Please check the key in your .env file.';
-                 throw new Error(errorMessage);
-            }
-
-            try {
-                const errorBody = await response.json();
-                console.error('Newsdata.io API error response:', errorBody);
-
-                if (errorBody?.results?.message) {
-                    errorMessage = errorBody.results.message;
-                } else if (typeof errorBody?.results === 'string') {
-                    errorMessage = errorBody.results;
-                } else if (errorBody?.message) {
-                    errorMessage = errorBody.message;
-                }
-            } catch (e) {
-                // This catch block handles cases where the error response is not valid JSON
-                console.error('Could not parse Newsdata.io error response as JSON. The response may be empty or malformed.');
-            }
-            throw new Error(`Failed to fetch news: ${errorMessage}`);
-        }
-
         const data: NewsdataResponse = await response.json();
 
         if (data.status !== 'success') {
             console.error('Newsdata.io API non-success status:', data);
-            if ((data as any).results?.code === 'Unauthorized') {
+            
+            const results = (data as any).results;
+            if (results?.code === 'Unauthorized') {
                  throw new Error(`Newsdata.io Error: Invalid API Key. Please check the key in your .env file.`);
             }
-            throw new Error(`API returned status: ${data.status}. Check Newsdata.io dashboard for issues.`);
+            const errorMessage = results?.message || `API returned status: ${data.status}. Check Newsdata.io dashboard for issues.`;
+            throw new Error(errorMessage);
         }
 
         return {
             articles: data.results || [],
             nextPage: data.nextPage || null,
         };
+
     } catch (error) {
         console.error("Failed to fetch news from Newsdata.io:", error);
         if (error instanceof Error) {
+            // Re-throw known errors to be displayed to the user
             throw error;
         }
+        // Fallback for unknown or network errors
         throw new Error('An unknown error occurred while fetching news.');
     }
 }

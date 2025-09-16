@@ -22,13 +22,13 @@ export default function ArticleList({ initialArticles, category, district }: Art
     const [allCategories, setAllCategories] = useState<{id: string, name: string}[]>([]);
     const [lastVisible, setLastVisible] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [hasMore, setHasMore] = useState(initialArticles.length > 0);
+    const [hasMore, setHasMore] = useState(true);
     const { toast } = useToast();
     
     // This effect runs when the filter props (initialArticles, category, district) change.
     useEffect(() => {
-        async function setupArticles() {
-            setArticles(initialArticles);
+        setArticles(initialArticles);
+        const setup = async () => {
             try {
                 // Fetch all available categories for the cards
                 const fetchedCategories = await getCategories();
@@ -47,8 +47,10 @@ export default function ArticleList({ initialArticles, category, district }: Art
                 console.error("Failed to setup article list", e);
                 toast({ title: 'Error initializing article list', variant: 'destructive' });
             }
-        }
-        setupArticles();
+        };
+        setup();
+    // By correctly specifying the dependencies, we prevent the infinite loop.
+    // The effect will only re-run if one of these props changes.
     }, [initialArticles, category, district, toast]);
 
 

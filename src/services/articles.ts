@@ -126,7 +126,7 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle): Promis
 export async function getArticles(options?: { 
     lastVisible?: any; 
     pageSize?: number;
-    category?: string;
+    category?: string; // This can be slug or ID
     district?: string;
 }): Promise<{ articles: Article[], lastVisible: any | null }> {
     
@@ -135,9 +135,10 @@ export async function getArticles(options?: {
 
     if (category && category !== 'general') {
         const allCategories = await getCategories();
-        const categoryId = allCategories.find(c => c.slug === category)?.id;
-        if (categoryId) {
-            constraints.push(where('categoryIds', 'array-contains', categoryId));
+        // Support both slug and ID for category filter
+        const categoryDoc = allCategories.find(c => c.slug === category || c.id === category);
+        if (categoryDoc) {
+            constraints.push(where('categoryIds', 'array-contains', categoryDoc.id));
         }
     }
 

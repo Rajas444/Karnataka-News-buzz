@@ -8,6 +8,7 @@ import type { Article } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { Calendar, ArrowRight } from 'lucide-react';
 import { useArticleModal } from '@/components/providers/article-modal-provider';
+import Link from 'next/link';
 
 interface ArticleCardProps {
   article: Article;
@@ -17,23 +18,26 @@ interface ArticleCardProps {
 export default function ArticleCard({ article, allCategories = [] }: ArticleCardProps) {
   const { onOpen } = useArticleModal();
   
-  const categories = article.categoryIds.map(catId => {
+  const categories = article.categoryIds?.map(catId => {
       return allCategories.find(c => c.id === catId)?.name || catId;
-  });
+  }) || [];
 
-  const handleCardClick = () => {
-    onOpen(article.id);
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevent default if it's a link, but we want the modal
+    if (article.id) {
+       e.preventDefault();
+       onOpen(article.id);
+    }
   };
 
-  return (
-    <Card 
+  const articleContent = (
+     <Card 
       className="flex flex-col h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
-      onClick={handleCardClick}
     >
       <CardHeader className="p-0">
         <div className="relative h-48 w-full">
             <Image
-              src={article.imageUrl || `https://picsum.photos/seed/${article.id}/400/250`}
+              src={article.imageUrl || `https://picsum.photos/seed/${article.id || Math.random()}/400/250`}
               alt={article.title}
               fill
               className="object-cover"
@@ -52,13 +56,13 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
             {article.title}
         </CardTitle>
         <p className="text-muted-foreground text-sm font-kannada">
-           {(article.seo?.metaDescription || article.content).substring(0, 100)}...
+           {(article.seo?.metaDescription || article.content || '').substring(0, 100)}...
         </p>
       </CardContent>
       <CardFooter className="p-4 bg-muted/50 text-xs text-muted-foreground flex justify-between items-center">
          <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            <span>{formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}</span>
+            <span>{article.publishedAt ? formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true }) : 'Just now'}</span>
         </div>
         <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1">
           Read More <ArrowRight className="h-3 w-3" />
@@ -66,4 +70,20 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
       </CardFooter>
     </Card>
   );
+
+  // If the article is from Firestore (has an ID), wrap it with a click handler for the modal.
+  // If it's an external article, wrap it in a link.
+  if (article.id) {
+    return (
+        <div onClick={handleCardClick} className="h-full">
+            {articleContent}
+        </div>
+    );
+  }
+
+  return (
+    <Link href={article.sourceUrl || '#'} target="_blank" rel="noopener noreferrer" className="h-full">
+        {articleContent}
+    </Link>
+  )
 }

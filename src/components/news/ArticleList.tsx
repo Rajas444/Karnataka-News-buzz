@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -25,34 +25,34 @@ export default function ArticleList({ initialArticles, category, district }: Art
     const [hasMore, setHasMore] = useState(initialArticles.length > 0);
     const { toast } = useToast();
     
-    // Reset articles when filters change
+    // This effect runs when the filter props (initialArticles, category, district) change.
     useEffect(() => {
-        setArticles(initialArticles);
-        setHasMore(initialArticles.length > 0);
-        // We will set the new `lastVisible` after the first fetch
-        setLastVisible(null);
-    }, [initialArticles]);
-    
-    useEffect(() => {
-        async function fetchInitialData() {
+        async function setupArticles() {
+            setArticles(initialArticles);
             try {
+                // Fetch all available categories for the cards
                 const fetchedCategories = await getCategories();
                 setAllCategories(fetchedCategories);
+                
+                // If we have initial articles, determine if there are more pages.
                 if (initialArticles.length > 0) {
-                     // We need to fetch the *next* page's context
                     const res = await getArticles({ category, district, pageSize: initialArticles.length });
                     setLastVisible(res.lastVisible);
                     setHasMore(!!res.lastVisible);
+                } else {
+                    setHasMore(false);
+                    setLastVisible(null);
                 }
             } catch(e) {
-                console.error("Failed to fetch initial article list data", e);
+                console.error("Failed to setup article list", e);
+                toast({ title: 'Error initializing article list', variant: 'destructive' });
             }
         }
-        fetchInitialData();
-    }, [initialArticles.length, category, district]);
+        setupArticles();
+    }, [initialArticles, category, district, toast]);
 
 
-    const handleLoadMore = async () => {
+    const handleLoadMore = useCallback(async () => {
         if (!hasMore || isLoading || !lastVisible) return;
 
         setIsLoading(true);
@@ -75,7 +75,7 @@ export default function ArticleList({ initialArticles, category, district }: Art
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [hasMore, isLoading, lastVisible, category, district, toast]);
 
     if (articles.length === 0) {
         return (
@@ -90,7 +90,7 @@ export default function ArticleList({ initialArticles, category, district }: Art
 
     return (
         <div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {articles.map((article) => (
                     <ArticleCard key={article.id} article={article} allCategories={allCategories} />
                 ))}
@@ -107,3 +107,4 @@ export default function ArticleList({ initialArticles, category, district }: Art
         </div>
     );
 }
+

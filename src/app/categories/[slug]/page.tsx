@@ -49,8 +49,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
 
   try {
     // Fetch from our database
-    const response = await getArticles({ category: category?.slug, district, pageSize: 20 });
-    articles = response.articles;
+    articles = await getArticles({ category: category?.slug, district, pageSize: 20 });
   } catch (e: any) {
       error = e.message || 'An unknown error occurred while fetching articles.';
   }

@@ -21,7 +21,7 @@ export default function RelatedArticles({ categoryId, currentArticleId }: Relate
     async function fetchRelated() {
       setLoading(true);
       try {
-        const { articles } = await getArticles({
+        const articles = await getArticles({
           category: categoryId,
           pageSize: 4, // Fetch 3 related + potentially the current one
         });

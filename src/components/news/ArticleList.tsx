@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -21,14 +22,14 @@ export default function ArticleList({ initialArticles, category, district }: Art
     const [articles, setArticles] = useState<Article[]>(initialArticles);
     const [allCategories, setAllCategories] = useState<{id: string, name: string}[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [hasMore, setHasMore] = useState(initialArticles.length === PAGE_SIZE);
+    const [hasMore, setHasMore] = useState(true);
     const { toast } = useToast();
     
     // This effect runs when the filters (category/district) change, resetting the list.
     useEffect(() => {
         setArticles(initialArticles);
-        setHasMore(initialArticles.length === PAGE_SIZE);
-    }, [initialArticles, category, district]);
+        setHasMore(initialArticles.length >= PAGE_SIZE -1); // Adjust for top article removal on parent
+    }, [initialArticles]);
     
     // This effect fetches the category names for display in the cards.
     useEffect(() => {

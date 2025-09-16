@@ -46,8 +46,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   try {
     // Now, fetch articles from our database
-    const { articles } = await getArticles({ category, district, pageSize: 20 });
-    initialArticles = articles;
+    initialArticles = await getArticles({ category, district, pageSize: 20 });
   } catch (e: any) {
      error = e.message || 'An unknown error occurred while fetching articles from the database.';
   }

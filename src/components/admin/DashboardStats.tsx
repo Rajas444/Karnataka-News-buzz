@@ -21,7 +21,7 @@ export default function DashboardStats() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const [{ articles }, categories, users] = await Promise.all([
+        const [articles, categories, users] = await Promise.all([
           getArticles({ pageSize: 1000 }), // Fetch all to get a count
           getCategories(),
           getUsers(),

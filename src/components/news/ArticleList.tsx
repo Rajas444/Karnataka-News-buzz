@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -9,6 +9,7 @@ import type { Article } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getArticles } from '@/services/articles';
 import { getCategories } from '@/services/categories';
+import { DocumentSnapshot } from 'firebase/firestore';
 
 
 interface ArticleListProps {
@@ -22,31 +23,26 @@ const PAGE_SIZE = 10;
 export default function ArticleList({ initialArticles, category, district }: ArticleListProps) {
     const [articles, setArticles] = useState<Article[]>(initialArticles);
     const [allCategories, setAllCategories] = useState<{id: string, name: string}[]>([]);
-    const [lastVisible, setLastVisible] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [hasMore, setHasMore] = useState(true);
+    const [hasMore, setHasMore] = useState(initialArticles.length >= PAGE_SIZE);
     const { toast } = useToast();
     
-    // This effect runs when the filter props (initialArticles, category, district) change.
+    // Use a ref to store the last visible document to prevent re-renders
+    const lastVisibleRef = useRef<DocumentSnapshot | null>(null);
+
     useEffect(() => {
         const setup = async () => {
             try {
-                // Fetch all available categories for the cards
                 const fetchedCategories = await getCategories();
                 setAllCategories(fetchedCategories);
-
-                // Reset articles and pagination state when filters change
                 setArticles(initialArticles);
+                setHasMore(initialArticles.length >= PAGE_SIZE);
 
-                // Determine if there are more articles to load
-                if (initialArticles.length < PAGE_SIZE) {
-                    setHasMore(false);
-                    setLastVisible(null);
-                } else {
-                    // Fetch the last visible document reference to prepare for the next page
+                if (initialArticles.length > 0) {
                     const res = await getArticles({ category, district, pageSize: initialArticles.length });
-                    setLastVisible(res.lastVisible);
-                    setHasMore(!!res.lastVisible);
+                    lastVisibleRef.current = res.lastVisible;
+                } else {
+                    lastVisibleRef.current = null;
                 }
             } catch(e) {
                 console.error("Failed to setup article list", e);
@@ -58,19 +54,19 @@ export default function ArticleList({ initialArticles, category, district }: Art
 
 
     const handleLoadMore = useCallback(async () => {
-        if (!hasMore || isLoading || !lastVisible) return;
+        if (!hasMore || isLoading) return;
 
         setIsLoading(true);
         try {
             const { articles: newArticles, lastVisible: newLastVisible } = await getArticles({
                 category,
                 district,
-                lastVisible,
+                lastVisible: lastVisibleRef.current,
                 pageSize: PAGE_SIZE
             });
             setArticles(prev => [...prev, ...newArticles]);
-            setLastVisible(newLastVisible);
-            setHasMore(!!newLastVisible && newArticles.length > 0 && newArticles.length === PAGE_SIZE);
+            lastVisibleRef.current = newLastVisible;
+            setHasMore(!!newLastVisible && newArticles.length >= PAGE_SIZE);
         } catch (error: any) {
             console.error("Failed to fetch more articles:", error);
             toast({
@@ -81,7 +77,7 @@ export default function ArticleList({ initialArticles, category, district }: Art
         } finally {
             setIsLoading(false);
         }
-    }, [hasMore, isLoading, lastVisible, category, district, toast]);
+    }, [hasMore, isLoading, category, district, toast]);
 
     if (articles.length === 0) {
         return (
@@ -113,4 +109,3 @@ export default function ArticleList({ initialArticles, category, district }: Art
         </div>
     );
 }
-

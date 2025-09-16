@@ -124,13 +124,13 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle): Promis
 
 // READ (all with pagination and filters)
 export async function getArticles(options?: { 
-    lastVisible?: any; 
+    startAfterId?: string; 
     pageSize?: number;
     category?: string; // This can be slug or ID
     district?: string;
-}): Promise<{ articles: Article[], lastVisible: any | null }> {
+}): Promise<Article[]> {
     
-    const { lastVisible, pageSize = 10, category, district } = options || {};
+    const { startAfterId, pageSize = 10, category, district } = options || {};
     const constraints: QueryConstraint[] = [];
 
     if (category && category !== 'general') {
@@ -148,8 +148,13 @@ export async function getArticles(options?: {
     
     constraints.push(orderBy('publishedAt', 'desc'));
     
-    if (lastVisible) {
-        constraints.push(startAfter(lastVisible));
+    if (startAfterId) {
+        const lastVisibleDoc = await getDoc(doc(articlesCollection, startAfterId));
+        if (lastVisibleDoc.exists()) {
+            constraints.push(startAfter(lastVisibleDoc));
+        } else {
+            console.warn(`Last visible document with id ${startAfterId} not found.`);
+        }
     }
     
     constraints.push(limit(pageSize));
@@ -168,9 +173,7 @@ export async function getArticles(options?: {
         } as Article;
     });
 
-    const newLastVisible = snapshot.docs[snapshot.docs.length - 1] || null;
-
-    return { articles, lastVisible: newLastVisible };
+    return articles;
 }
 
 

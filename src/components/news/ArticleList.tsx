@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -9,8 +8,6 @@ import type { Article } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getArticles } from '@/services/articles';
 import { getCategories } from '@/services/categories';
-import { DocumentSnapshot } from 'firebase/firestore';
-
 
 interface ArticleListProps {
     initialArticles: Article[];
@@ -24,49 +21,49 @@ export default function ArticleList({ initialArticles, category, district }: Art
     const [articles, setArticles] = useState<Article[]>(initialArticles);
     const [allCategories, setAllCategories] = useState<{id: string, name: string}[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [hasMore, setHasMore] = useState(initialArticles.length >= PAGE_SIZE);
+    const [hasMore, setHasMore] = useState(initialArticles.length === PAGE_SIZE);
     const { toast } = useToast();
     
-    // Use a ref to store the last visible document to prevent re-renders
-    const lastVisibleRef = useRef<DocumentSnapshot | null>(null);
-
+    // This effect runs when the filters (category/district) change, resetting the list.
     useEffect(() => {
-        const setup = async () => {
+        setArticles(initialArticles);
+        setHasMore(initialArticles.length === PAGE_SIZE);
+    }, [initialArticles, category, district]);
+    
+    // This effect fetches the category names for display in the cards.
+    useEffect(() => {
+        async function fetchCategories() {
             try {
                 const fetchedCategories = await getCategories();
                 setAllCategories(fetchedCategories);
-                setArticles(initialArticles);
-                setHasMore(initialArticles.length >= PAGE_SIZE);
-
-                if (initialArticles.length > 0) {
-                    const res = await getArticles({ category, district, pageSize: initialArticles.length });
-                    lastVisibleRef.current = res.lastVisible;
-                } else {
-                    lastVisibleRef.current = null;
-                }
             } catch(e) {
-                console.error("Failed to setup article list", e);
-                toast({ title: 'Error initializing article list', variant: 'destructive' });
+                console.error("Failed to fetch categories", e);
+                toast({ title: 'Error loading category data', variant: 'destructive' });
             }
         };
-        setup();
-    }, [initialArticles, category, district, toast]);
-
+        fetchCategories();
+    }, [toast]);
 
     const handleLoadMore = useCallback(async () => {
         if (!hasMore || isLoading) return;
 
         setIsLoading(true);
         try {
-            const { articles: newArticles, lastVisible: newLastVisible } = await getArticles({
+            const lastArticleId = articles.length > 0 ? articles[articles.length - 1].id : undefined;
+
+            const newArticles = await getArticles({
                 category,
                 district,
-                lastVisible: lastVisibleRef.current,
+                startAfterId: lastArticleId,
                 pageSize: PAGE_SIZE
             });
-            setArticles(prev => [...prev, ...newArticles]);
-            lastVisibleRef.current = newLastVisible;
-            setHasMore(!!newLastVisible && newArticles.length >= PAGE_SIZE);
+
+            if (newArticles.length > 0) {
+                setArticles(prev => [...prev, ...newArticles]);
+            }
+            
+            setHasMore(newArticles.length === PAGE_SIZE);
+
         } catch (error: any) {
             console.error("Failed to fetch more articles:", error);
             toast({
@@ -77,7 +74,7 @@ export default function ArticleList({ initialArticles, category, district }: Art
         } finally {
             setIsLoading(false);
         }
-    }, [hasMore, isLoading, category, district, toast]);
+    }, [hasMore, isLoading, articles, category, district, toast]);
 
     if (articles.length === 0) {
         return (

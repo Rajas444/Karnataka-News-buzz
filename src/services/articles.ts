@@ -132,23 +132,28 @@ export async function getArticles(options?: {
     
     const { startAfterId, pageSize = 10, category, district } = options || {};
     const constraints: QueryConstraint[] = [];
+    
+    let isFiltered = false;
 
     // Firestore Limitation: Cannot use inequality filters on more than one field.
-    // We are ordering by 'publishedAt' (an inequality), so we can only use one 'where' filter for equality.
-    // To avoid needing a composite index for every combination, we will prioritize category over district.
+    // So if we filter, we can't sort by 'publishedAt'.
     if (category && category !== 'general') {
         const allCategories = await getCategories();
-        // Support both slug and ID for category filter
         const categoryDoc = allCategories.find(c => c.slug === category || c.id === category);
         if (categoryDoc) {
             constraints.push(where('categoryIds', 'array-contains', categoryDoc.id));
+            isFiltered = true;
         }
     } else if (district && district !== 'all') {
-        // This 'else if' is crucial. We only apply the district filter if no category is applied.
         constraints.push(where('district', '==', district));
+        isFiltered = true;
     }
     
-    constraints.push(orderBy('publishedAt', 'desc'));
+    // Only order by 'publishedAt' if we are not filtering.
+    // This avoids the need for a composite index on every category/district.
+    if (!isFiltered) {
+        constraints.push(orderBy('publishedAt', 'desc'));
+    }
     
     if (startAfterId) {
         const lastVisibleDoc = await getDoc(doc(articlesCollection, startAfterId));
@@ -178,8 +183,6 @@ export async function getArticles(options?: {
 
         return articles;
     } catch (error: any) {
-        // If an index is still missing, Firestore will throw an error.
-        // We catch it and re-throw it with a more user-friendly message.
         if (error.code === 'failed-precondition') {
              throw new Error(`The query requires an index. You can create it here: ${error.message.substring(error.message.indexOf('https://'))}`);
         }

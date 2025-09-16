@@ -62,9 +62,9 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
   return { 
     id: docRef.id, 
     ...newArticle,
-    publishedAt: (newArticle?.publishedAt as Timestamp).toDate(),
-    createdAt: (newArticle?.createdAt as Timestamp).toDate(),
-    updatedAt: (newArticle?.updatedAt as Timestamp).toDate(),
+    publishedAt: (newArticle?.publishedAt as Timestamp)?.toDate(),
+    createdAt: (newArticle?.createdAt as Timestamp)?.toDate(),
+    updatedAt: (newArticle?.updatedAt as Timestamp)?.toDate(),
   } as Article;
 }
 
@@ -181,12 +181,13 @@ export async function getArticle(id: string): Promise<Article | null> {
 
   if (docSnap.exists()) {
     const data = docSnap.data();
+    // Safely convert timestamps to dates, only if they exist
     return {
         id: docSnap.id,
         ...data,
-        publishedAt: (data.publishedAt as Timestamp)?.toDate(),
-        createdAt: (data.createdAt as Timestamp)?.toDate(),
-        updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+        publishedAt: data.publishedAt ? (data.publishedAt as Timestamp).toDate() : null,
+        createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : null,
+        updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : null,
     } as Article;
   } else {
     return null;

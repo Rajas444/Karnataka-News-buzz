@@ -133,6 +133,9 @@ export async function getArticles(options?: {
     const { startAfterId, pageSize = 10, category, district } = options || {};
     const constraints: QueryConstraint[] = [];
 
+    // Firestore Limitation: Cannot use inequality filters on more than one field.
+    // We are ordering by 'publishedAt' (an inequality), so we can only use one 'where' filter for equality.
+    // To avoid needing a composite index for every combination, we will prioritize category over district.
     if (category && category !== 'general') {
         const allCategories = await getCategories();
         // Support both slug and ID for category filter
@@ -140,9 +143,8 @@ export async function getArticles(options?: {
         if (categoryDoc) {
             constraints.push(where('categoryIds', 'array-contains', categoryDoc.id));
         }
-    }
-
-    if (district && district !== 'all') {
+    } else if (district && district !== 'all') {
+        // This 'else if' is crucial. We only apply the district filter if no category is applied.
         constraints.push(where('district', '==', district));
     }
     
@@ -161,19 +163,28 @@ export async function getArticles(options?: {
     
     const q = query(articlesCollection, ...constraints);
 
-    const snapshot = await getDocs(q);
-    const articles = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            ...data,
-            publishedAt: (data.publishedAt as Timestamp)?.toDate(),
-            createdAt: (data.createdAt as Timestamp)?.toDate(),
-            updatedAt: (data.updatedAt as Timestamp)?.toDate(),
-        } as Article;
-    });
+    try {
+        const snapshot = await getDocs(q);
+        const articles = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                publishedAt: (data.publishedAt as Timestamp)?.toDate(),
+                createdAt: (data.createdAt as Timestamp)?.toDate(),
+                updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+            } as Article;
+        });
 
-    return articles;
+        return articles;
+    } catch (error: any) {
+        // If an index is still missing, Firestore will throw an error.
+        // We catch it and re-throw it with a more user-friendly message.
+        if (error.code === 'failed-precondition') {
+             throw new Error(`The query requires an index. You can create it here: ${error.message.substring(error.message.indexOf('https://'))}`);
+        }
+        throw error;
+    }
 }
 
 

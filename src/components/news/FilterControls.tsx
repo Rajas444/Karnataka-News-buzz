@@ -45,7 +45,7 @@ export default function FilterControls({ categories, districts }: FilterControls
 
   const handleCategoryChange = (slug: string) => {
     const isGeneral = slug === 'general';
-    // When changing category, remove the district filter to avoid empty results
+    // When changing category, remove the district filter to avoid requiring a composite index.
     const newQueryString = createQueryString({ 
         category: isGeneral ? null : slug,
         district: null 
@@ -55,8 +55,11 @@ export default function FilterControls({ categories, districts }: FilterControls
   };
 
   const handleDistrictChange = (slug: string) => {
-     const newQueryString = createQueryString({ district: slug });
-     router.push(`${pathname}?${newQueryString}`);
+     // If a user selects a district, we must clear the category path to avoid a composite index query.
+     const isAllDistricts = slug === 'all';
+     const newQueryString = createQueryString({ district: isAllDistricts ? null : slug });
+     const targetPath = pathname.startsWith('/categories/') ? '/home' : pathname;
+     router.push(`${targetPath}?${newQueryString}`);
   };
 
   const allCategories = [{ id: 'general', name: 'All Categories', slug: 'general' }, ...categories];

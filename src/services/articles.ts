@@ -2,10 +2,11 @@
 'use server';
 
 import { db, storage } from '@/lib/firebase';
-import type { Article, ArticleFormValues } from '@/lib/types';
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint, Timestamp, limit, startAfter } from 'firebase/firestore';
+import type { Article, ArticleFormValues, NewsdataArticle } from '@/lib/types';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint, Timestamp, limit, startAfter, writeBatch } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
+import { getCategories } from './categories';
 
 const articlesCollection = collection(db, 'articles');
 
@@ -42,7 +43,8 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
     ...restOfData,
     imageUrl,
     imagePath,
-    publishedAt: data.publishedAt ? new Date(data.publishedAt) : serverTimestamp(),
+    status: data.status || 'draft',
+    publishedAt: data.publishedAt ? Timestamp.fromDate(new Date(data.publishedAt)) : serverTimestamp(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     views: 0,
@@ -54,23 +56,104 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
     }
   });
 
-  return { id: docRef.id, ...data, imageUrl, publishedAt: new Date() } as Article;
+  const docSnap = await getDoc(docRef);
+  const newArticle = docSnap.data();
+
+  return { 
+    id: docRef.id, 
+    ...newArticle,
+    publishedAt: (newArticle?.publishedAt as Timestamp).toDate(),
+    createdAt: (newArticle?.createdAt as Timestamp).toDate(),
+    updatedAt: (newArticle?.updatedAt as Timestamp).toDate(),
+  } as Article;
 }
 
 
-// READ (all with pagination)
-export async function getArticles(options?: { lastVisible?: any; pageSize?: number }): Promise<{ articles: Article[], lastVisible: any | null }> {
+// STORE (from external API)
+export async function storeCollectedArticle(apiArticle: NewsdataArticle): Promise<string | null> {
     
+    // 1. Check if article already exists
+    const q = query(articlesCollection, where('sourceUrl', '==', apiArticle.link), limit(1));
+    const existing = await getDocs(q);
+    if (!existing.empty) {
+        // console.log(`Article already exists: ${apiArticle.link}`);
+        return existing.docs[0].id; // Return existing article ID
+    }
+
+    // 2. Map categories
+    const allCategories = await getCategories();
+    const categoryIds = apiArticle.category.map(apiCat => {
+        const found = allCategories.find(c => c.name.toLowerCase() === apiCat.toLowerCase() || c.slug === apiCat.toLowerCase());
+        return found?.id;
+    }).filter((id): id is string => !!id);
+
+
+    // 3. Create article object
+    const newArticle: Omit<Article, 'id' | 'createdAt' | 'updatedAt'> = {
+        title: apiArticle.title,
+        content: apiArticle.content || apiArticle.description || 'No content available.',
+        imageUrl: apiArticle.image_url,
+        author: apiArticle.creator?.join(', ') || apiArticle.source_id,
+        authorId: apiArticle.source_id,
+        categoryIds: categoryIds.length > 0 ? categoryIds : [allCategories.find(c => c.slug === 'general')?.id || 'general'],
+        status: 'published',
+        publishedAt: Timestamp.fromDate(new Date(apiArticle.pubDate)),
+        sourceUrl: apiArticle.link,
+        seo: {
+            keywords: apiArticle.keywords || [],
+            metaDescription: apiArticle.description || '',
+        },
+        views: 0,
+        district: null, // This can be enhanced with location extraction
+    };
+
+    // 4. Save to Firestore
+    try {
+        const docRef = await addDoc(articlesCollection, {
+            ...newArticle,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        });
+        return docRef.id;
+    } catch (error) {
+        console.error("Error storing collected article:", error);
+        return null;
+    }
+}
+
+
+// READ (all with pagination and filters)
+export async function getArticles(options?: { 
+    lastVisible?: any; 
+    pageSize?: number;
+    category?: string;
+    district?: string;
+}): Promise<{ articles: Article[], lastVisible: any | null }> {
+    
+    const { lastVisible, pageSize = 10, category, district } = options || {};
     const constraints: QueryConstraint[] = [];
-    const pageSize = options?.pageSize || 10;
 
-    let q = query(articlesCollection, orderBy('publishedAt', 'desc'), limit(pageSize));
+    if (category && category !== 'general') {
+        const allCategories = await getCategories();
+        const categoryId = allCategories.find(c => c.slug === category)?.id;
+        if (categoryId) {
+            constraints.push(where('categoryIds', 'array-contains', categoryId));
+        }
+    }
 
-    if (options?.lastVisible) {
-        constraints.push(startAfter(options.lastVisible));
+    if (district && district !== 'all') {
+        constraints.push(where('district', '==', district));
     }
     
-    q = query(articlesCollection, ...constraints, orderBy('publishedAt', 'desc'), limit(pageSize));
+    constraints.push(orderBy('publishedAt', 'desc'));
+    
+    if (lastVisible) {
+        constraints.push(startAfter(lastVisible));
+    }
+    
+    constraints.push(limit(pageSize));
+    
+    const q = query(articlesCollection, ...constraints);
 
     const snapshot = await getDocs(q);
     const articles = snapshot.docs.map(doc => {
@@ -78,15 +161,15 @@ export async function getArticles(options?: { lastVisible?: any; pageSize?: numb
         return {
             id: doc.id,
             ...data,
-            publishedAt: data.publishedAt?.toDate(),
-            createdAt: data.createdAt?.toDate(),
-            updatedAt: data.updatedAt?.toDate(),
+            publishedAt: (data.publishedAt as Timestamp)?.toDate(),
+            createdAt: (data.createdAt as Timestamp)?.toDate(),
+            updatedAt: (data.updatedAt as Timestamp)?.toDate(),
         } as Article;
     });
 
-    const lastVisible = snapshot.docs[snapshot.docs.length - 1] || null;
+    const newLastVisible = snapshot.docs[snapshot.docs.length - 1] || null;
 
-    return { articles, lastVisible };
+    return { articles, lastVisible: newLastVisible };
 }
 
 
@@ -100,9 +183,9 @@ export async function getArticle(id: string): Promise<Article | null> {
     return {
         id: docSnap.id,
         ...data,
-        publishedAt: data.publishedAt?.toDate(),
-        createdAt: data.createdAt?.toDate(),
-        updatedAt: data.updatedAt?.toDate(),
+        publishedAt: (data.publishedAt as Timestamp)?.toDate(),
+        createdAt: (data.createdAt as Timestamp)?.toDate(),
+        updatedAt: (data.updatedAt as Timestamp)?.toDate(),
     } as Article;
   } else {
     return null;
@@ -140,7 +223,7 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
     ...restOfData,
     imageUrl,
     imagePath,
-    publishedAt: data.publishedAt ? new Date(data.publishedAt) : serverTimestamp(),
+    publishedAt: data.publishedAt ? Timestamp.fromDate(new Date(data.publishedAt)) : serverTimestamp(),
     updatedAt: serverTimestamp(),
      seo: {
       keywords: data.seoKeywords?.split(',').map(k => k.trim()) || [],
@@ -148,7 +231,16 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
     }
   });
 
-  return { id, ...data, imageUrl } as Article;
+  const updatedDoc = await getDoc(docRef);
+  const updatedData = updatedDoc.data();
+
+  return { 
+    id, 
+    ...updatedData,
+    publishedAt: (updatedData?.publishedAt as Timestamp).toDate(),
+    createdAt: (updatedData?.createdAt as Timestamp).toDate(),
+    updatedAt: (updatedData?.updatedAt as Timestamp).toDate(),
+ } as Article;
 }
 
 

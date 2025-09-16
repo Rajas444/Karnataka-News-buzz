@@ -33,16 +33,17 @@ const articleSchema = z.object({
   author: z.string(),
   authorId: z.string(),
   categoryIds: z.array(z.string()),
-  status: z.enum(['published', 'draft', 'scheduled']),
-  publishedAt: z.date(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-  sourceUrl: z.string().url().optional(),
+  status: z.enum(['published', 'draft', 'scheduled', 'archived']),
+  publishedAt: z.any(), // Can be Date or Firebase Timestamp
+  createdAt: z.any(),
+  updatedAt: z.any(),
+  sourceUrl: z.string().url().optional().nullable(),
   seo: z.object({
     keywords: z.array(z.string()),
     metaDescription: z.string(),
   }),
   views: z.number(),
+  district: z.string().optional().nullable(),
 });
 
 export type Article = z.infer<typeof articleSchema>;
@@ -72,6 +73,11 @@ export interface NewsdataArticle {
   pubDate: string;
   source_id: string;
   category: string[];
+  country: string[];
+  language: string;
+  creator: string[] | null;
+  content: string | null;
+  keywords: string[] | null;
 }
 
 export interface NewsdataResponse {

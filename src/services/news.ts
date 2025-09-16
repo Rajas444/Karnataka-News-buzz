@@ -2,13 +2,10 @@
 'use server';
 
 import type { NewsdataArticle, NewsdataResponse } from '@/lib/types';
+import { storeCollectedArticle } from './articles';
 
-type FetchNewsResponse = {
-    articles: NewsdataArticle[];
-    nextPage: string | null;
-}
 
-export async function fetchNews(category?: string, district?: string, page?: string | null): Promise<FetchNewsResponse> {
+export async function fetchAndStoreNews(category?: string, district?: string): Promise<void> {
     const apiKey = process.env.NEWSDATA_API_KEY;
     if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
         console.error('Newsdata.io API key is not set.');
@@ -22,7 +19,6 @@ export async function fetchNews(category?: string, district?: string, page?: str
 
     const queryParts: string[] = [];
     
-    // Always include Karnataka for relevance, unless a very specific district is chosen
     if (district && district !== 'all') {
         queryParts.push(district);
     } else {
@@ -30,7 +26,6 @@ export async function fetchNews(category?: string, district?: string, page?: str
     }
     
     if (queryParts.length > 0) {
-        // Use "OR" for broader results if desired, but "AND" is better for filtering
         url.searchParams.append('q', queryParts.join(' AND '));
     }
 
@@ -38,42 +33,43 @@ export async function fetchNews(category?: string, district?: string, page?: str
         url.searchParams.append('category', category);
     }
     
-
-    if (page) {
-        url.searchParams.append('page', page);
-    }
-
+    // We only fetch the first page to get the latest news
+    // Pagination will be handled by our own database reads
     try {
-        const response = await fetch(url.toString(), { cache: 'no-store' });
+        const response = await fetch(url.toString(), { next: { revalidate: 3600 } }); // Cache for 1 hour
         
-        if (response.status === 401) {
-            throw new Error(`Newsdata.io Error: Invalid API Key. Please check the key in your .env file.`);
+        if (!response.ok) {
+             if (response.status === 401) {
+                throw new Error(`Newsdata.io Error: Invalid API Key. Please check the key in your .env file.`);
+            }
+             const errorData = await response.json().catch(() => ({}));
+             const errorMessage = errorData?.results?.message || `API request failed with status ${response.status}`;
+             if (errorData?.results?.code === 'TooManyRequests') {
+                throw new Error('Newsdata.io API rate limit exceeded. Please try again later.');
+             }
+             throw new Error(`Newsdata.io Error: ${errorMessage}`);
         }
 
         const data: NewsdataResponse = await response.json();
 
         if (data.status !== 'success') {
-            console.error('Newsdata.io API non-success status:', data);
-            
-            const results = (data as any).results;
-            let errorMessage = `API returned status: ${data.status}. Check Newsdata.io dashboard for issues.`;
-
-            if (results?.code === 'Unauthorized') {
+             const results = (data as any).results;
+             let errorMessage = `API returned status: ${data.status}. Check Newsdata.io dashboard for issues.`;
+             if (results?.code === 'Unauthorized') {
                  errorMessage = `Newsdata.io Error: Invalid API Key. Please check the key in your .env file.`;
-            } else if (results?.message) {
+             } else if (results?.message) {
                  errorMessage = `Newsdata.io Error: ${results.message}`;
-            }
-            
+             }
             throw new Error(errorMessage);
         }
 
-        return {
-            articles: data.results || [],
-            nextPage: data.nextPage || null,
-        };
+        if (data.results && data.results.length > 0) {
+            // Asynchronously store all fetched articles
+            await Promise.all(data.results.map(article => storeCollectedArticle(article)));
+        }
 
     } catch (error) {
-        console.error("Failed to fetch news from Newsdata.io:", error);
+        console.error("Failed to fetch or store news from Newsdata.io:", error);
         if (error instanceof Error) {
             // Re-throw known errors to be displayed to the user
             throw error;

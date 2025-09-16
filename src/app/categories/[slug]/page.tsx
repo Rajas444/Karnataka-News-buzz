@@ -1,5 +1,5 @@
 
-import type { NewsdataArticle } from '@/lib/types';
+import type { Article } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
 import MainLayout from '@/app/(main)/layout';
 import Image from 'next/image';
@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import FilterControls from '@/components/news/FilterControls';
 import { getDistricts } from '@/services/districts';
-import { fetchNews } from '@/services/news';
+import { fetchAndStoreNews } from '@/services/news';
+import { getArticles } from '@/services/articles';
 
 
 type CategoryPageProps = {
@@ -25,8 +26,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const categorySlug = params.slug;
   const district = searchParams?.district;
 
-  let articles: NewsdataArticle[] = [];
-  let nextPage: string | null = null;
+  let articles: Article[] = [];
   let error: string | null = null;
   let categories = [];
   let districts = [];
@@ -41,18 +41,21 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const category = categories.find(c => c.slug === categorySlug);
 
   try {
-      const response = await fetchNews(
-          category?.slug, 
-          district,
-          null,
-      );
-      articles = response.articles;
-      nextPage = response.nextPage;
+    // Attempt to fetch and store new articles
+    await fetchAndStoreNews(category?.slug, district);
   } catch (e: any) {
-      error = e.message || 'An unknown error occurred.';
+    console.warn("Could not fetch fresh news for category, will show existing.", e.message);
   }
 
-  const topArticle: NewsdataArticle | undefined = articles[0];
+  try {
+    // Fetch from our database
+    const response = await getArticles({ category: category?.slug, district, pageSize: 20 });
+    articles = response.articles;
+  } catch (e: any) {
+      error = e.message || 'An unknown error occurred while fetching articles.';
+  }
+
+  const topArticle: Article | undefined = articles[0];
   const initialArticles = articles.slice(1);
 
   return (
@@ -84,7 +87,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-card p-8 rounded-lg shadow-lg">
                     <div className="relative h-64 md:h-96 rounded-lg overflow-hidden">
                         <Image
-                        src={topArticle.image_url || 'https://picsum.photos/800/600'}
+                        src={topArticle.imageUrl || 'https://picsum.photos/800/600'}
                         alt={topArticle.title}
                         fill
                         className="object-cover"
@@ -96,10 +99,10 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                         {topArticle.title}
                         </h2>
                         <p className="text-muted-foreground text-lg mb-6">
-                        {topArticle.description?.substring(0, 150) ?? 'No description available.'}...
+                        {(topArticle.seo.metaDescription || topArticle.content).substring(0, 150)}...
                         </p>
                         <Button asChild size="lg">
-                        <Link href={`/news/${topArticle.article_id}`}>
+                        <Link href={`/article/${topArticle.id}`}>
                             Read More <ArrowRight className="ml-2 h-5 w-5" />
                         </Link>
                         </Button>
@@ -126,7 +129,6 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                     </div>
                     <ArticleList 
                         initialArticles={initialArticles} 
-                        initialNextPage={nextPage}
                         category={category?.slug}
                         district={district}
                     />

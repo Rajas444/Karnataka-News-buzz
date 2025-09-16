@@ -12,11 +12,12 @@ interface ArticleCardProps {
 }
 
 export default function ArticleCard({ article }: ArticleCardProps) {
+  const articleUrl = `/news/${article.article_id}`;
 
   return (
     <Card className="flex flex-col h-full overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="p-0">
-        <Link href={article.link} target="_blank" rel="noopener noreferrer" className="block">
+        <Link href={articleUrl} className="block">
           <div className="relative h-48 w-full">
             <Image
               src={article.image_url || 'https://picsum.photos/seed/' + article.article_id + '/400/250'}
@@ -35,7 +36,7 @@ export default function ArticleCard({ article }: ArticleCardProps) {
             </div>
         }
         <CardTitle className="mb-2 text-xl leading-tight font-headline font-kannada">
-          <Link href={article.link} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+          <Link href={articleUrl} className="hover:text-primary transition-colors">
             {article.title}
           </Link>
         </CardTitle>
@@ -43,11 +44,14 @@ export default function ArticleCard({ article }: ArticleCardProps) {
           {article.description?.substring(0, 100) ?? 'No description available.'}...
         </p>
       </CardContent>
-      <CardFooter className="p-4 bg-muted/50 text-xs text-muted-foreground flex justify-end">
-        <div className="flex items-center gap-1">
+      <CardFooter className="p-4 bg-muted/50 text-xs text-muted-foreground flex justify-between items-center">
+         <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             <span>{formatDistanceToNow(new Date(article.pubDate), { addSuffix: true })}</span>
         </div>
+        <Link href={articleUrl} className="text-primary hover:underline text-xs font-semibold">
+          Read More &rarr;
+        </Link>
       </CardFooter>
     </Card>
   );

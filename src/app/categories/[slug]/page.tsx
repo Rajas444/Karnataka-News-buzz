@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import FilterControls from '@/components/news/FilterControls';
 import { getDistricts } from '@/services/districts';
-import { format } from 'date-fns';
 import { fetchNews } from '@/services/news';
 
 
@@ -19,14 +18,12 @@ type CategoryPageProps = {
   };
   searchParams?: {
     district?: string;
-    date?: string;
   };
 };
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const categorySlug = params.slug;
   const district = searchParams?.district;
-  const selectedDate = searchParams?.date ? new Date(searchParams.date) : new Date();
 
   let articles: NewsdataArticle[] = [];
   let nextPage: string | null = null;
@@ -48,7 +45,6 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
           category?.slug, 
           district,
           null,
-          selectedDate, 
       );
       articles = response.articles;
       nextPage = response.nextPage;
@@ -103,7 +99,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                         {topArticle.description?.substring(0, 150) ?? 'No description available.'}...
                         </p>
                         <Button asChild size="lg">
-                        <Link href={topArticle.link} target='_blank' rel='noopener noreferrer'>
+                        <Link href={`/news/${topArticle.article_id}`}>
                             Read More <ArrowRight className="ml-2 h-5 w-5" />
                         </Link>
                         </Button>
@@ -133,7 +129,6 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                         initialNextPage={nextPage}
                         category={category?.slug}
                         district={district}
-                        date={selectedDate}
                     />
                 </section>
             )}

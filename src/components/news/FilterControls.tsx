@@ -3,7 +3,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { Category, District } from '@/lib/types';
-import { Filter, Calendar as CalendarIcon } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -11,13 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { useCallback } from 'react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 
 interface FilterControlsProps {
   categories: Category[];
@@ -32,7 +27,6 @@ export default function FilterControls({ categories, districts }: FilterControls
   const categorySlugFromPath = pathname.startsWith('/categories/') ? pathname.split('/')[2] : null;
   const selectedCategorySlug = categorySlugFromPath || searchParams.get('category') || 'general';
   const selectedDistrict = searchParams.get('district') || 'all';
-  const selectedDate = searchParams.get('date') ? new Date(searchParams.get('date')!) : new Date();
 
   const createQueryString = useCallback(
     (paramsToUpdate: Record<string, string | null>) => {
@@ -48,12 +42,6 @@ export default function FilterControls({ categories, districts }: FilterControls
     },
     [searchParams]
   );
-
-  const handleDateChange = (date: Date | undefined) => {
-    if (!date) return;
-    const newQueryString = createQueryString({ date: format(date, 'yyyy-MM-dd') });
-    router.push(`${pathname}?${newQueryString}`);
-  };
 
   const handleCategoryChange = (slug: string) => {
     const isGeneral = slug === 'general';

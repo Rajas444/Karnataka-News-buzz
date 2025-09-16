@@ -14,10 +14,9 @@ interface ArticleListProps {
     initialNextPage: string | null;
     category?: string;
     district?: string;
-    date?: Date;
 }
 
-export default function ArticleList({ initialArticles, initialNextPage, category, district, date }: ArticleListProps) {
+export default function ArticleList({ initialArticles, initialNextPage, category, district }: ArticleListProps) {
     const [articles, setArticles] = useState<NewsdataArticle[]>(initialArticles);
     const [nextPage, setNextPage] = useState<string | null>(initialNextPage);
     const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +38,6 @@ export default function ArticleList({ initialArticles, initialNextPage, category
                 category,
                 district,
                 nextPage,
-                date
             );
             setArticles(prev => [...prev, ...newArticles]);
             setNextPage(newNextPage);
@@ -55,19 +53,24 @@ export default function ArticleList({ initialArticles, initialNextPage, category
         }
     };
 
+    if (articles.length === 0) {
+        return (
+            <div className="text-center py-12 bg-card rounded-lg">
+                <h2 className="text-2xl font-bold mb-4 font-kannada">No Articles Found</h2>
+                <p className="text-muted-foreground font-kannada">
+                    There are no articles available for the selected filters. Please try again later.
+                </p>
+            </div>
+        );
+    }
+
     return (
         <div>
-            {articles.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {articles.map((article) => (
-                        <ArticleCard key={article.article_id} article={article} />
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-12 bg-card rounded-lg">
-                    <p className="text-muted-foreground">No more articles found for the selected filters.</p>
-                </div>
-            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {articles.map((article) => (
+                    <ArticleCard key={article.article_id} article={article} />
+                ))}
+            </div>
             
             {nextPage && (
                  <div className="text-center mt-12">

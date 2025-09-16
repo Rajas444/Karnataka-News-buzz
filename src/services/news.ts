@@ -2,14 +2,13 @@
 'use server';
 
 import type { NewsdataArticle, NewsdataResponse } from '@/lib/types';
-import { format } from 'date-fns';
 
 type FetchNewsResponse = {
     articles: NewsdataArticle[];
     nextPage: string | null;
 }
 
-export async function fetchNews(category?: string, district?: string, page?: string | null, date?: Date): Promise<FetchNewsResponse> {
+export async function fetchNews(category?: string, district?: string, page?: string | null): Promise<FetchNewsResponse> {
     const apiKey = process.env.NEWSDATA_API_KEY;
     if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
         console.error('Newsdata.io API key is not set.');
@@ -39,12 +38,6 @@ export async function fetchNews(category?: string, district?: string, page?: str
         url.searchParams.append('category', category);
     }
     
-    // The API plan does not support date filtering.
-    // if (date) {
-    //     const formattedDate = format(date, 'yyyy-MM-dd');
-    //     url.searchParams.append('from_date', formattedDate);
-    //     url.searchParams.append('to_date', formattedDate);
-    // }
 
     if (page) {
         url.searchParams.append('page', page);
@@ -63,10 +56,12 @@ export async function fetchNews(category?: string, district?: string, page?: str
             console.error('Newsdata.io API non-success status:', data);
             
             const results = (data as any).results;
-            const errorMessage = results?.message || `API returned status: ${data.status}. Check Newsdata.io dashboard for issues.`;
+            let errorMessage = `API returned status: ${data.status}. Check Newsdata.io dashboard for issues.`;
 
             if (results?.code === 'Unauthorized') {
-                 throw new Error(`Newsdata.io Error: Invalid API Key. Please check the key in your .env file.`);
+                 errorMessage = `Newsdata.io Error: Invalid API Key. Please check the key in your .env file.`;
+            } else if (results?.message) {
+                 errorMessage = `Newsdata.io Error: ${results.message}`;
             }
             
             throw new Error(errorMessage);

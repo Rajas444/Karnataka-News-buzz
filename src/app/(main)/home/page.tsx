@@ -2,21 +2,19 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, PlusCircle } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import type { NewsdataArticle } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
 import FilterControls from '@/components/news/FilterControls';
 import { getCategories } from '@/services/categories';
 import CommunityHighlights from '@/components/posts/CommunityHighlights';
 import { getDistricts } from '@/services/districts';
-import { format } from 'date-fns';
 import { fetchNews } from '@/services/news';
 
 type HomePageProps = {
   searchParams?: {
     category?: string;
     district?: string;
-    date?: string;
   };
 };
 
@@ -29,7 +27,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const category = searchParams?.category;
   const district = searchParams?.district;
-  const selectedDate = searchParams?.date ? new Date(searchParams.date) : new Date();
 
   try {
       categories = await getCategories();
@@ -39,47 +36,32 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   try {
-    const response = await fetchNews(category, district, null, selectedDate);
+    const response = await fetchNews(category, district);
     initialArticles = response.articles;
     nextPage = response.nextPage;
   } catch (e: any) {
     error = e.message || 'An unknown error occurred.';
   }
   
-  const topArticle = initialArticles.length > 0 ? initialArticles[0] : undefined;
+  const topArticle = initialArticles.length > 0 ? initialArticles[0] : null;
   const otherArticles = initialArticles.length > 1 ? initialArticles.slice(1) : [];
 
-  if (error && initialArticles.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <section className="mb-8">
-          <FilterControls categories={categories} districts={districts} />
-        </section>
-        <div className="text-center bg-card p-8 rounded-lg">
-          <h1 className="text-2xl font-bold mb-4 font-kannada">ಸುದ್ದಿ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</h1>
-          <p className="text-muted-foreground font-kannada">
-            {error}
-          </p>
-        </div>
-      </div>
-    );
-  }
-  
-  if (!topArticle && !error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-         <section className="mb-8">
-          <FilterControls categories={categories} districts={districts} />
-        </section>
-        <div className="text-center bg-card p-8 rounded-lg">
-            <h1 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಸುದ್ದಿ ಲಭ್ಯವಿಲ್ಲ</h1>
-            <p className="text-muted-foreground font-kannada">
-              Please try different filter options or check your news API.
-            </p>
-        </div>
-      </div>
-    );
-  }
+  const renderErrorState = () => (
+    <div className="text-center bg-card p-8 rounded-lg">
+      <h1 className="text-2xl font-bold mb-4 font-kannada">ಸುದ್ದಿ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</h1>
+      <p className="text-muted-foreground font-kannada">{error}</p>
+    </div>
+  );
+
+  const renderEmptyState = () => (
+     <div className="text-center bg-card p-8 rounded-lg">
+        <h1 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಸುದ್ದಿ ಲಭ್ಯವಿಲ್ಲ</h1>
+        <p className="text-muted-foreground font-kannada">
+          Please try different filter options or check your news API.
+        </p>
+    </div>
+  );
+
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -88,6 +70,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section className="mb-12">
           <FilterControls categories={categories} districts={districts} />
       </section>
+
+       {error && <div className="mb-8">{renderErrorState()}</div>}
 
       <div className="space-y-12">
         {/* Hero Section */}
@@ -111,7 +95,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     {topArticle.description?.substring(0, 150) ?? 'No description available'}...
                     </p>
                     <Button asChild size="lg">
-                    <Link href={topArticle.link} target="_blank" rel="noopener noreferrer">
+                    <Link href={`/news/${topArticle.article_id}`}>
                         Read More <ArrowRight className="ml-2 h-5 w-5" />
                     </Link>
                     </Button>
@@ -127,19 +111,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 Recent News
             </h2>
             </div>
-             {error && (
-                <div className="text-center bg-card p-8 rounded-lg mb-8">
-                    <h2 className="text-xl font-bold mb-2 font-kannada">ಸುದ್ದಿ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</h2>
-                    <p className="text-muted-foreground text-sm font-kannada">{error}</p>
-                </div>
-            )}
-            <ArticleList
-                initialArticles={otherArticles}
-                initialNextPage={nextPage}
-                category={category}
-                district={district}
-                date={selectedDate}
-            />
+            {!error && initialArticles.length > 0 ? (
+                <ArticleList
+                    initialArticles={otherArticles}
+                    initialNextPage={nextPage}
+                    category={category}
+                    district={district}
+                />
+            ) : !error ? (
+                renderEmptyState()
+            ) : null}
         </section>
 
         {/* Community Highlights */}

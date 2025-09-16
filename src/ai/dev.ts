@@ -9,5 +9,7 @@ import '@/ai/flows/summarize-news-article.ts';
 import '@/ai/flows/generate-news-headline.ts';
 import '@/ai/flows/translate-article.ts';
 import '@/ai/flows/watermark-image-flow.ts';
+import '@/ai/flows/extract-article-content.ts';
+
 
 

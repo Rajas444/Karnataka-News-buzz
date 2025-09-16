@@ -58,12 +58,14 @@ export default function ArticleModal() {
                 <div className="relative flex-shrink-0">
                     <DialogHeader className="p-6 pb-2">
                         <DialogTitle className="text-2xl md:text-3xl font-headline font-bold leading-tight mb-2 font-kannada">{article.title}</DialogTitle>
-                        <DialogDescription className="text-sm text-muted-foreground flex flex-wrap gap-x-4 gap-y-2 items-center">
-                            <span>By {article.author || 'Karnataka News Pulse'}</span>
-                            <span>{format(new Date(article.publishedAt), 'PPP')}</span>
-                            {article.sourceUrl && (
-                                <Badge variant="outline">Source: {new URL(article.sourceUrl).hostname}</Badge>
-                            )}
+                        <DialogDescription asChild>
+                           <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4 gap-y-2 items-center">
+                                <span>By {article.author || 'Karnataka News Pulse'}</span>
+                                <span>{format(new Date(article.publishedAt), 'PPP')}</span>
+                                {article.sourceUrl && (
+                                    <Badge variant="outline">Source: {new URL(article.sourceUrl).hostname}</Badge>
+                                )}
+                            </div>
                         </DialogDescription>
                     </DialogHeader>
                     <Button variant="ghost" size="icon" className="absolute top-4 right-4" onClick={handleClose}>

@@ -17,6 +17,8 @@ interface ArticleListProps {
     district?: string;
 }
 
+const PAGE_SIZE = 10;
+
 export default function ArticleList({ initialArticles, category, district }: ArticleListProps) {
     const [articles, setArticles] = useState<Article[]>(initialArticles);
     const [allCategories, setAllCategories] = useState<{id: string, name: string}[]>([]);
@@ -27,21 +29,24 @@ export default function ArticleList({ initialArticles, category, district }: Art
     
     // This effect runs when the filter props (initialArticles, category, district) change.
     useEffect(() => {
-        setArticles(initialArticles);
         const setup = async () => {
             try {
                 // Fetch all available categories for the cards
                 const fetchedCategories = await getCategories();
                 setAllCategories(fetchedCategories);
-                
-                // If we have initial articles, determine if there are more pages.
-                if (initialArticles.length > 0) {
+
+                // Reset articles and pagination state when filters change
+                setArticles(initialArticles);
+
+                // Determine if there are more articles to load
+                if (initialArticles.length < PAGE_SIZE) {
+                    setHasMore(false);
+                    setLastVisible(null);
+                } else {
+                    // Fetch the last visible document reference to prepare for the next page
                     const res = await getArticles({ category, district, pageSize: initialArticles.length });
                     setLastVisible(res.lastVisible);
                     setHasMore(!!res.lastVisible);
-                } else {
-                    setHasMore(false);
-                    setLastVisible(null);
                 }
             } catch(e) {
                 console.error("Failed to setup article list", e);
@@ -49,8 +54,6 @@ export default function ArticleList({ initialArticles, category, district }: Art
             }
         };
         setup();
-    // By correctly specifying the dependencies, we prevent the infinite loop.
-    // The effect will only re-run if one of these props changes.
     }, [initialArticles, category, district, toast]);
 
 
@@ -63,10 +66,11 @@ export default function ArticleList({ initialArticles, category, district }: Art
                 category,
                 district,
                 lastVisible,
+                pageSize: PAGE_SIZE
             });
             setArticles(prev => [...prev, ...newArticles]);
             setLastVisible(newLastVisible);
-            setHasMore(!!newLastVisible && newArticles.length > 0);
+            setHasMore(!!newLastVisible && newArticles.length > 0 && newArticles.length === PAGE_SIZE);
         } catch (error: any) {
             console.error("Failed to fetch more articles:", error);
             toast({
@@ -94,7 +98,7 @@ export default function ArticleList({ initialArticles, category, district }: Art
         <div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {articles.map((article) => (
-                    <ArticleCard key={article.id} article={article} allCategories={allCategories} />
+                    <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
                 ))}
             </div>
             

@@ -37,7 +37,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
       <CardHeader className="p-0">
         <div className="relative h-48 w-full">
             <Image
-              src={article.imageUrl || `https://picsum.photos/seed/${article.id || Math.random()}/400/250`}
+              src={article.imageUrl || `https://picsum.photos/seed/${article.id || article.sourceUrl}/400/250`}
               alt={article.title}
               fill
               className="object-cover"

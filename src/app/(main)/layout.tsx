@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Newspaper } from 'lucide-react';
+import ArticleModal from '@/components/news/ArticleModal';
 
 export default function MainLayout({
   children,
@@ -38,6 +39,7 @@ export default function MainLayout({
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-grow">{children}</main>
+      <ArticleModal />
       <Footer />
       <AIChatWidget />
     </div>

@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/providers/theme-provider';
+import { ArticleModalProvider } from '@/components/providers/article-modal-provider';
 
 export const metadata: Metadata = {
   title: 'Karnataka News Pulse',
@@ -34,8 +35,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {children}
-            <Toaster />
+            <ArticleModalProvider>
+              {children}
+              <Toaster />
+            </ArticleModalProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

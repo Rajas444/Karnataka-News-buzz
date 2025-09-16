@@ -14,7 +14,7 @@ interface ArticleCardProps {
 }
 
 export default function ArticleCard({ article, allCategories = [] }: ArticleCardProps) {
-  const articleUrl = `/article/${article.id}`;
+  const articleUrl = article.sourceUrl || '#';
   
   const categories = article.categoryIds.map(catId => {
       return allCategories.find(c => c.id === catId)?.name || catId;
@@ -23,7 +23,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
   return (
     <Card className="flex flex-col h-full overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="p-0">
-        <Link href={articleUrl} className="block">
+        <Link href={articleUrl} className="block" target="_blank" rel="noopener noreferrer">
           <div className="relative h-48 w-full">
             <Image
               src={article.imageUrl || `https://picsum.photos/seed/${article.id}/400/250`}
@@ -43,7 +43,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
             </div>
         }
         <CardTitle className="mb-2 text-xl leading-tight font-headline font-kannada">
-          <Link href={articleUrl} className="hover:text-primary transition-colors">
+          <Link href={articleUrl} className="hover:text-primary transition-colors" target="_blank" rel="noopener noreferrer">
             {article.title}
           </Link>
         </CardTitle>
@@ -56,7 +56,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
             <Calendar className="h-3 w-3" />
             <span>{formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}</span>
         </div>
-        <Link href={articleUrl} className="text-primary hover:underline text-xs font-semibold">
+        <Link href={articleUrl} className="text-primary hover:underline text-xs font-semibold" target="_blank" rel="noopener noreferrer">
           Read More &rarr;
         </Link>
       </CardFooter>

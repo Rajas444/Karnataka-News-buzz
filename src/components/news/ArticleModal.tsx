@@ -56,24 +56,22 @@ export default function ArticleModal() {
           )}
           {article && !loading && (
             <>
-                <div className="relative flex-shrink-0">
-                    <DialogHeader className="p-6 pb-2">
-                        <DialogTitle className="text-2xl md:text-3xl font-headline font-bold leading-tight mb-2 font-kannada">{article.title}</DialogTitle>
-                        <DialogDescription asChild>
-                           <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4 gap-y-2 items-center">
-                                <span>By {article.author || 'Karnataka News Pulse'}</span>
-                                <span>{format(new Date(article.publishedAt), 'PPP')}</span>
-                                {article.sourceUrl && (
-                                    <Badge variant="outline">Source: {new URL(article.sourceUrl).hostname}</Badge>
-                                )}
-                            </div>
-                        </DialogDescription>
-                    </DialogHeader>
+                <DialogHeader className="p-6 pb-2 relative">
+                    <DialogTitle className="text-2xl md:text-3xl font-headline font-bold leading-tight mb-2 font-kannada">{article.title}</DialogTitle>
+                    <DialogDescription asChild>
+                       <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4 gap-y-2 items-center">
+                            <span>By {article.author || 'Karnataka News Pulse'}</span>
+                            <span>{article.publishedAt ? format(new Date(article.publishedAt), 'PPP') : ''}</span>
+                            {article.sourceUrl && (
+                                <Badge variant="outline">Source: {new URL(article.sourceUrl).hostname}</Badge>
+                            )}
+                        </div>
+                    </DialogDescription>
                     <Button variant="ghost" size="icon" className="absolute top-4 right-4" onClick={handleClose}>
                         <X className="h-5 w-5"/>
                         <span className="sr-only">Close</span>
                     </Button>
-                </div>
+                </DialogHeader>
                  <div className="overflow-y-auto px-6 pb-6 flex-grow">
                      {article.imageUrl && (
                         <div className="relative h-64 md:h-96 rounded-lg overflow-hidden my-4">

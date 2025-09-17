@@ -7,6 +7,7 @@ import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverT
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 import { getCategories } from './categories';
+import { extractArticleContent } from '@/ai/flows/extract-article-content';
 
 const articlesCollection = collection(db, 'articles');
 
@@ -87,11 +88,24 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle): Promis
         return found?.id;
     }).filter((id): id is string => !!id);
 
+    // 3. Get content
+    let content = apiArticle.content || apiArticle.description || '';
+    if (!content && apiArticle.link) {
+        console.log(`Content is empty for ${apiArticle.title}. Extracting from URL.`);
+        try {
+            const extracted = await extractArticleContent({ url: apiArticle.link });
+            content = extracted.content;
+        } catch (e) {
+            console.error(`Failed to extract content for ${apiArticle.link}`, e);
+            content = apiArticle.description || 'No content available.';
+        }
+    }
 
-    // 3. Create article object
+
+    // 4. Create article object
     const newArticle: Omit<Article, 'id' | 'createdAt' | 'updatedAt'> = {
         title: apiArticle.title,
-        content: apiArticle.content || apiArticle.description || 'No content available.',
+        content: content,
         imageUrl: apiArticle.image_url,
         author: apiArticle.creator?.join(', ') || apiArticle.source_id,
         authorId: apiArticle.source_id,
@@ -107,7 +121,7 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle): Promis
         district: null, // This can be enhanced with location extraction
     };
 
-    // 4. Save to Firestore
+    // 5. Save to Firestore
     try {
         const docRef = await addDoc(articlesCollection, {
             ...newArticle,
@@ -136,7 +150,6 @@ export async function getArticles(options?: {
     let isFiltered = false;
 
     // Firestore Limitation: Cannot use inequality filters on more than one field.
-    // So if we filter, we can't sort by 'publishedAt'.
     if (category && category !== 'general') {
         const allCategories = await getCategories();
         const categoryDoc = allCategories.find(c => c.slug === category || c.id === category);
@@ -149,8 +162,7 @@ export async function getArticles(options?: {
         isFiltered = true;
     }
     
-    // Only order by 'publishedAt' if we are not filtering.
-    // This avoids the need for a composite index on every category/district.
+    // Only order by 'publishedAt' if we are not filtering to avoid composite index requirement.
     if (!isFiltered) {
         constraints.push(orderBy('publishedAt', 'desc'));
     }
@@ -180,6 +192,11 @@ export async function getArticles(options?: {
                 updatedAt: (data.updatedAt as Timestamp)?.toDate(),
             } as Article;
         });
+
+        // Manually sort if we couldn't do it in the query
+        if (isFiltered) {
+            articles.sort((a, b) => (b.publishedAt?.getTime() || 0) - (a.publishedAt?.getTime() || 0));
+        }
 
         return articles;
     } catch (error: any) {

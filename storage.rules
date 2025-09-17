@@ -1,0 +1,13 @@
+rules_version = '2';
+
+// By default, allow read/write access only to authenticated users
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow public read access to all files.
+    // This is useful for public assets like images, but be aware of the implications.
+    match /{allPaths=**} {
+      allow read;
+      allow write: if request.auth != null;
+    }
+  }
+}

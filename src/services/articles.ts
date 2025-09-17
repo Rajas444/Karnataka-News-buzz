@@ -166,7 +166,9 @@ export async function getArticles(options?: {
             constraints.push(where('categoryIds', 'array-contains', categoryDoc.id));
             isFiltered = true;
         }
-    } else if (district && district !== 'all') {
+    }
+    
+    if (district && district !== 'all') {
         constraints.push(where('district', '==', district));
         isFiltered = true;
     }
@@ -220,6 +222,8 @@ export async function getArticle(id: string): Promise<Article | null> {
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
+    // Increment views
+    updateDoc(docRef, { views: (docSnap.data().views || 0) + 1 });
     return serializeArticle(docSnap);
   } else {
     return null;
@@ -334,5 +338,7 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     return []; // Should be unreachable
 }
+
+    
 
     

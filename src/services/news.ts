@@ -7,8 +7,8 @@ import { storeCollectedArticle } from './articles';
 
 export async function fetchAndStoreNews(category?: string, district?: string): Promise<void> {
     const apiKey = process.env.NEWSDATA_API_KEY;
-    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE' || apiKey === 'b22ac38c0388be49295828dfa7b73ea0') {
-        console.warn('Newsdata.io API key is not set or is a sample key. Skipping news fetch.');
+    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
+        console.warn('Newsdata.io API key is not set. Skipping news fetch.');
         // This is not an error, as the app can function with existing DB data.
         return;
     }

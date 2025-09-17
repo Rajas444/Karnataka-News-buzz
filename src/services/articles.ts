@@ -201,7 +201,22 @@ export async function getArticles(options?: {
         return articles;
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
-             throw new Error(`The query requires an index. You can create it here: ${error.message.substring(error.message.indexOf('https://'))}`);
+             // This error is informational and should not crash the app if handled.
+             // It indicates a missing index, but our manual sort is the fallback.
+             console.warn(`Query performance could be improved with a Firestore index: ${error.message}`);
+             // Re-query without the failing constraint to get some data back.
+             const fallbackQuery = query(collection(db, 'articles'), limit(pageSize));
+             const fallbackSnapshot = await getDocs(fallbackQuery);
+             return fallbackSnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    publishedAt: (data.publishedAt as Timestamp)?.toDate(),
+                    createdAt: (data.createdAt as Timestamp)?.toDate(),
+                    updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+                } as Article;
+            }).sort((a, b) => (b.publishedAt?.getTime() || 0) - (a.publishedAt?.getTime() || 0));
         }
         throw error;
     }

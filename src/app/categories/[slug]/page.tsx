@@ -94,10 +94,10 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                         />
                     </div>
                     <div>
-                        <h2 className="font-headline text-3xl md:text-4xl font-bold mb-4 leading-tight">
+                        <h2 className="font-headline text-3xl md:text-4xl font-bold mb-4 leading-tight font-kannada">
                         {topArticle.title}
                         </h2>
-                        <p className="text-muted-foreground text-lg mb-6">
+                        <p className="text-muted-foreground text-lg mb-6 font-kannada">
                         {(topArticle.seo.metaDescription || topArticle.content).substring(0, 150)}...
                         </p>
                         <Button asChild size="lg">

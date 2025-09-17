@@ -107,7 +107,7 @@ export default function ArticleModal() {
                      )}
                     <div 
                         className="prose dark:prose-invert max-w-none font-kannada"
-                        dangerouslySetInnerHTML={{ __html: article.content.replace(/\n/g, '<br />') }} 
+                        dangerouslySetInnerHTML={{ __html: article.content.replace(/\n/g, '<p>') }} 
                     />
                     {article.categoryIds?.[0] && <RelatedArticles categoryId={article.categoryIds[0]} currentArticleId={article.id} />}
                 </div>

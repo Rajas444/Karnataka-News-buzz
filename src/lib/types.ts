@@ -9,6 +9,7 @@ export interface UserProfile {
   displayName: string | null;
   photoURL?: string;
   role: UserRole;
+  phoneNumber?: string;
 }
 
 export interface Category {

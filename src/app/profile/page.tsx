@@ -62,8 +62,8 @@ export default function ProfilePage() {
                   <Input id="displayName" defaultValue={userProfile?.displayName || ''} />
               </div>
               <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" value={user.email || ''} disabled />
+                  <Label htmlFor="phoneNumber">Mobile Number</Label>
+                  <Input id="phoneNumber" type="tel" defaultValue={userProfile?.phoneNumber || ''} placeholder="Add your mobile number" />
               </div>
                <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>

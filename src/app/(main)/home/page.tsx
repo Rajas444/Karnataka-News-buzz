@@ -11,6 +11,7 @@ import CommunityHighlights from '@/components/posts/CommunityHighlights';
 import { getDistricts } from '@/services/districts';
 import { fetchAndStoreNews } from '@/services/news';
 import { getArticles } from '@/services/articles';
+import TrendingNews from '@/components/news/TrendingNews';
 
 type HomePageProps = {
   searchParams?: {
@@ -113,28 +114,38 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </section>
         )}
 
-        {/* Recent Articles */}
-        <section>
-            <div className="flex justify-between items-center mb-6">
-            <h2 className="font-headline text-3xl font-bold">
-                Recent News
-            </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            <div className="lg:col-span-2">
+                 {/* Recent Articles */}
+                <section>
+                    <div className="flex justify-between items-center mb-6">
+                    <h2 className="font-headline text-3xl font-bold">
+                        Recent News
+                    </h2>
+                    </div>
+                    {!error && initialArticles.length > 0 ? (
+                        <ArticleList
+                            initialArticles={otherArticles}
+                            category={category}
+                            district={district}
+                        />
+                    ) : !error ? (
+                        renderEmptyState()
+                    ) : null}
+                </section>
             </div>
-            {!error && initialArticles.length > 0 ? (
-                <ArticleList
-                    initialArticles={otherArticles}
-                    category={category}
-                    district={district}
-                />
-            ) : !error ? (
-                renderEmptyState()
-            ) : null}
-        </section>
+            <div className="lg:col-span-1 space-y-12">
+                {/* Trending News */}
+                <section>
+                    <TrendingNews />
+                </section>
 
-        {/* Community Highlights */}
-        <section>
-          <CommunityHighlights />
-        </section>
+                {/* Community Highlights */}
+                <section>
+                <CommunityHighlights />
+                </section>
+            </div>
+        </div>
       </div>
 
     </div>

@@ -12,6 +12,19 @@ import { fetchAndStoreNews } from './news';
 
 const articlesCollection = collection(db, 'articles');
 
+// Helper function to serialize article data, converting Timestamps to ISO strings
+function serializeArticle(doc: any): Article {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data,
+        publishedAt: data.publishedAt ? (data.publishedAt as Timestamp).toDate().toISOString() : null,
+        createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate().toISOString() : null,
+        updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate().toISOString() : null,
+    } as Article;
+}
+
+
 // NOTE: If you are seeing "Firebase storage/unknown" errors when uploading images,
 // it is likely due to missing CORS configuration on your Firebase Storage bucket.
 // Please see the instructions in `storage.cors.json` at the root of the project
@@ -59,15 +72,7 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
   });
 
   const docSnap = await getDoc(docRef);
-  const newArticle = docSnap.data();
-
-  return { 
-    id: docRef.id, 
-    ...newArticle,
-    publishedAt: (newArticle?.publishedAt as Timestamp)?.toDate().toISOString(),
-    createdAt: (newArticle?.createdAt as Timestamp)?.toDate().toISOString(),
-    updatedAt: (newArticle?.updatedAt as Timestamp)?.toDate().toISOString(),
-  } as Article;
+  return serializeArticle(docSnap);
 }
 
 
@@ -181,16 +186,7 @@ export async function getArticles(options?: {
 
     try {
         const snapshot = await getDocs(q);
-        const articles = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                publishedAt: (data.publishedAt as Timestamp)?.toDate().toISOString(),
-                createdAt: (data.createdAt as Timestamp)?.toDate().toISOString(),
-                updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString(),
-            } as Article;
-        });
+        const articles = snapshot.docs.map(serializeArticle);
 
         // Manually sort if we couldn't do it in the query
         if (isFiltered) {
@@ -203,16 +199,7 @@ export async function getArticles(options?: {
              console.warn(`Query failed due to missing index, returning unsorted results for this filter: ${error.message}`);
              const fallbackQuery = query(articlesCollection, ...constraints.filter(c => c.type !== 'orderBy'));
              const fallbackSnapshot = await getDocs(fallbackQuery);
-             const articles = fallbackSnapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    ...data,
-                    publishedAt: (data.publishedAt as Timestamp)?.toDate().toISOString(),
-                    createdAt: (data.createdAt as Timestamp)?.toDate().toISOString(),
-                    updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString(),
-                } as Article;
-            });
+             const articles = fallbackSnapshot.docs.map(serializeArticle);
             
             // Manual sort
             articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
@@ -229,15 +216,7 @@ export async function getArticle(id: string): Promise<Article | null> {
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
-    const data = docSnap.data();
-    // Safely convert timestamps to ISO strings
-    return {
-        id: docSnap.id,
-        ...data,
-        publishedAt: data.publishedAt ? (data.publishedAt as Timestamp).toDate().toISOString() : null,
-        createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate().toISOString() : null,
-        updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate().toISOString() : null,
-    } as Article;
+    return serializeArticle(docSnap);
   } else {
     return null;
   }
@@ -283,15 +262,7 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
   });
 
   const updatedDoc = await getDoc(docRef);
-  const updatedData = updatedDoc.data();
-
-  return { 
-    id, 
-    ...updatedData,
-    publishedAt: (updatedData?.publishedAt as Timestamp).toDate().toISOString(),
-    createdAt: (updatedData?.createdAt as Timestamp).toDate().toISOString(),
-    updatedAt: (updatedData?.updatedAt as Timestamp).toDate().toISOString(),
- } as Article;
+  return serializeArticle(updatedDoc);
 }
 
 
@@ -323,14 +294,9 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
         const snapshot = await getDocs(q);
         
-        let articles = snapshot.docs.map(doc => {
-             const data = doc.data();
-             return {
-                id: doc.id,
-                ...data,
-                publishedAt: (data.publishedAt as Timestamp)?.toDate().toISOString(),
-            } as Article;
-        }).filter(article => article.id !== currentArticleId);
+        let articles = snapshot.docs
+            .map(serializeArticle)
+            .filter(article => article.id !== currentArticleId);
 
         // Manually sort by date
         articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
@@ -364,5 +330,3 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     return []; // Should be unreachable
 }
-
-    

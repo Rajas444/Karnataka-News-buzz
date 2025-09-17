@@ -6,14 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useArticleModal } from '@/components/providers/article-modal-provider';
 import { getArticle } from '@/services/articles';
 import type { Article } from '@/lib/types';
-import { Loader2, X, ExternalLink } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import ShareButtons from '@/components/shared/ShareButtons';
 import RelatedArticles from './RelatedArticles';
-import Link from 'next/link';
 
 export default function ArticleModal() {
   const { isOpen, onClose, articleId } = useArticleModal();
@@ -98,6 +97,7 @@ export default function ArticleModal() {
                             </div>
                         </div>
                     )}
+                    {article.categoryIds?.[0] && <RelatedArticles categoryId={article.categoryIds[0]} currentArticleId={article.id} />}
                      {article.seo?.keywords && article.seo.keywords.length > 0 && (
                         <div className="my-4 flex flex-wrap gap-2">
                             {article.seo.keywords.map(keyword => (
@@ -109,7 +109,6 @@ export default function ArticleModal() {
                         className="prose dark:prose-invert max-w-none font-kannada"
                         dangerouslySetInnerHTML={{ __html: article.content.replace(/\n/g, '<p>') }} 
                     />
-                    {article.categoryIds?.[0] && <RelatedArticles categoryId={article.categoryIds[0]} currentArticleId={article.id} />}
                 </div>
                 <div className="border-t p-4 flex-shrink-0 flex justify-between items-center bg-muted/50">
                     <ShareButtons url={typeof window !== 'undefined' ? `${window.location.origin}/article/${article.id}` : ''} title={article.title} />

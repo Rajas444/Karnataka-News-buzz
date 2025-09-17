@@ -6,13 +6,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useArticleModal } from '@/components/providers/article-modal-provider';
 import { getArticle } from '@/services/articles';
 import type { Article } from '@/lib/types';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import ShareButtons from '@/components/shared/ShareButtons';
 import RelatedArticles from './RelatedArticles';
+import Link from 'next/link';
 
 export default function ArticleModal() {
   const { isOpen, onClose, articleId } = useArticleModal();
@@ -50,7 +51,7 @@ export default function ArticleModal() {
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0">
-          <DialogHeader className="p-6 pb-2 relative">
+          <DialogHeader className="p-6 pb-2 relative flex-shrink-0">
             <DialogTitle className="text-2xl md:text-3xl font-headline font-bold leading-tight mb-2 font-kannada">
               {article?.title || <>&nbsp;</>}
             </DialogTitle>
@@ -97,6 +98,13 @@ export default function ArticleModal() {
                             </div>
                         </div>
                     )}
+                     {article.seo?.keywords && article.seo.keywords.length > 0 && (
+                        <div className="my-4 flex flex-wrap gap-2">
+                            {article.seo.keywords.map(keyword => (
+                                <Badge key={keyword} variant="secondary">{keyword}</Badge>
+                            ))}
+                        </div>
+                     )}
                     <div 
                         className="prose dark:prose-invert max-w-none font-kannada"
                         dangerouslySetInnerHTML={{ __html: article.content.replace(/\n/g, '<br />') }} 
@@ -105,7 +113,17 @@ export default function ArticleModal() {
                 </div>
                 <div className="border-t p-4 flex-shrink-0 flex justify-between items-center bg-muted/50">
                     <ShareButtons url={typeof window !== 'undefined' ? `${window.location.origin}/article/${article.id}` : ''} title={article.title} />
-                    <Button variant="outline" onClick={handleClose}>Close</Button>
+                     <div className="flex items-center gap-2">
+                        {article.sourceUrl && (
+                            <Button variant="outline" asChild>
+                                <Link href={article.sourceUrl} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                    View Original Article
+                                </Link>
+                            </Button>
+                        )}
+                        <Button variant="default" onClick={handleClose}>Close</Button>
+                    </div>
                 </div>
             </>
           )}
@@ -113,5 +131,3 @@ export default function ArticleModal() {
     </Dialog>
   );
 }
-
-    

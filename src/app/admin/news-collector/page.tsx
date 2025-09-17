@@ -27,10 +27,35 @@ export default function NewsCollectorPage() {
 
     setIsLoading(true);
     toast({
-        title: 'Feature Not Active',
-        description: 'The news collection feature is currently disabled.',
+      title: 'Collecting News...',
+      description: `Requesting news for ${format(date, 'PPP')}. This might take a moment.`,
     });
-    setIsLoading(false);
+
+    try {
+      // NOTE: The `collectNewsForDate` flow is a placeholder and is not active by default.
+      // The primary news collection happens on the homepage automatically.
+      // This button is for manual triggering if the flow were implemented.
+      const result = await collectNewsForDate({ date: date.toISOString().split('T')[0] });
+      if (result.articlesFetched === 0 && result.articlesStored === 0) {
+         toast({
+            title: 'Feature Not Active',
+            description: 'The manual news collection flow is a placeholder. News is fetched automatically on the homepage.',
+        });
+      } else {
+        toast({
+            title: 'News Collection Complete',
+            description: `Fetched ${result.articlesFetched} articles and stored ${result.articlesStored} new ones.`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Collection Failed',
+        description: error.message || 'An unknown error occurred.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -38,7 +63,7 @@ export default function NewsCollectorPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight font-headline">News Collector</h1>
         <p className="text-muted-foreground">
-          This feature for collecting news articles is currently disabled.
+          Manually trigger news collection for a specific date.
         </p>
       </div>
 
@@ -46,7 +71,7 @@ export default function NewsCollectorPage() {
         <CardHeader>
           <CardTitle>Select a Date</CardTitle>
           <CardDescription>
-            Choose a date to fetch news from.
+            Choose a date to fetch news from. Note: News is also fetched automatically on the homepage.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-6">
@@ -57,9 +82,13 @@ export default function NewsCollectorPage() {
             className="rounded-md border"
             disabled={(day) => day > new Date()}
           />
-          <Button onClick={handleCollectNews} disabled={true} className="w-full" size="lg">
-            <DownloadCloud className="mr-2 h-5 w-5" />
-            Collect News
+          <Button onClick={handleCollectNews} disabled={isLoading} className="w-full" size="lg">
+            {isLoading ? (
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+              <DownloadCloud className="mr-2 h-5 w-5" />
+            )}
+            {isLoading ? 'Collecting...' : 'Collect News'}
           </Button>
         </CardContent>
       </Card>

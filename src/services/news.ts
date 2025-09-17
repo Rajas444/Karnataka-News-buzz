@@ -7,9 +7,10 @@ import { storeCollectedArticle } from './articles';
 
 export async function fetchAndStoreNews(category?: string, district?: string): Promise<void> {
     const apiKey = process.env.NEWSDATA_API_KEY;
-    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
-        console.error('Newsdata.io API key is not set.');
-        throw new Error('Newsdata.io API key is missing. Please add it to your .env file.');
+    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE' || apiKey === 'b22ac38c0388be49295828dfa7b73ea0') {
+        console.warn('Newsdata.io API key is not set or is a sample key. Skipping news fetch.');
+        // This is not an error, as the app can function with existing DB data.
+        return;
     }
 
     const url = new URL('https://newsdata.io/api/1/news');
@@ -46,6 +47,11 @@ export async function fetchAndStoreNews(category?: string, district?: string): P
              const errorMessage = errorData?.results?.message || `API request failed with status ${response.status}`;
              if (errorData?.results?.code === 'TooManyRequests') {
                 throw new Error('Newsdata.io API rate limit exceeded. Please try again later.');
+             }
+             if (errorData?.results?.code === 'PlanFeatureExceeded') {
+                // This is a common issue on free plans. We don't want to block the app.
+                console.warn('Newsdata.io plan feature exceeded. Cannot use date filter.');
+                return; // Gracefully exit without throwing an error
              }
              throw new Error(`Newsdata.io Error: ${errorMessage}`);
         }

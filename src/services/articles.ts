@@ -64,9 +64,9 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
   return { 
     id: docRef.id, 
     ...newArticle,
-    publishedAt: (newArticle?.publishedAt as Timestamp)?.toDate(),
-    createdAt: (newArticle?.createdAt as Timestamp)?.toDate(),
-    updatedAt: (newArticle?.updatedAt as Timestamp)?.toDate(),
+    publishedAt: (newArticle?.publishedAt as Timestamp)?.toDate().toISOString(),
+    createdAt: (newArticle?.createdAt as Timestamp)?.toDate().toISOString(),
+    updatedAt: (newArticle?.updatedAt as Timestamp)?.toDate().toISOString(),
   } as Article;
 }
 
@@ -150,7 +150,6 @@ export async function getArticles(options?: {
     
     let isFiltered = false;
 
-    // Firestore Limitation: Cannot use inequality filters on more than one field.
     if (category && category !== 'general') {
         const allCategories = await getCategories();
         const categoryDoc = allCategories.find(c => c.slug === category || c.id === category);
@@ -163,7 +162,6 @@ export async function getArticles(options?: {
         isFiltered = true;
     }
     
-    // Only order by 'publishedAt' if we are not filtering to avoid composite index requirement.
     if (!isFiltered) {
         constraints.push(orderBy('publishedAt', 'desc'));
     }
@@ -188,24 +186,21 @@ export async function getArticles(options?: {
             return {
                 id: doc.id,
                 ...data,
-                publishedAt: (data.publishedAt as Timestamp)?.toDate(),
-                createdAt: (data.createdAt as Timestamp)?.toDate(),
-                updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+                publishedAt: (data.publishedAt as Timestamp)?.toDate().toISOString(),
+                createdAt: (data.createdAt as Timestamp)?.toDate().toISOString(),
+                updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString(),
             } as Article;
         });
 
         // Manually sort if we couldn't do it in the query
         if (isFiltered) {
-            articles.sort((a, b) => (b.publishedAt?.getTime() || 0) - (a.publishedAt?.getTime() || 0));
+            articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
         }
 
         return articles;
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
-             // This can happen if a composite index is needed. We will sort manually as a fallback.
-             console.warn(`Query failed due to missing index, sorting manually: ${error.message}`);
-             
-             // Re-query without the failing sort constraint
+             console.warn(`Query failed due to missing index, returning unsorted results for this filter: ${error.message}`);
              const fallbackQuery = query(articlesCollection, ...constraints.filter(c => c.type !== 'orderBy'));
              const fallbackSnapshot = await getDocs(fallbackQuery);
              const articles = fallbackSnapshot.docs.map(doc => {
@@ -213,14 +208,14 @@ export async function getArticles(options?: {
                 return {
                     id: doc.id,
                     ...data,
-                    publishedAt: (data.publishedAt as Timestamp)?.toDate(),
-                    createdAt: (data.createdAt as Timestamp)?.toDate(),
-                    updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+                    publishedAt: (data.publishedAt as Timestamp)?.toDate().toISOString(),
+                    createdAt: (data.createdAt as Timestamp)?.toDate().toISOString(),
+                    updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString(),
                 } as Article;
             });
             
             // Manual sort
-            articles.sort((a, b) => (b.publishedAt?.getTime() || 0) - (a.publishedAt?.getTime() || 0));
+            articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
             return articles;
         }
         throw error;
@@ -235,13 +230,13 @@ export async function getArticle(id: string): Promise<Article | null> {
 
   if (docSnap.exists()) {
     const data = docSnap.data();
-    // Safely convert timestamps to dates, only if they exist
+    // Safely convert timestamps to ISO strings
     return {
         id: docSnap.id,
         ...data,
-        publishedAt: data.publishedAt ? (data.publishedAt as Timestamp).toDate() : null,
-        createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : null,
-        updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : null,
+        publishedAt: data.publishedAt ? (data.publishedAt as Timestamp).toDate().toISOString() : null,
+        createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate().toISOString() : null,
+        updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate().toISOString() : null,
     } as Article;
   } else {
     return null;
@@ -293,9 +288,9 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
   return { 
     id, 
     ...updatedData,
-    publishedAt: (updatedData?.publishedAt as Timestamp).toDate(),
-    createdAt: (updatedData?.createdAt as Timestamp).toDate(),
-    updatedAt: (updatedData?.updatedAt as Timestamp).toDate(),
+    publishedAt: (updatedData?.publishedAt as Timestamp).toDate().toISOString(),
+    createdAt: (updatedData?.createdAt as Timestamp).toDate().toISOString(),
+    updatedAt: (updatedData?.updatedAt as Timestamp).toDate().toISOString(),
  } as Article;
 }
 
@@ -333,12 +328,12 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
              return {
                 id: doc.id,
                 ...data,
-                publishedAt: (data.publishedAt as Timestamp)?.toDate(),
+                publishedAt: (data.publishedAt as Timestamp)?.toDate().toISOString(),
             } as Article;
         }).filter(article => article.id !== currentArticleId);
 
-        // Manually sort by date since we can't in the query
-        articles.sort((a, b) => (b.publishedAt?.getTime() || 0) - (a.publishedAt?.getTime() || 0));
+        // Manually sort by date
+        articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
 
         articles = articles.slice(0, 3); // Take the top 3
 
@@ -369,3 +364,5 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     return []; // Should be unreachable
 }
+
+    

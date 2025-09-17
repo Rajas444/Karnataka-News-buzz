@@ -59,9 +59,6 @@ export default function ArticleModal() {
                 <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4 gap-y-2 items-center">
                   <span>By {article.author || 'Karnataka News Pulse'}</span>
                   <span>{article.publishedAt ? format(new Date(article.publishedAt), 'PPP') : ''}</span>
-                  {article.sourceUrl && (
-                    <Badge variant="outline">Source: {new URL(article.sourceUrl).hostname}</Badge>
-                  )}
                 </div>
               </DialogDescription>
             )}
@@ -112,9 +109,6 @@ export default function ArticleModal() {
                 </div>
                 <div className="border-t p-4 flex-shrink-0 flex justify-between items-center bg-muted/50">
                     <ShareButtons url={typeof window !== 'undefined' ? `${window.location.origin}/article/${article.id}` : ''} title={article.title} />
-                     <div className="flex items-center gap-2">
-                        <Button variant="default" onClick={handleClose}>Close</Button>
-                    </div>
                 </div>
             </>
           )}

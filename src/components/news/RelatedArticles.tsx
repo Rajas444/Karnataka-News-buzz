@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getArticles } from '@/services/articles';
+import { getRelatedArticles } from '@/services/articles';
 import type { Article } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { useArticleModal } from './../providers/article-modal-provider';
@@ -19,17 +19,11 @@ export default function RelatedArticles({ categoryId, currentArticleId }: Relate
 
   useEffect(() => {
     async function fetchRelated() {
+      if (!categoryId) return;
       setLoading(true);
       try {
-        const articles = await getArticles({
-          category: categoryId,
-          pageSize: 4, // Fetch 3 related + potentially the current one
-        });
-        
-        // Filter out the current article and take the first 3
-        const filteredArticles = articles.filter(a => a.id !== currentArticleId).slice(0, 3);
-        setRelated(filteredArticles);
-
+        const articles = await getRelatedArticles(categoryId, currentArticleId);
+        setRelated(articles);
       } catch (error) {
         console.error("Failed to fetch related articles", error);
       } finally {
@@ -37,9 +31,7 @@ export default function RelatedArticles({ categoryId, currentArticleId }: Relate
       }
     }
 
-    if (categoryId) {
-      fetchRelated();
-    }
+    fetchRelated();
   }, [categoryId, currentArticleId]);
 
   if (loading) {

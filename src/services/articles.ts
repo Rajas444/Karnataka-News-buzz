@@ -8,6 +8,7 @@ import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storag
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 import { getCategories } from './categories';
 import { extractArticleContent } from '@/ai/flows/extract-article-content';
+import { fetchAndStoreNews } from './news';
 
 const articlesCollection = collection(db, 'articles');
 
@@ -201,13 +202,13 @@ export async function getArticles(options?: {
         return articles;
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
-             // This error is informational and should not crash the app if handled.
-             // It indicates a missing index, but our manual sort is the fallback.
-             console.warn(`Query performance could be improved with a Firestore index: ${error.message}`);
-             // Re-query without the failing constraint to get some data back.
-             const fallbackQuery = query(collection(db, 'articles'), limit(pageSize));
+             // This can happen if a composite index is needed. We will sort manually as a fallback.
+             console.warn(`Query failed due to missing index, sorting manually: ${error.message}`);
+             
+             // Re-query without the failing sort constraint
+             const fallbackQuery = query(articlesCollection, ...constraints.filter(c => c.type !== 'orderBy'));
              const fallbackSnapshot = await getDocs(fallbackQuery);
-             return fallbackSnapshot.docs.map(doc => {
+             const articles = fallbackSnapshot.docs.map(doc => {
                 const data = doc.data();
                 return {
                     id: doc.id,
@@ -216,7 +217,11 @@ export async function getArticles(options?: {
                     createdAt: (data.createdAt as Timestamp)?.toDate(),
                     updatedAt: (data.updatedAt as Timestamp)?.toDate(),
                 } as Article;
-            }).sort((a, b) => (b.publishedAt?.getTime() || 0) - (a.publishedAt?.getTime() || 0));
+            });
+            
+            // Manual sort
+            articles.sort((a, b) => (b.publishedAt?.getTime() || 0) - (a.publishedAt?.getTime() || 0));
+            return articles;
         }
         throw error;
     }
@@ -304,4 +309,63 @@ export async function deleteArticle(id: string): Promise<void> {
         await deleteObject(imageRef).catch(e => console.error("Error deleting image:", e));
     }
     await deleteDoc(docRef);
+}
+
+
+// READ (related articles with API fallback)
+export async function getRelatedArticles(categoryId: string, currentArticleId: string): Promise<Article[]> {
+    let attempts = 0;
+    const maxAttempts = 2;
+
+    while (attempts < maxAttempts) {
+        attempts++;
+        
+        const q = query(
+            articlesCollection,
+            where('categoryIds', 'array-contains', categoryId),
+            limit(4) // Fetch 4 to have extras if current article is included
+        );
+
+        const snapshot = await getDocs(q);
+        
+        let articles = snapshot.docs.map(doc => {
+             const data = doc.data();
+             return {
+                id: doc.id,
+                ...data,
+                publishedAt: (data.publishedAt as Timestamp)?.toDate(),
+            } as Article;
+        }).filter(article => article.id !== currentArticleId);
+
+        // Manually sort by date since we can't in the query
+        articles.sort((a, b) => (b.publishedAt?.getTime() || 0) - (a.publishedAt?.getTime() || 0));
+
+        articles = articles.slice(0, 3); // Take the top 3
+
+        // If we have enough articles OR this is the last attempt, return them
+        if (articles.length >= 3 || attempts === maxAttempts) {
+            return articles;
+        }
+        
+        // If not enough articles, try fetching from the API
+        console.log(`Found only ${articles.length} related articles. Fetching from API...`);
+        const allCategories = await getCategories();
+        const categorySlug = allCategories.find(c => c.id === categoryId)?.slug;
+
+        if (categorySlug) {
+            try {
+                await fetchAndStoreNews(categorySlug);
+                // After fetching, the loop will run again to query Firestore.
+            } catch (error) {
+                console.error("Failed to fetch news from API as fallback:", error);
+                // If API fails, return what we have to avoid infinite loops
+                return articles;
+            }
+        } else {
+             // If we can't find a slug, we can't fetch, so return what we have.
+             return articles;
+        }
+    }
+
+    return []; // Should be unreachable
 }

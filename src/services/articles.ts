@@ -289,7 +289,7 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         const q = query(
             articlesCollection,
             where('categoryIds', 'array-contains', categoryId),
-            limit(4) // Fetch 4 to have extras if current article is included
+            limit(10) // Fetch more to allow for filtering and sorting
         );
 
         const snapshot = await getDocs(q);
@@ -301,15 +301,15 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         // Manually sort by date
         articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
 
-        articles = articles.slice(0, 3); // Take the top 3
+        const finalArticles = articles.slice(0, 3); // Take the top 3
 
         // If we have enough articles OR this is the last attempt, return them
-        if (articles.length >= 3 || attempts === maxAttempts) {
-            return articles;
+        if (finalArticles.length >= 3 || attempts === maxAttempts) {
+            return finalArticles;
         }
         
         // If not enough articles, try fetching from the API
-        console.log(`Found only ${articles.length} related articles. Fetching from API...`);
+        console.log(`Found only ${finalArticles.length} related articles. Attempting to fetch more from API...`);
         const allCategories = await getCategories();
         const categorySlug = allCategories.find(c => c.id === categoryId)?.slug;
 
@@ -320,11 +320,11 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
             } catch (error) {
                 console.error("Failed to fetch news from API as fallback:", error);
                 // If API fails, return what we have to avoid infinite loops
-                return articles;
+                return finalArticles;
             }
         } else {
              // If we can't find a slug, we can't fetch, so return what we have.
-             return articles;
+             return finalArticles;
         }
     }
 

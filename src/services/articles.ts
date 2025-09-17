@@ -94,16 +94,20 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle): Promis
         return found?.id;
     }).filter((id): id is string => !!id);
 
-    // 3. Get content
+    // 3. Get content, and extract if it's too short
     let content = apiArticle.content || apiArticle.description || '';
-    if (!content && apiArticle.link) {
-        console.log(`Content is empty for ${apiArticle.title}. Extracting from URL.`);
+    const wordCount = content.split(/\s+/).length;
+
+    if (apiArticle.link && wordCount < 200) {
+        console.log(`Content is too short (${wordCount} words) for '${apiArticle.title}'. Extracting from URL.`);
         try {
             const extracted = await extractArticleContent({ url: apiArticle.link });
-            content = extracted.content;
+            if (extracted.content) {
+              content = extracted.content;
+            }
         } catch (e) {
             console.error(`Failed to extract content for ${apiArticle.link}`, e);
-            content = apiArticle.description || 'No content available.';
+            // Keep the short description as a fallback
         }
     }
 
@@ -330,3 +334,5 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     return []; // Should be unreachable
 }
+
+    

@@ -57,7 +57,6 @@ export default function ArticleModal() {
             {article && (
               <DialogDescription asChild>
                 <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4 gap-y-2 items-center">
-                  <span>By {article.author || 'Karnataka News Pulse'}</span>
                   <span>{article.publishedAt ? format(new Date(article.publishedAt), 'PPP') : ''}</span>
                 </div>
               </DialogDescription>

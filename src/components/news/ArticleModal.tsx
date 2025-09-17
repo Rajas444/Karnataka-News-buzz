@@ -12,7 +12,6 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import ShareButtons from '@/components/shared/ShareButtons';
-import RelatedArticles from './RelatedArticles';
 
 export default function ArticleModal() {
   const { isOpen, onClose, articleId } = useArticleModal();
@@ -102,7 +101,6 @@ export default function ArticleModal() {
                         className="prose dark:prose-invert max-w-none font-kannada"
                         dangerouslySetInnerHTML={{ __html: article.content.replace(/\n/g, '<p>') }} 
                     />
-                    {article.categoryIds?.[0] && <RelatedArticles categoryId={article.categoryIds[0]} currentArticleId={article.id} />}
                 </div>
                 <div className="border-t p-4 flex-shrink-0 flex justify-between items-center bg-muted/50">
                     <ShareButtons url={typeof window !== 'undefined' ? `${window.location.origin}/article/${article.id}` : ''} title={article.title} />

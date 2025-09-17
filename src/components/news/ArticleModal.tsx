@@ -6,12 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useArticleModal } from '@/components/providers/article-modal-provider';
 import { getArticle } from '@/services/articles';
 import type { Article } from '@/lib/types';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, MapPin, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import ShareButtons from '@/components/shared/ShareButtons';
+import RelatedArticles from './RelatedArticles';
 
 export default function ArticleModal() {
   const { isOpen, onClose, articleId } = useArticleModal();
@@ -57,6 +58,11 @@ export default function ArticleModal() {
               <DialogDescription asChild>
                 <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4 gap-y-2 items-center">
                   <span>{article.publishedAt ? format(new Date(article.publishedAt), 'PPP') : ''}</span>
+                  {article.district && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" /> {article.district}
+                    </span>
+                  )}
                 </div>
               </DialogDescription>
             )}
@@ -90,13 +96,6 @@ export default function ArticleModal() {
                         </div>
                     )}
                     
-                     {article.seo?.keywords && article.seo.keywords.length > 0 && (
-                        <div className="my-4 flex flex-wrap gap-2">
-                            {article.seo.keywords.map(keyword => (
-                                <Badge key={keyword} variant="secondary">{keyword}</Badge>
-                            ))}
-                        </div>
-                     )}
                     <div 
                         className="prose dark:prose-invert max-w-none font-kannada"
                         dangerouslySetInnerHTML={{ __html: article.content.replace(/\n/g, '<p>') }} 

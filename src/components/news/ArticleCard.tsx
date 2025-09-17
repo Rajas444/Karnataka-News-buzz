@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import type { Article } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
-import { Calendar, ArrowRight } from 'lucide-react';
+import { Calendar, ArrowRight, MapPin } from 'lucide-react';
 import { useArticleModal } from '@/components/providers/article-modal-provider';
 import Link from 'next/link';
 
@@ -59,10 +59,18 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
            {(article.seo?.metaDescription || article.content || '').substring(0, 100)}...
         </p>
       </CardContent>
-      <CardFooter className="p-4 bg-muted/50 text-xs text-muted-foreground flex justify-between items-center">
-         <div className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            <span>{article.publishedAt ? formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true }) : 'Just now'}</span>
+      <CardFooter className="p-4 bg-muted/50 text-xs text-muted-foreground flex justify-between items-center flex-wrap gap-y-2">
+         <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                <span>{article.publishedAt ? formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true }) : 'Just now'}</span>
+            </div>
+            {article.district && (
+                 <div className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    <span>{article.district}</span>
+                </div>
+            )}
         </div>
         <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1">
           Read More <ArrowRight className="h-3 w-3" />
@@ -87,5 +95,3 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
     </Link>
   )
 }
-
-    

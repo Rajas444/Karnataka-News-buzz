@@ -114,14 +114,6 @@ export default function ArticleModal() {
                 <div className="border-t p-4 flex-shrink-0 flex justify-between items-center bg-muted/50">
                     <ShareButtons url={typeof window !== 'undefined' ? `${window.location.origin}/article/${article.id}` : ''} title={article.title} />
                      <div className="flex items-center gap-2">
-                        {article.sourceUrl && (
-                            <Button variant="outline" asChild>
-                                <Link href={article.sourceUrl} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="mr-2 h-4 w-4" />
-                                    View Original Article
-                                </Link>
-                            </Button>
-                        )}
                         <Button variant="default" onClick={handleClose}>Close</Button>
                     </div>
                 </div>

@@ -85,10 +85,7 @@ export default function ArticleModal() {
                                 className="object-cover"
                                 sizes="(max-width: 768px) 100vw, 50vw"
                             />
-                            <div 
-                                className="absolute inset-0 flex items-center justify-center text-white text-5xl font-bold opacity-10 pointer-events-none transform -rotate-12"
-                                style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}
-                            >
+                             <div className="absolute top-2 right-2 bg-black/50 text-white text-xs font-bold px-2 py-1 rounded-md">
                                 Karnataka News Pulse
                             </div>
                         </div>

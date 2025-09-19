@@ -9,7 +9,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 import { googleAI } from '@genkit-ai/googleai';
 
 const GenerateVideoReelInputSchema = z.object({
@@ -27,9 +27,6 @@ export type GenerateVideoReelOutput = z.infer<typeof GenerateVideoReelOutputSche
 export async function generateVideoReel(input: GenerateVideoReelInput): Promise<GenerateVideoReelOutput> {
   return generateVideoReelFlow(input);
 }
-
-// Increase the timeout for this server action as video generation can be slow.
-export const maxDuration = 120; // 2 minutes
 
 const generateVideoReelFlow = ai.defineFlow(
   {

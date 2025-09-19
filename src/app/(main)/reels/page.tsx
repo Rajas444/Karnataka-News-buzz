@@ -17,6 +17,9 @@ interface Reel extends Article {
   error?: string;
 }
 
+// Increase the timeout for this page as video generation can be slow.
+export const maxDuration = 120; // 2 minutes
+
 export default function ReelsPage() {
   const [reels, setReels] = useState<Reel[]>([]);
   const [loading, setLoading] = useState(true);

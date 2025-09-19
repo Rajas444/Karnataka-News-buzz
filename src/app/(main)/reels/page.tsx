@@ -58,7 +58,7 @@ export default function ReelsPage() {
       });
 
       if (result.error) {
-        // This will be caught by the catch block below
+        // Let the catch block handle the error message and UI update
         throw new Error(result.error);
       }
 

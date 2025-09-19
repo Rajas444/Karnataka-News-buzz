@@ -6,31 +6,28 @@ import type { Article } from '@/lib/types';
 import { getArticles } from '@/services/articles';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Video, Sparkles, AlertCircle } from 'lucide-react';
+import { Loader2, Video, Sparkles, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { generateVideoReel } from '@/ai/flows/generate-video-reel-flow';
+import { generateNewsImage } from '@/ai/flows/generate-news-image-flow';
 import { Skeleton } from '@/components/ui/skeleton';
+import Image from 'next/image';
 
 interface Reel extends Article {
-  videoUrl?: string;
+  imageUrl?: string;
   isGenerating?: boolean;
   error?: string;
 }
 
-// Increase the timeout for this page as video generation can be slow.
-export const maxDuration = 120; // 2 minutes
-
 export default function ReelsPage() {
   const [reels, setReels] = useState<Reel[]>([]);
   const [loading, setLoading] = useState(true);
-  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     async function fetchInitialArticles() {
       try {
         const articles = await getArticles({ pageSize: 5 });
-        setReels(articles);
+        setReels(articles.map(a => ({...a, imageUrl: a.imageUrl || undefined })));
       } catch (error) {
         console.error("Failed to fetch articles for reels:", error);
         toast({ title: 'Could not load news content.', variant: 'destructive' });
@@ -41,7 +38,7 @@ export default function ReelsPage() {
     fetchInitialArticles();
   }, [toast]);
 
-  const handleGenerateVideo = async (reelId: string) => {
+  const handleGenerateImage = async (reelId: string) => {
     const reelIndex = reels.findIndex(r => r.id === reelId);
     if (reelIndex === -1) return;
 
@@ -50,7 +47,7 @@ export default function ReelsPage() {
     setReels(prev => prev.map(r => r.id === reelId ? { ...r, isGenerating: true, error: undefined } : r));
 
     try {
-      const result = await generateVideoReel({ 
+      const result = await generateNewsImage({ 
         title: reel.title,
         summary: reel.seo.metaDescription || reel.content.substring(0, 200)
       });
@@ -59,47 +56,19 @@ export default function ReelsPage() {
         throw new Error(result.error);
       }
 
-      setReels(prev => prev.map(r => r.id === reelId ? { ...r, isGenerating: false, videoUrl: result.videoDataUri } : r));
+      setReels(prev => prev.map(r => r.id === reelId ? { ...r, isGenerating: false, imageUrl: result.imageDataUri } : r));
 
     } catch (error: any) {
-      console.error("Video generation failed:", error);
-      const errorMessage = error.message || 'An unknown error occurred during video generation.';
+      console.error("Image generation failed:", error);
+      const errorMessage = error.message || 'An unknown error occurred during image generation.';
       setReels(prev => prev.map(r => r.id === reelId ? { ...r, isGenerating: false, error: errorMessage } : r));
       toast({
-        title: 'Video Generation Failed',
+        title: 'Image Generation Failed',
         description: errorMessage,
         variant: 'destructive',
       });
     }
   };
-  
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const video = entry.target as HTMLVideoElement;
-          if (entry.isIntersecting) {
-            video.play().catch(e => console.log("Video autoplay was prevented."));
-          } else {
-            video.pause();
-          }
-        });
-      },
-      { threshold: 0.5 } // Play when 50% of the video is visible
-    );
-
-    const currentRefs = videoRefs.current;
-    currentRefs.forEach(video => {
-      if (video) observer.observe(video);
-    });
-
-    return () => {
-      currentRefs.forEach(video => {
-        if (video) observer.unobserve(video);
-      });
-    };
-  }, [reels]);
-
 
   if (loading) {
     return (
@@ -118,20 +87,18 @@ export default function ReelsPage() {
         <h1 className="font-headline text-4xl md:text-5xl font-bold mb-2 flex items-center justify-center gap-3">
           <Video /> News Reels
         </h1>
-        <p className="text-muted-foreground text-lg">Watch short, AI-generated videos of the latest news.</p>
+        <p className="text-muted-foreground text-lg">AI-generated visuals for the latest news.</p>
       </header>
 
       <div className="flex flex-col items-center space-y-12">
-        {reels.map((reel, index) => (
+        {reels.map((reel) => (
           <Card key={reel.id} className="w-full max-w-sm overflow-hidden shadow-2xl">
             <div className="relative aspect-[9/16] bg-black">
-              {reel.videoUrl ? (
-                <video
-                  ref={el => videoRefs.current[index] = el}
-                  src={reel.videoUrl}
-                  playsInline
-                  loop
-                  muted
+              {reel.imageUrl ? (
+                <Image
+                  src={reel.imageUrl}
+                  alt={reel.title}
+                  fill
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -139,26 +106,26 @@ export default function ReelsPage() {
                   {reel.isGenerating ? (
                     <>
                       <Loader2 className="h-12 w-12 text-primary animate-spin" />
-                      <p className="mt-4 text-muted-foreground">Generating your video... This may take up to a minute.</p>
+                      <p className="mt-4 text-muted-foreground">Generating your image... This may take a moment.</p>
                     </>
                   ) : reel.error ? (
                     <div className="text-destructive">
                         <AlertCircle className="h-12 w-12 mx-auto" />
                         <p className="mt-4 font-semibold">Generation Failed</p>
                         <p className="text-xs mt-2">{reel.error}</p>
-                         <Button onClick={() => handleGenerateVideo(reel.id)} size="sm" className="mt-4">
+                         <Button onClick={() => handleGenerateImage(reel.id)} size="sm" className="mt-4">
                             <Sparkles className="mr-2 h-4 w-4" />
                             Try Again
                         </Button>
                     </div>
                   ) : (
                     <>
-                      <Video className="h-16 w-16 text-muted-foreground" />
-                      <h3 className="mt-4 text-lg font-semibold">Generate a News Reel</h3>
-                      <p className="text-muted-foreground text-sm">Click the button below to create an AI-powered video for this story.</p>
-                      <Button onClick={() => handleGenerateVideo(reel.id)} className="mt-6">
+                      <ImageIcon className="h-16 w-16 text-muted-foreground" />
+                      <h3 className="mt-4 text-lg font-semibold">Generate a News Image</h3>
+                      <p className="text-muted-foreground text-sm">Click the button below to create an AI-powered image for this story.</p>
+                      <Button onClick={() => handleGenerateImage(reel.id)} className="mt-6">
                         <Sparkles className="mr-2 h-4 w-4" />
-                        Generate Video
+                        Generate Image
                       </Button>
                     </>
                   )}

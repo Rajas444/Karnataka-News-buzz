@@ -10,7 +10,8 @@ import '@/ai/flows/generate-news-headline.ts';
 import '@/ai/flows/watermark-image-flow.ts';
 import '@/ai/flows/extract-article-content.ts';
 import '@/ai/flows/collect-news-flow.ts';
-import '@/ai/flows/generate-news-image-flow.ts';
+import '@/ai/flows/generate-video-reel-flow.ts';
+
 
 
 

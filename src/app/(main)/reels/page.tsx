@@ -58,15 +58,26 @@ export default function ReelsPage() {
       });
 
       if (result.error) {
+        // This will be caught by the catch block below
         throw new Error(result.error);
+      }
+
+      if (!result.videoDataUri) {
+        throw new Error('Video generation result was empty.');
       }
 
       setReels(prev => prev.map(r => r.id === reelId ? { ...r, isGenerating: false, videoUrl: result.videoDataUri } : r));
 
     } catch (error: any) {
       console.error("Video generation failed:", error);
-      const errorMessage = error.message || 'An unknown error occurred during video generation.';
+      
+      let errorMessage = error.message || 'An unknown error occurred during video generation.';
+      if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
+          errorMessage = 'API rate limit exceeded. Please wait a moment and try again.';
+      }
+
       setReels(prev => prev.map(r => r.id === reelId ? { ...r, isGenerating: false, error: errorMessage } : r));
+      
       toast({
         title: 'Video Generation Failed',
         description: errorMessage,

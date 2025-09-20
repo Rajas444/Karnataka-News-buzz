@@ -25,10 +25,6 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-  watcherOptions: {
-    // Ignore watching the AI directory to prevent dev server loops.
-    ignored: ['**/src/ai/**'],
-  }
 };
 
 export default nextConfig;

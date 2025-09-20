@@ -17,19 +17,18 @@ export async function fetchAndStoreNews(category?: string, districtId?: string):
     url.searchParams.append('apikey', apiKey);
     url.searchParams.append('language', 'kn');
     url.searchParams.append('country', 'in');
-    url.searchParams.append('domain', 'newskannada,kannadaprabha,prajavani');
-
+    
     let queryTerm = '';
+    let districtName: string | undefined;
 
     if (districtId && districtId !== 'all') {
         const districts = await getDistricts();
         const district = districts.find(d => d.id === districtId);
         if (district) {
-            // Use the district NAME for the query, as it's more likely to appear in articles
+            districtName = district.name;
             queryTerm = district.name.includes(' ') ? `"${district.name}"` : district.name;
         }
     } else {
-        // Use a more specific query to increase chances of getting results on free tiers
         queryTerm = '(Bengaluru OR Mysuru OR Mangaluru OR Hubballi)';
     }
 
@@ -74,7 +73,6 @@ export async function fetchAndStoreNews(category?: string, districtId?: string):
         }
 
         if (data.results && data.results.length > 0) {
-            // Pass the district ID to the storage function
             await Promise.all(data.results.map(article => storeCollectedArticle(article, districtId)));
         }
 

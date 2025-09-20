@@ -23,7 +23,8 @@ export async function fetchAndStoreNews(category?: string, district?: string): P
     if (district && district !== 'all') {
         queryParts.push(district);
     } else {
-        queryParts.push('Karnataka');
+        // Use a more specific query to increase chances of getting results on free tiers
+        queryParts.push('(Bengaluru OR Mysuru OR Mangaluru OR Hubballi)');
     }
     
     if (queryParts.length > 0) {
@@ -84,3 +85,4 @@ export async function fetchAndStoreNews(category?: string, district?: string): P
         throw new Error('An unknown error occurred while fetching news.');
     }
 }
+

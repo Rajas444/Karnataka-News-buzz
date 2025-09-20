@@ -16,7 +16,7 @@ export async function fetchAndStoreNews(category?: string, district?: string): P
     const url = new URL('https://newsdata.io/api/1/news');
     url.searchParams.append('apikey', apiKey);
     url.searchParams.append('language', 'kn');
-    url.searchParams.append('country', 'in');
+    url.search_params.append('country', 'in');
     url.searchParams.append('domain', 'newskannada,kannadaprabha,prajavani');
 
 

@@ -90,7 +90,12 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
     const q = query(articlesCollection, where('sourceUrl', '==', apiArticle.link), limit(1));
     const existing = await getDocs(q);
     if (!existing.empty) {
-        return existing.docs[0].id;
+        // If the article exists, check if we need to add the districtId to it.
+        const doc = existing.docs[0];
+        if (districtId && !doc.data().districtId) {
+            await updateDoc(doc.ref, { districtId: districtId });
+        }
+        return doc.id;
     }
 
     const allCategories = await getCategories();

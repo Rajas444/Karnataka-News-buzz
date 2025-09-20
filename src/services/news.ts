@@ -7,7 +7,7 @@ import { getDistricts } from './districts';
 
 export async function fetchAndStoreNews(category?: string, districtName?: string, districtId?: string): Promise<void> {
     const apiKey = process.env.NEWSDATA_API_KEY;
-    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
+    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE' || apiKey === 'pub_3e231d27d02b413a804e6216d1b83058') {
         console.warn('Newsdata.io API key is not set or is a sample key. Skipping news fetch.');
         return;
     }
@@ -25,7 +25,7 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
         queryTerm = districtName.includes(' ') ? `"${districtName}"` : districtName;
     } else {
         // Fallback query if no specific district is selected.
-        queryTerm = 'Karnataka OR Bengaluru OR Mysuru OR Mangaluru OR Hubballi';
+        queryTerm = 'Karnataka';
     }
 
     url.searchParams.append('q', queryTerm);

@@ -17,11 +17,14 @@ export async function fetchAndStoreNews(category?: string, district?: string): P
     url.searchParams.append('apikey', apiKey);
     url.searchParams.append('language', 'kn');
     url.searchParams.append('country', 'in');
+    url.searchParams.append('domain', 'newskannada,kannadaprabha,prajavani');
+
 
     let queryTerm = '';
     
     if (district && district !== 'all') {
-        queryTerm = district;
+        // If the district name contains spaces, wrap it in quotes for an exact phrase search
+        queryTerm = district.includes(' ') ? `"${district}"` : district;
     } else {
         // Use a more specific query to increase chances of getting results on free tiers
         queryTerm = '(Bengaluru OR Mysuru OR Mangaluru OR Hubballi)';
@@ -72,7 +75,7 @@ export async function fetchAndStoreNews(category?: string, district?: string): P
 
         if (data.results && data.results.length > 0) {
             // Asynchronously store all fetched articles
-            await Promise.all(data.results.map(article => storeCollectedArticle(article)));
+            await Promise.all(data.results.map(article => storeCollectedArticle(article, district)));
         }
 
     } catch (error) {
@@ -85,5 +88,6 @@ export async function fetchAndStoreNews(category?: string, district?: string): P
         throw new Error('An unknown error occurred while fetching news.');
     }
 }
+
 
 

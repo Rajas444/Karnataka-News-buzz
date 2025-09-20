@@ -77,7 +77,7 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
 
 
 // STORE (from external API)
-export async function storeCollectedArticle(apiArticle: NewsdataArticle): Promise<string | null> {
+export async function storeCollectedArticle(apiArticle: NewsdataArticle, districtFilter?: string): Promise<string | null> {
     
     // 1. Check if article already exists
     const q = query(articlesCollection, where('sourceUrl', '==', apiArticle.link), limit(1));
@@ -128,7 +128,7 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle): Promis
             metaDescription: apiArticle.description || '',
         },
         views: 0,
-        district: null, // This can be enhanced with location extraction
+        district: districtFilter && districtFilter !== 'all' ? districtFilter : null,
     };
 
     // 5. Save to Firestore

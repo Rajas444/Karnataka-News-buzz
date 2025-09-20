@@ -101,6 +101,7 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 
     let content = apiArticle.content || apiArticle.description || '';
     
+    // Only extract content if BOTH content and description are missing.
     if (!apiArticle.content && !apiArticle.description && apiArticle.link) {
         console.log(`Content is missing for '${apiArticle.title}'. Extracting from URL.`);
         try {
@@ -150,12 +151,15 @@ export async function getArticles(options?: {
     startAfterId?: string; 
     pageSize?: number;
     category?: string;
-    district?: string; // This is now a district ID
+    district?: string; // This is a district ID
 }): Promise<Article[]> {
     
     const { startAfterId, pageSize = 10, category, district } = options || {};
     const constraints: QueryConstraint[] = [];
     
+    // Always sort by publishedAt descending
+    constraints.push(orderBy('publishedAt', 'desc'));
+
     if (category && category !== 'general') {
         const allCategories = await getCategories();
         const categoryDoc = allCategories.find(c => c.slug === category || c.id === category);
@@ -167,8 +171,6 @@ export async function getArticles(options?: {
     if (district && district !== 'all') {
         constraints.push(where('districtId', '==', district));
     }
-    
-    constraints.push(orderBy('publishedAt', 'desc'));
     
     if (startAfterId) {
         const lastVisibleDoc = await getDoc(doc(articlesCollection, startAfterId));
@@ -190,10 +192,13 @@ export async function getArticles(options?: {
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
              console.warn(`Query failed due to missing index, returning unsorted results for this filter: ${error.message}`);
-             const fallbackQuery = query(articlesCollection, ...constraints.filter(c => c.type !== 'orderBy'));
+             // Construct a fallback query without the order by that might cause issues with inequality filters
+             const fallbackConstraints = constraints.filter(c => c.type !== 'orderBy');
+             const fallbackQuery = query(articlesCollection, ...fallbackConstraints);
              const fallbackSnapshot = await getDocs(fallbackQuery);
              const articles = await Promise.all(fallbackSnapshot.docs.map(serializeArticle));
             
+            // Manual sort in JS as a last resort
             articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
             return articles;
         }
@@ -208,6 +213,7 @@ export async function getArticle(id: string): Promise<Article | null> {
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
+    // Increment view count
     updateDoc(docRef, { views: (docSnap.data().views || 0) + 1 });
     return serializeArticle(docSnap);
   } else {

@@ -3,6 +3,7 @@
 
 import type { NewsdataArticle, NewsdataResponse } from '@/lib/types';
 import { storeCollectedArticle } from './articles';
+import { getDistricts } from './districts';
 
 export async function fetchAndStoreNews(category?: string, districtName?: string, districtId?: string): Promise<void> {
     const apiKey = process.env.NEWSDATA_API_KEY;
@@ -17,11 +18,14 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
     url.searchParams.append('country', 'in');
     
     let queryTerm = '';
-
+    
     if (districtName) {
+        // Use the district name for the external API query.
+        // Wrap in quotes if it contains spaces for an exact phrase search.
         queryTerm = districtName.includes(' ') ? `"${districtName}"` : districtName;
     } else {
-        queryTerm = '(Bengaluru OR Mysuru OR Mangaluru OR Hubballi)';
+        // Fallback query if no specific district is selected.
+        queryTerm = 'Karnataka OR Bengaluru OR Mysuru OR Mangaluru OR Hubballi';
     }
 
     url.searchParams.append('q', queryTerm);
@@ -64,6 +68,7 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
         }
 
         if (data.results && data.results.length > 0) {
+            // Pass the districtId to the storage function.
             await Promise.all(data.results.map(article => storeCollectedArticle(article, districtId)));
         }
 

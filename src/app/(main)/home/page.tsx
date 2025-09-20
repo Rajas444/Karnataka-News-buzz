@@ -38,6 +38,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   try {
     const selectedDistrict = districtId ? districts.find(d => d.id === districtId) : undefined;
+    // Pass both name and ID
     await fetchAndStoreNews(category, selectedDistrict?.name, selectedDistrict?.id);
   } catch (e: any) {
     console.warn("Could not fetch fresh news, will show existing.", e.message);

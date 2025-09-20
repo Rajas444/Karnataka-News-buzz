@@ -27,7 +27,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   let districts = [];
 
   const category = searchParams?.category;
-  const district = searchParams?.district;
+  const districtId = searchParams?.district;
 
   try {
       categories = await getCategories();
@@ -37,15 +37,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   try {
-    // Pass the district ID (which is the slug) to the fetch function
-    await fetchAndStoreNews(category, district);
+    const selectedDistrict = districtId ? districts.find(d => d.id === districtId) : undefined;
+    await fetchAndStoreNews(category, selectedDistrict?.name, selectedDistrict?.id);
   } catch (e: any) {
     console.warn("Could not fetch fresh news, will show existing.", e.message);
   }
 
   try {
-    // Now, fetch articles from our database using the district ID
-    initialArticles = await getArticles({ category, district, pageSize: 20 });
+    initialArticles = await getArticles({ category, district: districtId, pageSize: 20 });
   } catch (e: any) {
      error = e.message || 'An unknown error occurred while fetching articles from the database.';
   }
@@ -122,7 +121,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         <ArticleList
                             initialArticles={otherArticles}
                             category={category}
-                            district={district}
+                            district={districtId}
                         />
                     ) : !error ? (
                         renderEmptyState()

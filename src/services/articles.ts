@@ -156,26 +156,19 @@ export async function getArticles(options?: {
     const { startAfterId, pageSize = 10, category, district } = options || {};
     const constraints: QueryConstraint[] = [];
     
-    let isFiltered = false;
-
     if (category && category !== 'general') {
         const allCategories = await getCategories();
         const categoryDoc = allCategories.find(c => c.slug === category || c.id === category);
         if (categoryDoc) {
             constraints.push(where('categoryIds', 'array-contains', categoryDoc.id));
-            isFiltered = true;
         }
     }
     
     if (district && district !== 'all') {
-        // Query by districtId now
         constraints.push(where('districtId', '==', district));
-        isFiltered = true;
     }
     
-    if (!isFiltered) {
-        constraints.push(orderBy('publishedAt', 'desc'));
-    }
+    constraints.push(orderBy('publishedAt', 'desc'));
     
     if (startAfterId) {
         const lastVisibleDoc = await getDoc(doc(articlesCollection, startAfterId));
@@ -193,11 +186,6 @@ export async function getArticles(options?: {
     try {
         const snapshot = await getDocs(q);
         const articles = await Promise.all(snapshot.docs.map(serializeArticle));
-
-        if (isFiltered) {
-            articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
-        }
-
         return articles;
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
@@ -295,6 +283,7 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         const q = query(
             articlesCollection,
             where('categoryIds', 'array-contains', categoryId),
+            orderBy('publishedAt', 'desc'),
             limit(10)
         );
 
@@ -302,8 +291,6 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         
         let articles = (await Promise.all(snapshot.docs.map(serializeArticle)))
             .filter(article => article.id !== currentArticleId);
-
-        articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
 
         const finalArticles = articles.slice(0, 3);
 
@@ -314,10 +301,14 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         console.log(`Found only ${finalArticles.length} related articles. Attempting to fetch more from API...`);
         const allCategories = await getCategories();
         const categorySlug = allCategories.find(c => c.id === categoryId)?.slug;
+        const districtId = finalArticles[0]?.districtId; // Try to get district from existing articles
+        const allDistricts = await getDistricts();
+        const districtName = allDistricts.find(d => d.id === districtId)?.name;
+
 
         if (categorySlug) {
             try {
-                await fetchAndStoreNews(categorySlug);
+                await fetchAndStoreNews(categorySlug, districtName, districtId);
             } catch (error) {
                 console.error("Failed to fetch news from API as fallback:", error);
                 return finalArticles;

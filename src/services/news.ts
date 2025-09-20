@@ -3,13 +3,11 @@
 
 import type { NewsdataArticle, NewsdataResponse } from '@/lib/types';
 import { storeCollectedArticle } from './articles';
-import { getDistricts } from './districts';
 
-
-export async function fetchAndStoreNews(category?: string, districtId?: string): Promise<void> {
+export async function fetchAndStoreNews(category?: string, districtName?: string, districtId?: string): Promise<void> {
     const apiKey = process.env.NEWSDATA_API_KEY;
-    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
-        console.warn('Newsdata.io API key is not set. Skipping news fetch.');
+    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE' || apiKey === 'pub_3e231d27d02b413a804e6216d1b83058') {
+        console.warn('Newsdata.io API key is not set or is a sample key. Skipping news fetch.');
         return;
     }
 
@@ -19,22 +17,14 @@ export async function fetchAndStoreNews(category?: string, districtId?: string):
     url.searchParams.append('country', 'in');
     
     let queryTerm = '';
-    let districtName: string | undefined;
 
-    if (districtId && districtId !== 'all') {
-        const districts = await getDistricts();
-        const district = districts.find(d => d.id === districtId);
-        if (district) {
-            districtName = district.name;
-            queryTerm = district.name.includes(' ') ? `"${district.name}"` : district.name;
-        }
+    if (districtName) {
+        queryTerm = districtName.includes(' ') ? `"${districtName}"` : districtName;
     } else {
         queryTerm = '(Bengaluru OR Mysuru OR Mangaluru OR Hubballi)';
     }
 
-    if (queryTerm) {
-        url.searchParams.append('q', queryTerm);
-    }
+    url.searchParams.append('q', queryTerm);
 
     if (category && category !== 'general') {
         url.searchParams.append('category', category);
@@ -50,7 +40,8 @@ export async function fetchAndStoreNews(category?: string, districtId?: string):
              const errorData = await response.json().catch(() => ({}));
              const errorMessage = errorData?.results?.message || `API request failed with status ${response.status}`;
              if (errorData?.results?.code === 'TooManyRequests') {
-                throw new Error('Newsdata.io API rate limit exceeded. Please try again later.');
+                console.warn('Newsdata.io API rate limit exceeded. Please try again later.');
+                return; // Gracefully exit without throwing an error
              }
              if (errorData?.results?.code === 'PlanFeatureExceeded') {
                 console.warn('Newsdata.io plan feature exceeded. Cannot use date filter.');

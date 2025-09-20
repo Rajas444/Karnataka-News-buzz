@@ -18,17 +18,17 @@ export async function fetchAndStoreNews(category?: string, district?: string): P
     url.searchParams.append('language', 'kn');
     url.searchParams.append('country', 'in');
 
-    const queryParts: string[] = [];
+    let queryTerm = '';
     
     if (district && district !== 'all') {
-        queryParts.push(district);
+        queryTerm = district;
     } else {
         // Use a more specific query to increase chances of getting results on free tiers
-        queryParts.push('(Bengaluru OR Mysuru OR Mangaluru OR Hubballi)');
+        queryTerm = '(Bengaluru OR Mysuru OR Mangaluru OR Hubballi)';
     }
     
-    if (queryParts.length > 0) {
-        url.searchParams.append('q', queryParts.join(' AND '));
+    if (queryTerm) {
+        url.searchParams.append('q', queryTerm);
     }
 
     if (category && category !== 'general') {
@@ -85,4 +85,5 @@ export async function fetchAndStoreNews(category?: string, district?: string): P
         throw new Error('An unknown error occurred while fetching news.');
     }
 }
+
 

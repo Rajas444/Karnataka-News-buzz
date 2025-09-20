@@ -7,7 +7,7 @@ import { getDistricts } from './districts';
 
 export async function fetchAndStoreNews(category?: string, districtName?: string, districtId?: string): Promise<void> {
     const apiKey = process.env.NEWSDATA_API_KEY;
-    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE' || apiKey === 'pub_3e231d27d02b413a804e6216d1b83058') {
+    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
         console.warn('Newsdata.io API key is not set or is a sample key. Skipping news fetch.');
         return;
     }

@@ -94,12 +94,12 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle): Promis
         return found?.id;
     }).filter((id): id is string => !!id);
 
-    // 3. Get content, and extract if it's too short
+    // 3. Get content, and extract only if absolutely necessary
     let content = apiArticle.content || apiArticle.description || '';
-    const wordCount = content.split(/\s+/).length;
-
-    if (apiArticle.link && wordCount < 200) {
-        console.log(`Content is too short (${wordCount} words) for '${apiArticle.title}'. Extracting from URL.`);
+    
+    // Only call AI if both content and description are missing and there's a link.
+    if (!apiArticle.content && !apiArticle.description && apiArticle.link) {
+        console.log(`Content is missing for '${apiArticle.title}'. Extracting from URL.`);
         try {
             const extracted = await extractArticleContent({ url: apiArticle.link });
             if (extracted.content) {
@@ -107,7 +107,7 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle): Promis
             }
         } catch (e) {
             console.error(`Failed to extract content for ${apiArticle.link}`, e);
-            // Keep the short description as a fallback
+            // If extraction fails, content will remain an empty string, which is acceptable.
         }
     }
 

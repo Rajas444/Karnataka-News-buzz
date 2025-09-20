@@ -3,33 +3,36 @@
 
 import type { NewsdataArticle, NewsdataResponse } from '@/lib/types';
 import { storeCollectedArticle } from './articles';
+import { getDistricts } from './districts';
 
 
-export async function fetchAndStoreNews(category?: string, district?: string): Promise<void> {
+export async function fetchAndStoreNews(category?: string, districtId?: string): Promise<void> {
     const apiKey = process.env.NEWSDATA_API_KEY;
     if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
         console.warn('Newsdata.io API key is not set. Skipping news fetch.');
-        // This is not an error, as the app can function with existing DB data.
         return;
     }
 
     const url = new URL('https://newsdata.io/api/1/news');
     url.searchParams.append('apikey', apiKey);
     url.searchParams.append('language', 'kn');
-    url.search_params.append('country', 'in');
+    url.searchParams.append('country', 'in');
     url.searchParams.append('domain', 'newskannada,kannadaprabha,prajavani');
 
-
     let queryTerm = '';
-    
-    if (district && district !== 'all') {
-        // If the district name contains spaces, wrap it in quotes for an exact phrase search
-        queryTerm = district.includes(' ') ? `"${district}"` : district;
+
+    if (districtId && districtId !== 'all') {
+        const districts = await getDistricts();
+        const district = districts.find(d => d.id === districtId);
+        if (district) {
+            // Use the district NAME for the query, as it's more likely to appear in articles
+            queryTerm = district.name.includes(' ') ? `"${district.name}"` : district.name;
+        }
     } else {
         // Use a more specific query to increase chances of getting results on free tiers
         queryTerm = '(Bengaluru OR Mysuru OR Mangaluru OR Hubballi)';
     }
-    
+
     if (queryTerm) {
         url.searchParams.append('q', queryTerm);
     }
@@ -38,11 +41,9 @@ export async function fetchAndStoreNews(category?: string, district?: string): P
         url.searchParams.append('category', category);
     }
     
-    // We only fetch the first page to get the latest news
-    // Pagination will be handled by our own database reads
     try {
-        const response = await fetch(url.toString(), { next: { revalidate: 3600 } }); // Cache for 1 hour
-        
+        const response = await fetch(url.toString(), { next: { revalidate: 3600 } });
+
         if (!response.ok) {
              if (response.status === 401) {
                 throw new Error(`Newsdata.io Error: Invalid API Key. Please check the key in your .env file.`);
@@ -53,9 +54,8 @@ export async function fetchAndStoreNews(category?: string, district?: string): P
                 throw new Error('Newsdata.io API rate limit exceeded. Please try again later.');
              }
              if (errorData?.results?.code === 'PlanFeatureExceeded') {
-                // This is a common issue on free plans. We don't want to block the app.
                 console.warn('Newsdata.io plan feature exceeded. Cannot use date filter.');
-                return; // Gracefully exit without throwing an error
+                return;
              }
              throw new Error(`Newsdata.io Error: ${errorMessage}`);
         }
@@ -74,20 +74,15 @@ export async function fetchAndStoreNews(category?: string, district?: string): P
         }
 
         if (data.results && data.results.length > 0) {
-            // Asynchronously store all fetched articles
-            await Promise.all(data.results.map(article => storeCollectedArticle(article, district)));
+            // Pass the district ID to the storage function
+            await Promise.all(data.results.map(article => storeCollectedArticle(article, districtId)));
         }
 
     } catch (error) {
         console.error("Failed to fetch or store news from Newsdata.io:", error);
         if (error instanceof Error) {
-            // Re-throw known errors to be displayed to the user
             throw error;
         }
-        // Fallback for unknown or network errors
         throw new Error('An unknown error occurred while fetching news.');
     }
 }
-
-
-

@@ -9,18 +9,26 @@ import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 import { getCategories } from './categories';
 import { extractArticleContent } from '@/ai/flows/extract-article-content';
 import { fetchAndStoreNews } from './news';
+import { getDistricts } from './districts';
 
 const articlesCollection = collection(db, 'articles');
 
 // Helper function to serialize article data, converting Timestamps to ISO strings
-function serializeArticle(doc: any): Article {
+async function serializeArticle(doc: any): Promise<Article> {
     const data = doc.data();
+    let districtName: string | undefined = undefined;
+    if (data.districtId) {
+        const districts = await getDistricts();
+        districtName = districts.find(d => d.id === data.districtId)?.name;
+    }
+
     return {
         id: doc.id,
         ...data,
         publishedAt: data.publishedAt ? (data.publishedAt as Timestamp).toDate().toISOString() : null,
         createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate().toISOString() : null,
         updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate().toISOString() : null,
+        district: districtName, // This is now a derived field for display
     } as Article;
 }
 
@@ -77,27 +85,22 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
 
 
 // STORE (from external API)
-export async function storeCollectedArticle(apiArticle: NewsdataArticle, districtFilter?: string): Promise<string | null> {
+export async function storeCollectedArticle(apiArticle: NewsdataArticle, districtId?: string): Promise<string | null> {
     
-    // 1. Check if article already exists
     const q = query(articlesCollection, where('sourceUrl', '==', apiArticle.link), limit(1));
     const existing = await getDocs(q);
     if (!existing.empty) {
-        // console.log(`Article already exists: ${apiArticle.link}`);
-        return existing.docs[0].id; // Return existing article ID
+        return existing.docs[0].id;
     }
 
-    // 2. Map categories
     const allCategories = await getCategories();
     const categoryIds = apiArticle.category.map(apiCat => {
         const found = allCategories.find(c => c.name.toLowerCase() === apiCat.toLowerCase() || c.slug === apiCat.toLowerCase());
         return found?.id;
     }).filter((id): id is string => !!id);
 
-    // 3. Get content, and extract only if absolutely necessary
     let content = apiArticle.content || apiArticle.description || '';
     
-    // Only call AI if both content and description are missing and there's a link.
     if (!apiArticle.content && !apiArticle.description && apiArticle.link) {
         console.log(`Content is missing for '${apiArticle.title}'. Extracting from URL.`);
         try {
@@ -107,20 +110,17 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
             }
         } catch (e) {
             console.error(`Failed to extract content for ${apiArticle.link}`, e);
-            // If extraction fails, content will remain an empty string, which is acceptable.
         }
     }
 
-
-    // 4. Create article object
-    const newArticle: Omit<Article, 'id' | 'createdAt' | 'updatedAt'> = {
+    const newArticleData = {
         title: apiArticle.title,
         content: content,
         imageUrl: apiArticle.image_url,
         author: apiArticle.creator?.join(', ') || apiArticle.source_id,
         authorId: apiArticle.source_id,
         categoryIds: categoryIds.length > 0 ? categoryIds : [allCategories.find(c => c.slug === 'general')?.id || 'general'],
-        status: 'published',
+        status: 'published' as const,
         publishedAt: Timestamp.fromDate(new Date(apiArticle.pubDate)),
         sourceUrl: apiArticle.link,
         seo: {
@@ -128,13 +128,12 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
             metaDescription: apiArticle.description || '',
         },
         views: 0,
-        district: districtFilter && districtFilter !== 'all' ? districtFilter : null,
+        districtId: districtId && districtId !== 'all' ? districtId : null,
     };
 
-    // 5. Save to Firestore
     try {
         const docRef = await addDoc(articlesCollection, {
-            ...newArticle,
+            ...newArticleData,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
         });
@@ -150,8 +149,8 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 export async function getArticles(options?: { 
     startAfterId?: string; 
     pageSize?: number;
-    category?: string; // This can be slug or ID
-    district?: string;
+    category?: string;
+    district?: string; // This is now a district ID
 }): Promise<Article[]> {
     
     const { startAfterId, pageSize = 10, category, district } = options || {};
@@ -169,7 +168,8 @@ export async function getArticles(options?: {
     }
     
     if (district && district !== 'all') {
-        constraints.push(where('district', '==', district));
+        // Query by districtId now
+        constraints.push(where('districtId', '==', district));
         isFiltered = true;
     }
     
@@ -192,9 +192,8 @@ export async function getArticles(options?: {
 
     try {
         const snapshot = await getDocs(q);
-        const articles = snapshot.docs.map(serializeArticle);
+        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
-        // Manually sort if we couldn't do it in the query
         if (isFiltered) {
             articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
         }
@@ -205,9 +204,8 @@ export async function getArticles(options?: {
              console.warn(`Query failed due to missing index, returning unsorted results for this filter: ${error.message}`);
              const fallbackQuery = query(articlesCollection, ...constraints.filter(c => c.type !== 'orderBy'));
              const fallbackSnapshot = await getDocs(fallbackQuery);
-             const articles = fallbackSnapshot.docs.map(serializeArticle);
+             const articles = await Promise.all(fallbackSnapshot.docs.map(serializeArticle));
             
-            // Manual sort
             articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
             return articles;
         }
@@ -222,7 +220,6 @@ export async function getArticle(id: string): Promise<Article | null> {
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
-    // Increment views
     updateDoc(docRef, { views: (docSnap.data().views || 0) + 1 });
     return serializeArticle(docSnap);
   } else {
@@ -245,7 +242,6 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
     const watermarkedImageDataUri = watermarkedImageResult.imageDataUri;
     
     if (imagePath) {
-      // Delete old image
       const oldImageRef = ref(storage, imagePath);
       await deleteObject(oldImageRef).catch(e => console.warn("Old image not found, could not delete:", e.message));
     }
@@ -277,7 +273,9 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
 // DELETE
 export async function deleteArticle(id: string): Promise<void> {
     const docRef = doc(db, 'articles', id);
-    const article = await getArticle(id);
+    const docSnap = await getDoc(docRef);
+    const article = docSnap.exists() ? docSnap.data() : null;
+    
     if (article?.imagePath) {
         const imageRef = ref(storage, article.imagePath);
         await deleteObject(imageRef).catch(e => console.error("Error deleting image:", e));
@@ -297,26 +295,22 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         const q = query(
             articlesCollection,
             where('categoryIds', 'array-contains', categoryId),
-            limit(10) // Fetch more to allow for filtering and sorting
+            limit(10)
         );
 
         const snapshot = await getDocs(q);
         
-        let articles = snapshot.docs
-            .map(serializeArticle)
+        let articles = (await Promise.all(snapshot.docs.map(serializeArticle)))
             .filter(article => article.id !== currentArticleId);
 
-        // Manually sort by date
         articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
 
-        const finalArticles = articles.slice(0, 3); // Take the top 3
+        const finalArticles = articles.slice(0, 3);
 
-        // If we have enough articles OR this is the last attempt, return them
         if (finalArticles.length >= 3 || attempts === maxAttempts) {
             return finalArticles;
         }
         
-        // If not enough articles, try fetching from the API
         console.log(`Found only ${finalArticles.length} related articles. Attempting to fetch more from API...`);
         const allCategories = await getCategories();
         const categorySlug = allCategories.find(c => c.id === categoryId)?.slug;
@@ -324,21 +318,14 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         if (categorySlug) {
             try {
                 await fetchAndStoreNews(categorySlug);
-                // After fetching, the loop will run again to query Firestore.
             } catch (error) {
                 console.error("Failed to fetch news from API as fallback:", error);
-                // If API fails, return what we have to avoid infinite loops
                 return finalArticles;
             }
         } else {
-             // If we can't find a slug, we can't fetch, so return what we have.
              return finalArticles;
         }
     }
 
-    return []; // Should be unreachable
+    return [];
 }
-
-    
-
-    

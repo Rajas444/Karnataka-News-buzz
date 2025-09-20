@@ -37,16 +37,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   try {
-    // First, try to fetch fresh news from the API and store it
+    // Pass the district ID (which is the slug) to the fetch function
     await fetchAndStoreNews(category, district);
   } catch (e: any) {
-    // This might fail if the API limit is reached, which is okay.
-    // We will fall back to showing what's in the database.
     console.warn("Could not fetch fresh news, will show existing.", e.message);
   }
 
   try {
-    // Now, fetch articles from our database
+    // Now, fetch articles from our database using the district ID
     initialArticles = await getArticles({ category, district, pageSize: 20 });
   } catch (e: any) {
      error = e.message || 'An unknown error occurred while fetching articles from the database.';
@@ -75,7 +73,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   return (
     <div className="container mx-auto px-4 py-8">
       
-      {/* Filters */}
       <section className="mb-12">
           <FilterControls categories={categories} districts={districts} />
       </section>
@@ -83,7 +80,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
        {error && <div className="mb-8">{renderErrorState()}</div>}
 
       <div className="space-y-12">
-        {/* Hero Section */}
         {topArticle && (
             <section>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-card p-8 rounded-lg shadow-lg">
@@ -116,7 +112,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             <div className="lg:col-span-2">
-                 {/* Recent Articles */}
                 <section>
                     <div className="flex justify-between items-center mb-6">
                     <h2 className="font-headline text-3xl font-bold">
@@ -135,12 +130,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 </section>
             </div>
             <div className="lg:col-span-1 space-y-12">
-                {/* Trending News */}
                 <section>
                     <TrendingNews />
                 </section>
 
-                {/* Community Highlights */}
                 <section>
                 <CommunityHighlights />
                 </section>
@@ -151,5 +144,3 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     </div>
   );
 }
-
-    

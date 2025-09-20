@@ -44,7 +44,8 @@ const articleSchema = z.object({
     metaDescription: z.string(),
   }),
   views: z.number(),
-  district: z.string().optional().nullable(),
+  districtId: z.string().optional().nullable(), // Stored in DB
+  district: z.string().optional().nullable(), // For display only
 });
 
 export type Article = z.infer<typeof articleSchema>;

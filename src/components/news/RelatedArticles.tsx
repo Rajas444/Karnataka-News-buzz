@@ -18,26 +18,36 @@ export default function RelatedArticles({ categoryId, currentArticleId }: Relate
   const { onOpen } = useArticleModal();
 
   useEffect(() => {
-    async function fetchRelated() {
-      if (!categoryId) return;
+    // A function to fetch related articles
+    const fetchRelated = async () => {
+      if (!categoryId || !currentArticleId) {
+        setLoading(false);
+        return;
+      };
+      
       setLoading(true);
       try {
         const articles = await getRelatedArticles(categoryId, currentArticleId);
         setRelated(articles);
       } catch (error) {
         console.error("Failed to fetch related articles", error);
+        setRelated([]); // Clear related articles on error
       } finally {
         setLoading(false);
       }
     }
 
+    // Call the function to fetch data
     fetchRelated();
-  }, [categoryId, currentArticleId]);
+  }, [categoryId, currentArticleId]); // Re-run effect when categoryId or currentArticleId changes
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-24">
-        <Loader2 className="animate-spin text-primary" />
+      <div className="mt-12 border-t pt-8">
+        <h3 className="text-2xl font-bold font-headline mb-4">Related News</h3>
+        <div className="flex justify-center items-center h-24">
+          <Loader2 className="animate-spin text-primary h-6 w-6" />
+        </div>
       </div>
     );
   }
@@ -49,12 +59,15 @@ export default function RelatedArticles({ categoryId, currentArticleId }: Relate
   return (
     <div className="mt-12 border-t pt-8">
       <h3 className="text-2xl font-bold font-headline mb-4">Related News</h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {related.map(article => (
           <div 
             key={article.id} 
-            className="group cursor-pointer"
-            onClick={() => onOpen(article.id)}
+            className="group cursor-pointer p-2 rounded-lg hover:bg-muted"
+            onClick={(e) => {
+              e.stopPropagation(); // prevent modal from closing itself
+              onOpen(article.id);
+            }}
           >
             <p className="font-semibold text-base leading-snug group-hover:underline font-kannada">
               {article.title}
@@ -68,5 +81,3 @@ export default function RelatedArticles({ categoryId, currentArticleId }: Relate
     </div>
   );
 }
-
-    

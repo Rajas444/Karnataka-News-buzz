@@ -200,16 +200,16 @@ export async function getArticles(options?: {
     const { startAfterId, pageSize = 100, category, district } = options || {};
 
     try {
-        const allCategories = await getCategories();
-        const categoryDoc = category ? allCategories.find(c => c.slug === category) : null;
-        
-        // Always fetch a larger batch and filter in-memory to avoid index errors.
+        // This is the most basic query that will always work without a custom index.
         const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'), limit(pageSize));
         
         const articlesSnapshot = await getDocs(q);
         const allArticles = await Promise.all(articlesSnapshot.docs.map(serializeArticle));
 
-        // Filter in-memory
+        // Perform all filtering in-memory
+        const allCategories = await getCategories();
+        const categoryDoc = category ? allCategories.find(c => c.slug === category) : null;
+        
         const filteredArticles = allArticles.filter(article => {
             if (article.status !== 'published') return false;
             
@@ -310,19 +310,21 @@ export async function deleteArticle(id: string): Promise<void> {
 
 // READ (related articles with API fallback)
 export async function getRelatedArticles(categoryId: string, currentArticleId: string): Promise<Article[]> {
+    if (!categoryId) return [];
     try {
         const q = query(
             articlesCollection,
             where('categoryIds', 'array-contains', categoryId),
             where('status', '==', 'published'),
+            where('__name__', '!=', currentArticleId), // Exclude the current article
+            orderBy('__name__'), // Firestore requires an orderBy when using a '!=' filter
             orderBy('publishedAt', 'desc'),
-            limit(10)
+            limit(4) // Fetch a bit more to ensure we have 3 after filtering self
         );
 
         const snapshot = await getDocs(q);
         
-        let articles = (await Promise.all(snapshot.docs.map(serializeArticle)))
-            .filter(article => article.id !== currentArticleId);
+        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
         return articles.slice(0, 3);
 
@@ -331,8 +333,12 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
             const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
             const readableError = `Query for related articles failed due to missing Firestore index. Please create it here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
             console.warn(readableError);
+        } else {
+             console.error("Error fetching related articles", error);
+        }
 
-            // Fallback to fetching without category filter if index is missing
+        // Fallback to a simpler query if the indexed query fails
+        try {
             const fallbackQuery = query(
                 articlesCollection,
                 where('status', '==', 'published'),
@@ -343,9 +349,10 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
             const fallbackArticles = (await Promise.all(fallbackSnapshot.docs.map(serializeArticle)))
                 .filter(article => article.id !== currentArticleId && article.categoryIds.includes(categoryId));
             return fallbackArticles.slice(0, 3);
+
+        } catch (fallbackError) {
+             console.error("Error fetching related articles with fallback:", fallbackError);
+             return [];
         }
-         // For other errors, we can just return empty
-        console.error("Error fetching related articles", error);
-        return [];
     }
 }

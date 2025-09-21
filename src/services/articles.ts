@@ -193,6 +193,10 @@ export async function getArticles(options?: {
     try {
         const snapshot = await getDocs(q);
         const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        // Remove the starting document from the results if it's included
+        if (startAfterId && articles.length > 0 && articles[0].id === startAfterId) {
+            return articles.slice(1);
+        }
         return articles;
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
@@ -205,6 +209,10 @@ export async function getArticles(options?: {
             
             // Manual sort in JS as a last resort
             articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
+            // Remove the starting document from the results if it's included
+             if (startAfterId && articles.length > 0 && articles[0].id === startAfterId) {
+                return articles.slice(1);
+            }
             return articles;
         }
         throw error;

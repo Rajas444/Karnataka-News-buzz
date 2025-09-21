@@ -16,7 +16,7 @@ interface ArticleListProps {
     district?: string;
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 9;
 
 export default function ArticleList({ initialArticles, category, district }: ArticleListProps) {
     const [articles, setArticles] = useState<Article[]>(initialArticles);
@@ -28,7 +28,7 @@ export default function ArticleList({ initialArticles, category, district }: Art
     // This effect runs when the filters (category/district) change, resetting the list.
     useEffect(() => {
         setArticles(initialArticles);
-        setHasMore(initialArticles.length >= PAGE_SIZE -1); // Adjust for top article removal on parent
+        setHasMore(initialArticles.length >= PAGE_SIZE);
     }, [initialArticles]);
     
     // This effect fetches the category names for display in the cards.
@@ -56,14 +56,20 @@ export default function ArticleList({ initialArticles, category, district }: Art
                 category,
                 district,
                 startAfterId: lastArticleId,
-                pageSize: PAGE_SIZE
+                pageSize: PAGE_SIZE + 1 // Request one more to check if there are more pages
             });
 
             if (newArticles.length > 0) {
-                setArticles(prev => [...prev, ...newArticles]);
+                 // The extra item is not for display, just to check if there's more.
+                const hasMoreNew = newArticles.length > PAGE_SIZE;
+                setHasMore(hasMoreNew);
+
+                // Add only the items for the current page.
+                const pageArticles = newArticles.slice(0, PAGE_SIZE);
+                setArticles(prev => [...prev, ...pageArticles]);
+            } else {
+                 setHasMore(false);
             }
-            
-            setHasMore(newArticles.length === PAGE_SIZE);
 
         } catch (error: any) {
             console.error("Failed to fetch more articles:", error);

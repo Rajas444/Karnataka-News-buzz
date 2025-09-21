@@ -17,14 +17,16 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
     url.searchParams.append('language', 'kn');
     url.searchParams.append('country', 'in');
     
-    let queryTerm = '';
+    let queryTerm = 'Karnataka';
     
-    if (districtName && (districtName.toLowerCase().includes('bengaluru urban') || districtName.toLowerCase().includes('bengaluru rural'))) {
-      queryTerm = 'Bengaluru';
-    } else if (districtName) {
-      queryTerm = districtName.includes(' ') ? `"${districtName}"` : districtName;
-    } else {
-        queryTerm = '"Karnataka"';
+    if (districtName) {
+      // For Bengaluru, a broader search term is more effective.
+      if (districtName.toLowerCase().includes('bengaluru')) {
+        queryTerm = 'Bengaluru';
+      } else {
+        // Use exact match for other districts to improve relevance.
+        queryTerm = `"${districtName}"`;
+      }
     }
 
     url.searchParams.append('q', queryTerm);
@@ -77,6 +79,10 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
     } catch (error) {
         console.error("Failed to fetch or store news from Newsdata.io:", error);
         if (error instanceof Error) {
+            // Silently fail in production to avoid breaking the page, but log the error.
+            if (process.env.NODE_ENV !== 'development') {
+                return;
+            }
             throw error;
         }
         throw new Error('An unknown error occurred while fetching news.');

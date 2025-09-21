@@ -24,8 +24,7 @@ export default function FilterControls({ categories, districts }: FilterControls
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  const categorySlugFromPath = pathname.startsWith('/categories/') ? pathname.split('/')[2] : null;
-  const selectedCategorySlug = categorySlugFromPath || searchParams.get('category') || 'general';
+  const selectedCategorySlug = searchParams.get('category') || 'general';
   const selectedDistrict = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
@@ -43,24 +42,20 @@ export default function FilterControls({ categories, districts }: FilterControls
     [searchParams]
   );
 
-  const handleCategoryChange = (slug: string) => {
-    const isGeneral = slug === 'general';
-    // When changing category, remove the district filter to avoid requiring a composite index.
-    const newQueryString = createQueryString({ 
-        category: isGeneral ? null : slug,
-        district: null 
-    });
-    const targetPath = isGeneral ? '/home' : `/categories/${slug}`;
-    router.push(`${targetPath}?${newQueryString}`);
+  const handleFilterChange = (type: 'category' | 'district', value: string) => {
+    let newQueryString;
+    if (type === 'category') {
+        const isGeneral = value === 'general';
+        newQueryString = createQueryString({ category: isGeneral ? null : value, district: searchParams.get('district') });
+    } else { // district
+        const isAllDistricts = value === 'all';
+        newQueryString = createQueryString({ category: searchParams.get('category'), district: isAllDistricts ? null : value });
+    }
+    
+    // Always use the /home path for filtering
+    router.push(`/home?${newQueryString}`);
   };
 
-  const handleDistrictChange = (slug: string) => {
-     // If a user selects a district, we must clear the category path to avoid a composite index query.
-     const isAllDistricts = slug === 'all';
-     const newQueryString = createQueryString({ district: isAllDistricts ? null : slug });
-     const targetPath = pathname.startsWith('/categories/') ? '/home' : pathname;
-     router.push(`${targetPath}?${newQueryString}`);
-  };
 
   const allCategories = [{ id: 'general', name: 'All Categories', slug: 'general' }, ...categories];
   const allDistricts = [{ id: 'all', name: 'All Districts' }, ...districts];
@@ -74,7 +69,7 @@ export default function FilterControls({ categories, districts }: FilterControls
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                  <label className="text-sm font-medium mb-2 block">Category</label>
-                <Select onValueChange={handleCategoryChange} value={selectedCategorySlug}>
+                <Select onValueChange={(value) => handleFilterChange('category', value)} value={selectedCategorySlug}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
@@ -89,7 +84,7 @@ export default function FilterControls({ categories, districts }: FilterControls
             </div>
              <div>
                  <label className="text-sm font-medium mb-2 block">District</label>
-                <Select onValueChange={handleDistrictChange} value={selectedDistrict}>
+                <Select onValueChange={(value) => handleFilterChange('district', value)} value={selectedDistrict}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select District" />
                     </SelectTrigger>

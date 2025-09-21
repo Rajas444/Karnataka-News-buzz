@@ -135,15 +135,6 @@ export default function ArticleModal() {
                                 ))}
                             </div>
                         )}
-
-                        {article.sourceUrl && (
-                             <div className="flex items-center gap-2">
-                                <h4 className="text-sm font-semibold flex items-center gap-1.5"><ExternalLink className="h-4 w-4"/> Source:</h4>
-                                 <Link href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate">
-                                    {article.sourceUrl}
-                                </Link>
-                            </div>
-                        )}
                     </div>
 
                     {article.categoryIds?.[0] && (

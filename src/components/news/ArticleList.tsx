@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
-import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import type { Article } from '@/lib/types';
+import type { Article, Category } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { getArticles } from '@/services/articles';
 import { getCategories } from '@/services/categories';
+import { db } from '@/lib/firebase';
+import { collection, query, where, orderBy, onSnapshot, limit, Timestamp, QueryConstraint } from 'firebase/firestore';
 
 interface ArticleListProps {
     initialArticles: Article[];
@@ -16,22 +16,26 @@ interface ArticleListProps {
     district?: string;
 }
 
-const PAGE_SIZE = 9;
+// Helper function to serialize article data from Firestore snapshot
+async function serializeArticleFromSnapshot(doc: any): Promise<Article> {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data,
+        publishedAt: data.publishedAt ? (data.publishedAt as Timestamp).toDate().toISOString() : null,
+        createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate().toISOString() : null,
+        updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate().toISOString() : null,
+    } as Article;
+}
+
 
 export default function ArticleList({ initialArticles, category, district }: ArticleListProps) {
     const [articles, setArticles] = useState<Article[]>(initialArticles);
-    const [allCategories, setAllCategories] = useState<{id: string, name: string}[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [hasMore, setHasMore] = useState(true);
+    const [allCategories, setAllCategories] = useState<Category[]>([]);
+    const [loading, setLoading] = useState(true);
     const { toast } = useToast();
     
-    // This effect runs when the filters (category/district) change, resetting the list.
-    useEffect(() => {
-        setArticles(initialArticles);
-        setHasMore(initialArticles.length >= PAGE_SIZE);
-    }, [initialArticles]);
-    
-    // This effect fetches the category names for display in the cards.
+    // Fetch all category names for display in cards
     useEffect(() => {
         async function fetchCategories() {
             try {
@@ -45,43 +49,63 @@ export default function ArticleList({ initialArticles, category, district }: Art
         fetchCategories();
     }, [toast]);
 
-    const handleLoadMore = useCallback(async () => {
-        if (!hasMore || isLoading) return;
+    // Set up real-time listener for articles
+    useEffect(() => {
+        setLoading(true);
 
-        setIsLoading(true);
-        try {
-            const lastArticleId = articles.length > 0 ? articles[articles.length - 1].id : undefined;
+        const constraints: QueryConstraint[] = [
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc'),
+            limit(50) // Listen to the 50 latest articles
+        ];
+        
+        // Find the category ID from the slug for querying
+        const categoryDoc = category && allCategories.length > 0
+            ? allCategories.find(c => c.slug === category)
+            : null;
 
-            const newArticles = await getArticles({
-                category,
-                district,
-                startAfterId: lastArticleId,
-                pageSize: PAGE_SIZE + 1 // Request one more to check if there are more pages
-            });
-
-            if (newArticles.length > 0) {
-                 // The extra item is not for display, just to check if there's more.
-                const hasMoreNew = newArticles.length > PAGE_SIZE;
-                setHasMore(hasMoreNew);
-
-                // Add only the items for the current page.
-                const pageArticles = newArticles.slice(0, PAGE_SIZE);
-                setArticles(prev => [...prev, ...pageArticles]);
-            } else {
-                 setHasMore(false);
-            }
-
-        } catch (error: any) {
-            console.error("Failed to fetch more articles:", error);
-            toast({
-                title: 'Error',
-                description: error.message || 'Failed to fetch more articles.',
-                variant: 'destructive',
-            });
-        } finally {
-            setIsLoading(false);
+        if (categoryDoc) {
+             constraints.unshift(where('categoryIds', 'array-contains', categoryDoc.id));
         }
-    }, [hasMore, isLoading, articles, category, district, toast]);
+        if (district && district !== 'all') {
+            constraints.unshift(where('districtId', '==', district));
+        }
+
+        const q = query(collection(db, 'articles'), ...constraints);
+
+        const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+            const articlesFromSnapshot = await Promise.all(
+                querySnapshot.docs.map(doc => serializeArticleFromSnapshot(doc))
+            );
+            setArticles(articlesFromSnapshot);
+            setLoading(false);
+        }, (error) => {
+            console.error("Real-time listener failed:", error);
+             if (error.code === 'failed-precondition') {
+                 console.warn(`Query failed due to missing Firestore index. The app will function, but for optimal performance, please create the index here: ${error.message.match(/https?:\/\/[^\s]+/)?.[0]}`);
+             } else {
+                 toast({
+                    title: 'Could not load real-time updates.',
+                    description: 'Displaying initial articles only.',
+                    variant: 'destructive'
+                 });
+             }
+            setLoading(false); // Stop loading even on error
+        });
+
+        // Cleanup subscription on component unmount
+        return () => unsubscribe();
+
+    }, [category, district, allCategories, toast]);
+
+
+    if (loading) {
+        return (
+             <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        )
+    }
 
     if (articles.length === 0) {
         return (
@@ -101,15 +125,6 @@ export default function ArticleList({ initialArticles, category, district }: Art
                     <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
                 ))}
             </div>
-            
-            {hasMore && (
-                 <div className="text-center mt-12">
-                    <Button variant="outline" size="lg" onClick={handleLoadMore} disabled={isLoading}>
-                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        {isLoading ? 'Loading...' : 'Load More Articles'}
-                    </Button>
-                </div>
-            )}
         </div>
     );
 }

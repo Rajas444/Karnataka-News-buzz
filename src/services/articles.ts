@@ -196,61 +196,91 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 // READ (all with pagination and filters)
 export async function getArticles(options?: {
     pageSize?: number;
-    startAfterDoc?: any; // Should be a DocumentSnapshot, but any to avoid client/server type issues.
+    startAfterDocId?: string; // Changed to ID
     category?: string; // This is a category slug
     district?: string; // This is a district ID
 }): Promise<{articles: Article[], lastVisibleDoc: any | null}> {
-    const { pageSize = 10, startAfterDoc, category, district } = options || {};
+    const { pageSize = 10, startAfterDocId, category, district } = options || {};
 
     let constraints: QueryConstraint[] = [
+        where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
     ];
-
-    if (startAfterDoc) {
-        constraints.push(startAfter(startAfterDoc));
+    
+    let startAfterDoc;
+    if (startAfterDocId) {
+        startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
+        if (startAfterDoc.exists()) {
+             constraints.push(startAfter(startAfterDoc));
+        }
     }
     
-    // We will fetch more and filter in memory to avoid index errors.
-    const fetchLimit = pageSize * 3;
-    constraints.push(limit(fetchLimit));
-
-    const allCategories = await getCategories();
-    const categoryDoc = category && category !== 'all' ? allCategories.find(c => c.slug === category) : null;
+    // We will fetch more and filter in memory to avoid index errors, only if filters are applied.
     const useDistrictFilter = district && district !== 'all';
-    const useCategoryFilter = !!categoryDoc;
+    const useCategoryFilter = category && category !== 'all';
+    const needsInMemoryFiltering = useCategoryFilter || useDistrictFilter;
 
+    // Adjust fetch limit if we need to filter in memory
+    const fetchLimit = needsInMemoryFiltering ? pageSize * 3 : pageSize;
+    constraints.push(limit(fetchLimit));
+    
+    const allCategories = useCategoryFilter ? await getCategories() : [];
+    const categoryDoc = useCategoryFilter ? allCategories.find(c => c.slug === category) : null;
+    
     try {
         const q = query(collection(db, 'articles'), ...constraints);
         const snapshot = await getDocs(q);
 
         let articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
-        // In-memory filtering
-        let filteredArticles = articles.filter(article => {
-            if (article.status !== 'published') return false;
+        // In-memory filtering if necessary
+        if (needsInMemoryFiltering) {
+            articles = articles.filter(article => {
+                const categoryMatch = useCategoryFilter 
+                    ? article.categoryIds?.includes(categoryDoc!.id) 
+                    : true;
+                
+                const districtMatch = useDistrictFilter 
+                    ? article.districtId === district
+                    : true;
+                
+                return categoryMatch && districtMatch;
+            });
+        }
 
-            const categoryMatch = useCategoryFilter 
-                ? article.categoryIds?.includes(categoryDoc.id) 
-                : true;
-            
-            const districtMatch = useDistrictFilter 
-                ? article.districtId === district
-                : true;
-            
-            return categoryMatch && districtMatch;
-        });
+        const pageOfArticles = articles.slice(0, pageSize);
 
-        // We fetched more than needed, so we slice to the requested page size.
-        const pageOfArticles = filteredArticles.slice(0, pageSize);
-
-        // Find the corresponding Firestore document for the last item in our page.
         const lastVisibleId = pageOfArticles.length > 0 ? pageOfArticles[pageOfArticles.length - 1].id : null;
-        const lastVisibleDoc = lastVisibleId ? snapshot.docs.find(doc => doc.id === lastVisibleId) : null;
+        const lastVisibleFirestoreDoc = lastVisibleId ? snapshot.docs.find(d => d.id === lastVisibleId) : null;
 
-        return { articles: pageOfArticles, lastVisibleDoc: lastVisibleDoc || null };
+        return { articles: pageOfArticles, lastVisibleDoc: lastVisibleFirestoreDoc || null };
 
     } catch (error: any) {
         console.error("An unexpected error occurred in getArticles:", error);
+        // If it is an index error, try again without filters
+        if (error.code === 'failed-precondition') {
+             console.warn("Firestore index not found. Falling back to in-memory filtering.");
+             // Remove the where clauses and try again
+             const simpleConstraints = [
+                orderBy('publishedAt', 'desc'),
+                limit(fetchLimit),
+             ];
+             if(startAfterDoc) simpleConstraints.push(startAfter(startAfterDoc));
+
+             const q = query(collection(db, 'articles'), ...simpleConstraints);
+             const snapshot = await getDocs(q);
+             let articles = await Promise.all(snapshot.docs.map(serializeArticle));
+             // Manual filtering
+             articles = articles.filter(article => {
+                const categoryMatch = useCategoryFilter ? article.categoryIds?.includes(categoryDoc!.id) : true;
+                const districtMatch = useDistrictFilter ? article.districtId === district : true;
+                return categoryMatch && districtMatch && article.status === 'published';
+             });
+             const pageOfArticles = articles.slice(0, pageSize);
+             const lastVisibleId = pageOfArticles.length > 0 ? pageOfArticles[pageOfArticles.length - 1].id : null;
+             const lastVisibleFirestoreDoc = lastVisibleId ? snapshot.docs.find(d => d.id === lastVisibleId) : null;
+             return { articles: pageOfArticles, lastVisibleDoc: lastVisibleFirestoreDoc || null };
+        }
         throw error;
     }
 }

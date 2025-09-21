@@ -15,11 +15,7 @@ import {
   query,
   collection,
   orderBy,
-  where,
   limit,
-  startAfter,
-  QueryConstraint,
-  doc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -35,24 +31,16 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [lastVisibleDoc, setLastVisibleDoc] = useState<any>(null);
+  const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(initialLastVisibleDoc?.id || null);
   const [hasMore, setHasMore] = useState(initialArticles.length > 0);
   const [realtimeError, setRealtimeError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    // This effect synchronizes the component's state with the props from the server.
     setArticles(initialArticles);
     setHasMore(initialArticles.length > 0);
     setRealtimeError(null);
-    if (initialLastVisibleDoc) {
-      // Reconstruct the document reference for pagination
-      const docRef = doc(db, "articles", initialLastVisibleDoc.id);
-      setLastVisibleDoc(docRef);
-    } else {
-      setLastVisibleDoc(null);
-      setHasMore(false);
-    }
+    setLastVisibleDocId(initialLastVisibleDoc?.id || null);
 
     async function fetchInitialData() {
       try {
@@ -72,20 +60,16 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     setLoading(true);
     setRealtimeError(null);
 
-    // This listener fetches the most recent articles for live updates.
-    // Filtering is handled by the `filteredArticles` useMemo hook.
-    // The query is simplified to avoid index errors.
-    let q = query(
+    const q = query(
       collection(db, "articles"),
       orderBy("publishedAt", "desc"),
-      limit(50) // Listen to the 50 most recent articles globally
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const updatedArticles: Article[] = [];
         snapshot.forEach(doc => {
             const data = doc.data();
-            // Basic client-side filter
             if (data.status === 'published') {
                 updatedArticles.push({
                     id: doc.id,
@@ -97,17 +81,16 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
             }
         });
 
-        // Merge and de-duplicate, prioritizing real-time updates over paginated ones
-        const allArticlesMap = new Map();
-        [...updatedArticles, ...articles].forEach(article => {
-            if (!allArticlesMap.has(article.id)) {
-                allArticlesMap.set(article.id, article);
-            }
+        setArticles(prev => {
+            const allArticlesMap = new Map();
+            [...updatedArticles, ...prev].forEach(article => {
+                if (!allArticlesMap.has(article.id)) {
+                    allArticlesMap.set(article.id, article);
+                }
+            });
+            return Array.from(allArticlesMap.values()).sort((a,b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
         });
 
-        const sorted = Array.from(allArticlesMap.values()).sort((a,b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-
-        setArticles(sorted);
         setLoading(false);
         setRealtimeError(null);
 
@@ -118,7 +101,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     });
 
     return () => unsubscribe();
-    // Re-run this effect only if the main filters change, to re-establish the listener's base query
   }, []);
 
 
@@ -137,13 +119,13 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   }, [articles, categorySlug, districtId, allCategories]);
 
   const handleLoadMore = useCallback(async () => {
-    if (!hasMore || loadingMore || !lastVisibleDoc) return;
+    if (!hasMore || loadingMore) return;
 
     setLoadingMore(true);
     try {
-      const { articles: newArticles, lastVisibleDoc: newLastVisibleDoc } = await getArticles({
+      const { articles: newArticles, lastVisibleDoc } = await getArticles({
         pageSize: 10,
-        startAfterDoc: lastVisibleDoc,
+        startAfterDocId: lastVisibleDocId, // Pass the ID
         category: categorySlug,
         district: districtId,
       });
@@ -155,18 +137,23 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
                 newArticlesMap.set(a.id, a);
             }
          });
-         return Array.from(newArticlesMap.values());
+         return Array.from(newArticlesMap.values()).sort((a,b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
       });
-
-      setLastVisibleDoc(newLastVisibleDoc);
+      
+      if (lastVisibleDoc) {
+          setLastVisibleDocId(lastVisibleDoc.id);
+      } else {
+          setLastVisibleDocId(null);
+      }
       setHasMore(newArticles.length > 0);
+
     } catch (error) {
       console.error("Failed to load more articles", error);
       toast({ title: "Failed to load more news", variant: "destructive" });
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, lastVisibleDoc, categorySlug, districtId, toast]);
+  }, [hasMore, loadingMore, lastVisibleDocId, categorySlug, districtId, toast]);
 
   if (loading && articles.length === 0) {
     return (

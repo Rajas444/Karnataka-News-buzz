@@ -1,4 +1,5 @@
 
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -57,7 +58,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     if(lastVisibleDoc) {
         lastVisibleDocJson = {
             id: lastVisibleDoc.id,
-            // You can't pass the full snapshot, but the ID is enough to reconstruct it on the client
+            // Pass the ID to reconstruct the doc reference on the client for pagination
         };
     }
 

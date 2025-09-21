@@ -9,7 +9,6 @@ import FilterControls from '@/components/news/FilterControls';
 import { getCategories } from '@/services/categories';
 import CommunityHighlights from '@/components/posts/CommunityHighlights';
 import { getDistricts } from '@/services/districts';
-import { fetchAndStoreNews } from '@/services/news';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
 
@@ -34,14 +33,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       districts = await getDistricts();
   } catch (e) {
       console.error("Failed to fetch filters data", e);
-  }
-
-  try {
-    const selectedDistrict = districtId ? districts.find(d => d.id === districtId) : undefined;
-    // Pass both name and ID
-    await fetchAndStoreNews(category, selectedDistrict?.name, selectedDistrict?.id);
-  } catch (e: any) {
-    console.warn("Could not fetch fresh news, will show existing.", e.message);
   }
 
   try {

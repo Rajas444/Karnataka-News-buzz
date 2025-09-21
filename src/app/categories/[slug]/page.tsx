@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import FilterControls from '@/components/news/FilterControls';
 import { getDistricts } from '@/services/districts';
-import { fetchAndStoreNews } from '@/services/news';
 import { getArticles } from '@/services/articles';
 
 
@@ -39,13 +38,6 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   }
 
   const category = categories.find(c => c.slug === categorySlug);
-
-  try {
-    // Attempt to fetch and store new articles
-    await fetchAndStoreNews(category?.slug, district);
-  } catch (e: any) {
-    console.warn("Could not fetch fresh news for category, will show existing.", e.message);
-  }
 
   try {
     // Fetch from our database

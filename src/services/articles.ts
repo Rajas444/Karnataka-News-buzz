@@ -217,7 +217,7 @@ export async function getArticles(options?: {
     
     // Fetch a larger batch to allow for in-memory filtering.
     // This is a trade-off for avoiding complex indexes.
-    const fetchLimit = pageSize * 3; 
+    const fetchLimit = 50; 
     constraints.push(limit(fetchLimit));
     
     const allCategories = (category && category !== 'all') ? await getCategories() : [];
@@ -250,7 +250,9 @@ export async function getArticles(options?: {
         }
         
         const pageOfArticles = articles.slice(0, pageSize);
-        const lastVisibleDocIdInPage = pageOfArticles.length > 0 ? pageOfArticles[pageOfArticles.length - 1].id : null;
+        const lastVisibleDocInFetchedSet = articles.length > 0 ? articles[articles.length - 1].id : null;
+        
+        const lastVisibleDocIdInPage = pageOfArticles.length >= pageSize ? lastVisibleDocInFetchedSet : null;
 
         return { articles: pageOfArticles, lastVisibleDocId: lastVisibleDocIdInPage };
 
@@ -341,27 +343,30 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
             articlesCollection,
             where('status', '==', 'published'),
             where('categoryIds', 'array-contains', categoryId),
-            where('__name__', '!=', currentArticleId), // Exclude the current article
-            orderBy('__name__'), // Firestore requires an orderBy when using a '!=' filter
             orderBy('publishedAt', 'desc'),
-            limit(3)
+            limit(4) // Fetch 4 to have a replacement if the current article is in the results
         );
 
         const snapshot = await getDocs(q);
-        
-        // This is a more direct way to query. If it fails due to indexing, the fallback below can be used.
-        return Promise.all(snapshot.docs.map(serializeArticle));
+        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+
+        // Filter out the current article and take the top 3
+        return articles.filter(article => article.id !== currentArticleId).slice(0, 3);
 
     } catch (error: any) {
-        console.warn("Complex query for related articles failed, using fallback. Consider creating an index.", error.message);
+        // This can happen if the composite index (categoryIds, publishedAt) doesn't exist
+        console.warn(
+            `Query for related articles failed. This likely requires a Firestore index. 
+            Falling back to a simpler query. Error: ${error.message}`
+        );
+
         try {
-             // Fallback: Fetch by category and date, then filter in memory.
+             // Fallback: Fetch by category only, sorting is lost but it won't crash
             const fallbackQuery = query(
                 articlesCollection,
                 where('status', '==', 'published'),
                 where('categoryIds', 'array-contains', categoryId),
-                orderBy('publishedAt', 'desc'),
-                limit(4) // Fetch one extra to account for the current article
+                limit(4)
             );
             const snapshot = await getDocs(fallbackQuery);
             const articles = await Promise.all(snapshot.docs.map(serializeArticle));

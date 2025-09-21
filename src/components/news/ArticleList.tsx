@@ -38,7 +38,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
   useEffect(() => {
     setArticles(initialArticles);
-    setHasMore(initialArticles.length > 0);
+    setHasMore(initialArticles.length > 0 && initialLastVisibleDocId !== null);
     setRealtimeError(null);
     setLastVisibleDocId(initialLastVisibleDocId || null);
 
@@ -57,6 +57,8 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   useEffect(() => {
     if (!db) return;
 
+    // This listener fetches all recent articles for real-time updates.
+    // Filtering is handled by the `filteredArticles` useMemo hook.
     setLoading(true);
     setRealtimeError(null);
 
@@ -81,6 +83,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
             }
         });
 
+        // Merge new articles with existing ones, preventing duplicates
         setArticles(prev => {
             const allArticlesMap = new Map();
             [...updatedArticles, ...prev].forEach(article => {
@@ -141,7 +144,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       });
       
       setLastVisibleDocId(newLastVisibleDocId);
-      setHasMore(newArticles.length > 0);
+      setHasMore(newArticles.length > 0 && newLastVisibleDocId !== null);
 
     } catch (error) {
       console.error("Failed to load more articles", error);

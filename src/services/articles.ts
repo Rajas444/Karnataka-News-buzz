@@ -201,9 +201,7 @@ export async function getArticles(options?: {
 
     try {
         // This is the most basic query that will always work without a custom index.
-        const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'), limit(pageSize));
-        
-        const articlesSnapshot = await getDocs(q);
+        const articlesSnapshot = await getDocs(query(collection(db, 'articles')));
         const allArticles = await Promise.all(articlesSnapshot.docs.map(serializeArticle));
 
         // Perform all filtering in-memory
@@ -219,18 +217,26 @@ export async function getArticles(options?: {
             return categoryMatch && districtMatch;
         });
 
+        // Sort in-memory
+        const sortedArticles = filteredArticles.sort((a, b) => {
+            const dateA = a.publishedAt ? new Date(a.publishedAt) : new Date(0);
+            const dateB = b.publishedAt ? new Date(b.publishedAt) : new Date(0);
+            return dateB.getTime() - dateA.getTime();
+        });
+
+
         // Handle pagination in-memory
+        let paginatedArticles = sortedArticles;
         if (startAfterId) {
-            const startIndex = filteredArticles.findIndex(a => a.id === startAfterId);
+            const startIndex = sortedArticles.findIndex(a => a.id === startAfterId);
             if (startIndex !== -1) {
-                return filteredArticles.slice(startIndex + 1);
+                paginatedArticles = sortedArticles.slice(startIndex + 1);
             }
         }
 
-        return filteredArticles;
+        return paginatedArticles.slice(0, pageSize);
 
     } catch (error: any) {
-        // This catch block is a fallback, but the simplified query should prevent index errors.
         console.error("An unexpected error occurred in getArticles:", error);
         return []; 
     }
@@ -316,15 +322,15 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
             articlesCollection,
             where('categoryIds', 'array-contains', categoryId),
             where('status', '==', 'published'),
-            where('__name__', '!=', currentArticleId), // Exclude the current article
-            orderBy('__name__'), // Firestore requires an orderBy when using a '!=' filter
             orderBy('publishedAt', 'desc'),
             limit(4) // Fetch a bit more to ensure we have 3 after filtering self
         );
 
         const snapshot = await getDocs(q);
         
-        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        let articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        // Exclude the current article from the results
+        articles = articles.filter(article => article.id !== currentArticleId);
 
         return articles.slice(0, 3);
 
@@ -336,23 +342,6 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         } else {
              console.error("Error fetching related articles", error);
         }
-
-        // Fallback to a simpler query if the indexed query fails
-        try {
-            const fallbackQuery = query(
-                articlesCollection,
-                where('status', '==', 'published'),
-                orderBy('publishedAt', 'desc'),
-                limit(20) // Fetch more to find some related ones
-            );
-            const fallbackSnapshot = await getDocs(fallbackQuery);
-            const fallbackArticles = (await Promise.all(fallbackSnapshot.docs.map(serializeArticle)))
-                .filter(article => article.id !== currentArticleId && article.categoryIds.includes(categoryId));
-            return fallbackArticles.slice(0, 3);
-
-        } catch (fallbackError) {
-             console.error("Error fetching related articles with fallback:", fallbackError);
-             return [];
-        }
+        return [];
     }
 }

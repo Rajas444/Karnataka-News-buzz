@@ -50,29 +50,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     useEffect(() => {
         setLoading(true);
 
-        const selectedCategory = (categorySlug && categorySlug !== 'all') ? allCategories.find(c => c.slug === categorySlug) : null;
-        
-        if ((categorySlug && categorySlug !== 'all') && allCategories.length > 0 && !selectedCategory) {
-            setArticles([]);
-            setLoading(false);
-            return;
-        }
-
-        const constraints: QueryConstraint[] = [
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
-            limit(50)
-        ];
-
-        if (selectedCategory) {
-            constraints.push(where('categoryIds', 'array-contains', selectedCategory.id));
-        }
-
-        if (districtId && districtId !== 'all') {
-            constraints.push(where('districtId', '==', districtId));
-        }
-
-        const q = query(collection(db, 'articles'), ...constraints);
+        const q = query(collection(db, 'articles'));
 
         let unsubscribe: (() => void) | undefined;
 
@@ -82,18 +60,29 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
                     querySnapshot.docs.map(doc => serializeArticleFromDoc(doc))
                 );
 
-                setArticles(articlesFromSnapshot);
+                // Perform filtering and sorting client-side
+                const selectedCategory = (categorySlug && categorySlug !== 'all') ? allCategories.find(c => c.slug === categorySlug) : null;
+                
+                const filtered = articlesFromSnapshot.filter(article => {
+                    if (article.status !== 'published') return false;
+                    const categoryMatch = selectedCategory ? article.categoryIds?.includes(selectedCategory.id) : true;
+                    const districtMatch = (districtId && districtId !== 'all') ? article.districtId === districtId : true;
+                    return categoryMatch && districtMatch;
+                });
+
+                const sorted = filtered.sort((a, b) => {
+                    const dateA = a.publishedAt ? new Date(a.publishedAt) : new Date(0);
+                    const dateB = b.publishedAt ? new Date(b.publishedAt) : new Date(0);
+                    return dateB.getTime() - dateA.getTime();
+                });
+
+                setArticles(sorted);
                 setLoading(false);
             }, (error) => {
                 console.error("Real-time listener encountered an error:", error);
-                 if (error.code === 'failed-precondition') {
-                    const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
-                    const readableError = `Query failed due to missing Firestore index. The app will function, but for optimal performance, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
-                    console.warn(readableError);
-                }
                 toast({
                     title: 'Real-time updates failed.',
-                    description: 'Displaying initial articles only.',
+                    description: 'Could not connect to the database.',
                     variant: 'destructive'
                 });
                 setArticles(initialArticles); // Fallback to SSR articles
@@ -101,11 +90,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
             });
         } catch (error: any) {
              console.error("An unexpected error occurred setting up the real-time listener:", error);
-             if (error.code === 'failed-precondition') {
-                const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
-                const readableError = `Query failed due to missing Firestore index. The app will function, but for optimal performance, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
-                console.warn(readableError);
-            }
              toast({
                 title: 'Could not load real-time updates.',
                 description: 'Displaying initial articles only.',

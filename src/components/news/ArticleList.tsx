@@ -47,16 +47,16 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     }, [toast]);
 
     useEffect(() => {
-        // Start with initial articles to prevent flicker
         setArticles(initialArticles);
         setLoading(false);
 
-        // A simple query that Firestore can always handle without a custom index.
-        const q = query(collection(db, 'articles'), where('status', '==', 'published'), orderBy('publishedAt', 'desc'));
+        const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'));
 
         const unsubscribe = onSnapshot(q, async (querySnapshot) => {
             const allPublishedArticles = await Promise.all(
-                querySnapshot.docs.map(doc => serializeArticleFromDoc(doc))
+                querySnapshot.docs
+                    .map(doc => serializeArticleFromDoc(doc))
+                    .filter(article => article.status === 'published')
             );
 
             // Client-side filtering
@@ -72,11 +72,15 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
             setLoading(false);
         }, (error) => {
             console.error("[Real-time listener error]:", error);
-            toast({
-                title: 'Live updates failed.',
-                description: 'Could not connect for live updates. Displaying latest results.',
-                variant: 'destructive'
-            });
+            if (error.code === 'failed-precondition') {
+                 console.warn(`[Firestore] A query failed due to a missing index. The app is falling back to client-side filtering of initial data. For optimal performance, create the required index in your Firebase console.`);
+            } else {
+                toast({
+                    title: 'Live updates failed.',
+                    description: 'Could not connect for live updates. Displaying latest results.',
+                    variant: 'destructive'
+                });
+            }
             // On error, fall back to client-side filtering of the initial articles.
             const selectedCategory = (categorySlug && categorySlug !== 'all') ? allCategories.find(c => c.slug === categorySlug) : null;
             const filteredInitial = initialArticles.filter(article => {

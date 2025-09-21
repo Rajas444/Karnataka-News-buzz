@@ -203,7 +203,7 @@ export async function getArticles(options?: {
 
     try {
         // Only query for published articles, sorted by date. All other filtering is done in-memory.
-        const q = query(collection(db, 'articles'), where('status', '==', 'published'), orderBy('publishedAt', 'desc'));
+        const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'));
         const articlesSnapshot = await getDocs(q);
         const allArticles = await Promise.all(articlesSnapshot.docs.map(serializeArticle));
 
@@ -212,6 +212,7 @@ export async function getArticles(options?: {
         const categoryDoc = category && category !== 'all' ? allCategories.find(c => c.slug === category) : null;
         
         const filteredArticles = allArticles.filter(article => {
+            if (article.status !== 'published') return false;
             const categoryMatch = categoryDoc ? article.categoryIds?.includes(categoryDoc.id) : true;
             const districtMatch = (district && district !== 'all') ? article.districtId === district : true;
             return categoryMatch && districtMatch;

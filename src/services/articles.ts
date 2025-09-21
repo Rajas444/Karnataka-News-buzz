@@ -196,14 +196,13 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 // READ (all with pagination and filters)
 export async function getArticles(options?: {
     pageSize?: number;
-    startAfterDocId?: string; // Changed to ID
-    category?: string; // This is a category slug
-    district?: string; // This is a district ID
+    startAfterDocId?: string;
+    category?: string;
+    district?: string;
 }): Promise<{articles: Article[], lastVisibleDoc: any | null}> {
     const { pageSize = 10, startAfterDocId, category, district } = options || {};
 
     let constraints: QueryConstraint[] = [
-        where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
     ];
     
@@ -215,13 +214,12 @@ export async function getArticles(options?: {
         }
     }
     
-    // We will fetch more and filter in memory to avoid index errors, only if filters are applied.
     const useDistrictFilter = district && district !== 'all';
     const useCategoryFilter = category && category !== 'all';
     const needsInMemoryFiltering = useCategoryFilter || useDistrictFilter;
 
-    // Adjust fetch limit if we need to filter in memory
-    const fetchLimit = needsInMemoryFiltering ? pageSize * 3 : pageSize;
+    // Fetch more and filter in memory to handle complex filters and status check
+    const fetchLimit = needsInMemoryFiltering ? pageSize * 5 : pageSize * 2;
     constraints.push(limit(fetchLimit));
     
     const allCategories = useCategoryFilter ? await getCategories() : [];
@@ -233,20 +231,21 @@ export async function getArticles(options?: {
 
         let articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
-        // In-memory filtering if necessary
-        if (needsInMemoryFiltering) {
-            articles = articles.filter(article => {
-                const categoryMatch = useCategoryFilter 
-                    ? article.categoryIds?.includes(categoryDoc!.id) 
-                    : true;
-                
-                const districtMatch = useDistrictFilter 
-                    ? article.districtId === district
-                    : true;
-                
-                return categoryMatch && districtMatch;
-            });
-        }
+        // In-memory filtering
+        articles = articles.filter(article => {
+            const statusMatch = article.status === 'published';
+            if (!statusMatch) return false;
+
+            const categoryMatch = useCategoryFilter 
+                ? article.categoryIds?.includes(categoryDoc!.id) 
+                : true;
+            
+            const districtMatch = useDistrictFilter 
+                ? article.districtId === district
+                : true;
+            
+            return categoryMatch && districtMatch;
+        });
 
         const pageOfArticles = articles.slice(0, pageSize);
 
@@ -257,30 +256,6 @@ export async function getArticles(options?: {
 
     } catch (error: any) {
         console.error("An unexpected error occurred in getArticles:", error);
-        // If it is an index error, try again without filters
-        if (error.code === 'failed-precondition') {
-             console.warn("Firestore index not found. Falling back to in-memory filtering.");
-             // Remove the where clauses and try again
-             const simpleConstraints = [
-                orderBy('publishedAt', 'desc'),
-                limit(fetchLimit),
-             ];
-             if(startAfterDoc) simpleConstraints.push(startAfter(startAfterDoc));
-
-             const q = query(collection(db, 'articles'), ...simpleConstraints);
-             const snapshot = await getDocs(q);
-             let articles = await Promise.all(snapshot.docs.map(serializeArticle));
-             // Manual filtering
-             articles = articles.filter(article => {
-                const categoryMatch = useCategoryFilter ? article.categoryIds?.includes(categoryDoc!.id) : true;
-                const districtMatch = useDistrictFilter ? article.districtId === district : true;
-                return categoryMatch && districtMatch && article.status === 'published';
-             });
-             const pageOfArticles = articles.slice(0, pageSize);
-             const lastVisibleId = pageOfArticles.length > 0 ? pageOfArticles[pageOfArticles.length - 1].id : null;
-             const lastVisibleFirestoreDoc = lastVisibleId ? snapshot.docs.find(d => d.id === lastVisibleId) : null;
-             return { articles: pageOfArticles, lastVisibleDoc: lastVisibleFirestoreDoc || null };
-        }
         throw error;
     }
 }
@@ -386,5 +361,3 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         return [];
     }
 }
-
-    

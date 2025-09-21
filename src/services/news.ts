@@ -80,8 +80,23 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
 
     url.searchParams.append('q', queryTerm);
 
+    // Map our custom categories to what Newsdata.io supports
+    const categoryMap: { [key: string]: string | undefined } = {
+        'sports': 'sports',
+        'technology': 'technology',
+        'health-lifestyle': 'health',
+        'politics': 'politics',
+        'business-startups': 'business',
+        'weather-environment': 'environment',
+        'entertainment': 'entertainment',
+        // "agriculture-farming", "gaming-esports", "society-community", "jobs-career" don't have direct maps
+    };
+
     if (category && category !== 'general') {
-        url.searchParams.append('category', category);
+        const apiCategory = categoryMap[category];
+        if (apiCategory) {
+            url.searchParams.append('category', apiCategory);
+        }
     }
     
     let fetchedArticles: NewsdataArticle[] = [];

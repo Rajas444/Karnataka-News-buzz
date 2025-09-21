@@ -3,12 +3,13 @@
 
 import { useState, useEffect } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
-import { Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import type { Article, Category } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getCategories } from '@/services/categories';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot, limit, Timestamp, QueryConstraint } from 'firebase/firestore';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface ArticleListProps {
     initialArticles: Article[];
@@ -31,6 +32,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     const [articles, setArticles] = useState<Article[]>(initialArticles);
     const [allCategories, setAllCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isFallback, setIsFallback] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -47,12 +49,17 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     }, [toast]);
 
     useEffect(() => {
-        if (allCategories.length === 0 && categorySlug) {
+        setIsFallback(false);
+        setLoading(true);
+
+        const selectedCategory = categorySlug ? allCategories.find(c => c.slug === categorySlug) : null;
+        
+        // Don't run listener until categories are loaded if a categorySlug is present
+        if (categorySlug && allCategories.length > 0 && !selectedCategory) {
+            setArticles([]);
             setLoading(false);
             return;
         }
-
-        setLoading(true);
 
         const constraints: QueryConstraint[] = [
             where('status', '==', 'published'),
@@ -60,14 +67,20 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
             limit(50)
         ];
 
-        const selectedCategory = categorySlug ? allCategories.find(c => c.slug === categorySlug) : null;
-
+        // *** IMPORTANT ***
+        // To prevent missing index errors, we only apply ONE of the two filters on the backend.
+        // The category filter is more specific, so we prioritize it.
+        // The district filter will be applied on the client-side if a category is also selected.
         if (selectedCategory) {
             constraints.unshift(where('categoryIds', 'array-contains', selectedCategory.id));
+        } else if (districtId && districtId !== 'all') {
+            constraints.unshift(where('districtId', '==', districtId));
         }
 
-        if (districtId && districtId !== 'all') {
-            constraints.unshift(where('districtId', '==', districtId));
+        // If both are selected, we engage a client-side filter fallback.
+        const useClientSideDistrictFilter = !!(selectedCategory && districtId && districtId !== 'all');
+        if (useClientSideDistrictFilter) {
+            setIsFallback(true);
         }
 
         let unsubscribe: (() => void) | undefined;
@@ -76,28 +89,33 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
             const q = query(collection(db, 'articles'), ...constraints);
 
             unsubscribe = onSnapshot(q, async (querySnapshot) => {
-                const articlesFromSnapshot = await Promise.all(
+                let articlesFromSnapshot = await Promise.all(
                     querySnapshot.docs.map(doc => serializeArticleFromDoc(doc))
                 );
+
+                if (useClientSideDistrictFilter) {
+                    articlesFromSnapshot = articlesFromSnapshot.filter(
+                        article => article.districtId === districtId
+                    );
+                }
+
                 setArticles(articlesFromSnapshot);
                 setLoading(false);
             }, (error) => {
-                // This internal error handler will catch runtime errors after setup.
                 console.error("Real-time listener encountered an error:", error);
                 toast({
                     title: 'Real-time updates failed.',
                     description: 'Displaying initial articles only.',
                     variant: 'destructive'
                 });
-                setArticles(initialArticles);
+                setArticles(initialArticles); // Fallback to SSR articles
                 setLoading(false);
             });
         } catch (error: any) {
-             // This outer try-catch handles initial query setup errors, like missing indexes.
-            if (error.code === 'failed-precondition') {
+             if (error.code === 'failed-precondition') {
                 const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
                 const readableError = `Query for real-time articles failed due to missing Firestore index. The app will function with initial data, but for optimal performance and real-time updates, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
-                console.warn(readableError); // Use console.warn to avoid Next.js error overlay
+                console.warn(readableError);
                  toast({
                     title: 'Real-time updates paused',
                     description: 'A database index is needed for this filter. Displaying initial results only.',
@@ -112,7 +130,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
                     variant: 'destructive'
                 });
             }
-            setArticles(initialArticles); // Fallback to server-rendered articles on any listener error.
+            setArticles(initialArticles);
             setLoading(false);
         }
 
@@ -144,10 +162,21 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {articles.map((article) => (
-                <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
-            ))}
+        <div className="space-y-6">
+            {isFallback && (
+                <Alert variant="default" className="bg-amber-50 border-amber-200">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <AlertTitle className="text-amber-800">Complex Filter Applied</AlertTitle>
+                    <AlertDescription className="text-amber-700">
+                        Real-time updates are paused for this specific filter combination. The list will not update automatically.
+                    </AlertDescription>
+                </Alert>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {articles.map((article) => (
+                    <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
+                ))}
+            </div>
         </div>
     );
 }

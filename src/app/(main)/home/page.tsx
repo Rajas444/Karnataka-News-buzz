@@ -26,7 +26,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   let categories = [];
   let districts = [];
 
-  const category = searchParams?.category;
+  const categorySlug = searchParams?.category;
   const districtId = searchParams?.district;
 
   try {
@@ -39,22 +39,23 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const districtName = districts.find(d => d.id === districtId)?.name;
 
   try {
-    await fetchAndStoreNews(category, districtName, districtId);
+    // Attempt to fetch fresh news in the background. This won't block the page render.
+    // Errors are handled inside the function and logged to the console.
+    fetchAndStoreNews(categorySlug, districtName, districtId);
   } catch (e: any) {
-    error = e.message || 'An unknown error occurred while fetching articles from the news API.';
-    console.error(`Failed to fetch news: ${error}`);
-    // We don't want to block the page render if the API fails,
-    // so we'll just log the error and continue.
+    console.error(`Failed to fetch news from external API: ${e.message}`);
   }
 
   try {
-    initialArticles = await getArticles({ category: category || 'general', district: districtId, pageSize: 20 });
+    // Fetch initial articles for server-side rendering
+    initialArticles = await getArticles({ category: categorySlug, district: districtId, pageSize: 20 });
   } catch (e: any) {
      error = e.message || 'An unknown error occurred while fetching articles from the database.';
   }
   
   const topArticle = initialArticles.length > 0 ? initialArticles[0] : null;
-  const otherArticles = initialArticles.length > 1 ? initialArticles.slice(1) : [];
+  // ArticleList will now handle fetching and listening, so we only need the top article here.
+  const otherArticles = initialArticles.length > 1 ? initialArticles.slice(1, 5) : []; // Pass a few to avoid layout shift
 
   const renderErrorState = () => (
     <div className="text-center bg-card p-8 rounded-lg">
@@ -62,16 +63,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <p className="text-muted-foreground font-kannada">{error}</p>
     </div>
   );
-
-  const renderEmptyState = () => (
-     <div className="text-center bg-card p-8 rounded-lg">
-        <h1 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಸುದ್ದಿ ಲಭ್ಯವಿಲ್ಲ</h1>
-        <p className="text-muted-foreground font-kannada">
-          Please try different filter options or check back later.
-        </p>
-    </div>
-  );
-
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -117,19 +108,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <div className="lg:col-span-2">
                 <section>
                     <div className="flex justify-between items-center mb-6">
-                    <h2 className="font-headline text-3xl font-bold">
-                        Recent News
-                    </h2>
+                        <h2 className="font-headline text-3xl font-bold">
+                            Recent News
+                        </h2>
                     </div>
-                    {!error && initialArticles.length > 0 ? (
-                        <ArticleList
-                            initialArticles={otherArticles}
-                            category={category}
-                            district={districtId}
-                        />
-                    ) : !error ? (
-                        renderEmptyState()
-                    ) : null}
+                    <ArticleList
+                        initialArticles={initialArticles}
+                        categorySlug={categorySlug}
+                        districtId={districtId}
+                    />
                 </section>
             </div>
             <div className="lg:col-span-1 space-y-12">

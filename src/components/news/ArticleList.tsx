@@ -12,12 +12,11 @@ import { collection, query, where, orderBy, onSnapshot, limit, Timestamp, QueryC
 
 interface ArticleListProps {
     initialArticles: Article[];
-    category?: string;
-    district?: string;
+    categorySlug?: string;
+    districtId?: string;
 }
 
-// Helper function to serialize article data from Firestore snapshot
-async function serializeArticleFromSnapshot(doc: any): Promise<Article> {
+async function serializeArticleFromDoc(doc: any): Promise<Article> {
     const data = doc.data();
     return {
         id: doc.id,
@@ -28,83 +27,83 @@ async function serializeArticleFromSnapshot(doc: any): Promise<Article> {
     } as Article;
 }
 
-
-export default function ArticleList({ initialArticles, category, district }: ArticleListProps) {
+export default function ArticleList({ initialArticles, categorySlug, districtId }: ArticleListProps) {
     const [articles, setArticles] = useState<Article[]>(initialArticles);
     const [allCategories, setAllCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
-    
-    // Fetch all category names for display in cards
+
     useEffect(() => {
-        async function fetchCategories() {
+        async function fetchInitialCategories() {
             try {
                 const fetchedCategories = await getCategories();
                 setAllCategories(fetchedCategories);
-            } catch(e) {
-                console.error("Failed to fetch categories", e);
+            } catch (e) {
+                console.error("Failed to fetch categories for ArticleList", e);
                 toast({ title: 'Error loading category data', variant: 'destructive' });
             }
-        };
-        fetchCategories();
+        }
+        fetchInitialCategories();
     }, [toast]);
 
-    // Set up real-time listener for articles
     useEffect(() => {
+        if (allCategories.length === 0) return; // Wait for categories to be loaded
+
         setLoading(true);
 
         const constraints: QueryConstraint[] = [
             where('status', '==', 'published'),
             orderBy('publishedAt', 'desc'),
-            limit(50) // Listen to the 50 latest articles
+            limit(50)
         ];
-        
-        // Find the category ID from the slug for querying
-        const categoryDoc = category && allCategories.length > 0
-            ? allCategories.find(c => c.slug === category)
-            : null;
 
-        if (categoryDoc) {
-             constraints.unshift(where('categoryIds', 'array-contains', categoryDoc.id));
+        const selectedCategory = categorySlug && allCategories.find(c => c.slug === categorySlug);
+
+        if (selectedCategory) {
+            constraints.unshift(where('categoryIds', 'array-contains', selectedCategory.id));
         }
-        if (district && district !== 'all') {
-            constraints.unshift(where('districtId', '==', district));
+
+        if (districtId && districtId !== 'all') {
+            constraints.unshift(where('districtId', '==', districtId));
         }
 
         const q = query(collection(db, 'articles'), ...constraints);
 
         const unsubscribe = onSnapshot(q, async (querySnapshot) => {
             const articlesFromSnapshot = await Promise.all(
-                querySnapshot.docs.map(doc => serializeArticleFromSnapshot(doc))
+                querySnapshot.docs.map(doc => serializeArticleFromDoc(doc))
             );
             setArticles(articlesFromSnapshot);
             setLoading(false);
         }, (error) => {
             console.error("Real-time listener failed:", error);
-             if (error.code === 'failed-precondition') {
-                 console.warn(`Query failed due to missing Firestore index. The app will function, but for optimal performance, please create the index here: ${error.message.match(/https?:\/\/[^\s]+/)?.[0]}`);
-             } else {
-                 toast({
+            if (error.code === 'failed-precondition') {
+                const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
+                const readableError = `Query for real-time articles failed due to missing Firestore index. The app will function with initial data, but for optimal performance and real-time updates, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
+                console.warn(readableError);
+            } else {
+                toast({
                     title: 'Could not load real-time updates.',
                     description: 'Displaying initial articles only.',
                     variant: 'destructive'
-                 });
-             }
-            setLoading(false); // Stop loading even on error
+                });
+            }
+            setArticles(initialArticles); // Fallback to server-rendered articles
+            setLoading(false);
         });
 
-        // Cleanup subscription on component unmount
         return () => unsubscribe();
 
-    }, [category, district, allCategories, toast]);
-
+    }, [categorySlug, districtId, allCategories, toast, initialArticles]);
 
     if (loading) {
         return (
-             <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {initialArticles.slice(0, 4).map((article) => (
+                    <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
+                ))}
             </div>
-        )
+        );
     }
 
     if (articles.length === 0) {
@@ -112,19 +111,17 @@ export default function ArticleList({ initialArticles, category, district }: Art
             <div className="text-center py-12 bg-card rounded-lg">
                 <h2 className="text-2xl font-bold mb-4 font-kannada">No Articles Found</h2>
                 <p className="text-muted-foreground font-kannada">
-                    There are no articles available for the selected filters. Please try again later.
+                    There are no articles available for the selected filters. Please try again later or select different filters.
                 </p>
             </div>
         );
     }
 
     return (
-        <div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {articles.map((article) => (
-                    <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
-                ))}
-            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {articles.map((article) => (
+                <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
+            ))}
         </div>
     );
 }

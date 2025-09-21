@@ -4,7 +4,7 @@
 import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { Article } from '@/lib/types';
+import type { Article, Category } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { Calendar, ArrowRight, MapPin } from 'lucide-react';
 import { useArticleModal } from '@/components/providers/article-modal-provider';
@@ -12,7 +12,7 @@ import Link from 'next/link';
 
 interface ArticleCardProps {
   article: Article;
-  allCategories?: { id: string, name: string }[];
+  allCategories?: Category[];
 }
 
 export default function ArticleCard({ article, allCategories = [] }: ArticleCardProps) {
@@ -23,7 +23,6 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
   }) || [];
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // Prevent default if it's a link, but we want the modal
     if (article.id) {
        e.preventDefault();
        onOpen(article.id);
@@ -79,8 +78,6 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
     </Card>
   );
 
-  // If the article is from Firestore (has an ID), wrap it with a click handler for the modal.
-  // If it's an external article, wrap it in a link.
   if (article.id) {
     return (
         <div onClick={handleCardClick} className="h-full">

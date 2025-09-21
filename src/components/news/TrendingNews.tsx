@@ -18,7 +18,7 @@ export default function TrendingNews() {
       try {
         // In a real app, you'd have a specific query for trending,
         // but for now, we sort by views on the client.
-        const articles = await getArticles({ pageSize: 20 });
+        const { articles } = await getArticles({ pageSize: 20 });
         const sorted = articles.sort((a, b) => (b.views || 0) - (a.views || 0));
         setTrending(sorted.slice(0, 5));
       } catch (error) {

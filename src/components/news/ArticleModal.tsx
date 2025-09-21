@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useArticleModal } from '@/components/providers/article-modal-provider';
 import { getArticle } from '@/services/articles';
 import type { Article, Category } from '@/lib/types';
-import { Loader2, MapPin, X, User, ExternalLink, Tag } from 'lucide-react';
+import { Loader2, MapPin, X, User, Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { format } from 'date-fns';

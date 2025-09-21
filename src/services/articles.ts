@@ -204,79 +204,52 @@ export async function getArticles(options?: {
         const constraints: QueryConstraint[] = [
             where('status', '==', 'published'),
             orderBy('publishedAt', 'desc'),
-            limit(pageSize),
         ];
 
-        // Handle category filter
-        if (category && category !== 'general') {
-            const allCategories = await getCategories();
-            const categoryDoc = allCategories.find(c => c.slug === category);
-            if (categoryDoc) {
-                // Remove the previous where clause and add the new one
-                constraints.shift(); // remove where('status'...)
-                constraints.unshift(where('categoryIds', 'array-contains', categoryDoc.id));
-                constraints.unshift(where('status', '==', 'published'));
+        // This will hold the final list of articles after all filtering.
+        let allArticles: Article[] = [];
+
+        // Fetch all categories once to find the ID from the slug.
+        const categories = await getCategories();
+        const categoryDoc = category ? categories.find(c => c.slug === category) : null;
+        
+        let q: any;
+
+        // Base query with status and ordering
+        let baseConstraints = [where('status', '==', 'published'), orderBy('publishedAt', 'desc')];
+        
+        // Add category and district filters if they exist
+        if (categoryDoc) {
+             baseConstraints.unshift(where('categoryIds', 'array-contains', categoryDoc.id));
+        }
+        if (district && district !== 'all') {
+            baseConstraints.unshift(where('districtId', '==', district));
+        }
+
+        q = query(collection(db, 'articles'), ...baseConstraints, limit(pageSize));
+
+        if (startAfterId) {
+            const lastVisible = await getDoc(doc(collection(db, 'articles'), startAfterId));
+            if (lastVisible.exists()) {
+                q = query(collection(db, 'articles'), ...baseConstraints, startAfter(lastVisible), limit(pageSize));
             }
         }
         
-        // Handle district filter
-        if (district && district !== 'all') {
-            const districtConstraint = where('districtId', '==', district);
-             // Check if a category filter is already applied
-            if (constraints.some(c => c.type === 'where' && (c as any)._field.isEqual(new FieldPath('categoryIds')))) {
-                // If yes, we need to create a composite query
-                const categoryConstraint = constraints.find(c => c.type === 'where' && (c as any)._field.isEqual(new FieldPath('categoryIds')))!;
-                // Rebuild constraints for composite query
-                const newConstraints = [
-                    categoryConstraint,
-                    districtConstraint,
-                    where('status', '==', 'published'),
-                    orderBy('publishedAt', 'desc'),
-                    limit(pageSize),
-                ];
-                 if (startAfterId) {
-                    const lastVisible = await getDoc(doc(articlesCollection, startAfterId));
-                    newConstraints.push(startAfter(lastVisible));
-                }
-                const q = query(articlesCollection, ...newConstraints);
-                articlesSnapshot = await getDocs(q);
+        articlesSnapshot = await getDocs(q);
+        allArticles = await Promise.all(articlesSnapshot.docs.map(serializeArticle));
 
-            } else {
-                 // If no category filter, just add the district filter
-                constraints.unshift(districtConstraint);
-                 if (startAfterId) {
-                    const lastVisible = await getDoc(doc(articlesCollection, startAfterId));
-                    constraints.push(startAfter(lastVisible));
-                }
-                const q = query(articlesCollection, ...constraints);
-                articlesSnapshot = await getDocs(q);
-            }
-
-        } else {
-            // Default path if no district filter
-             if (startAfterId) {
-                const lastVisible = await getDoc(doc(articlesCollection, startAfterId));
-                constraints.push(startAfter(lastVisible));
-            }
-            const q = query(articlesCollection, ...constraints);
-            articlesSnapshot = await getDocs(q);
-        }
-
-        if (articlesSnapshot.empty) {
-            return [];
-        }
-
-        return Promise.all(articlesSnapshot.docs.map(serializeArticle));
+        return allArticles;
 
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
              const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
              const readableError = `Query failed due to missing Firestore index. The app will function, but for optimal performance, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
              console.error(readableError);
+             return []; // Return empty array on index error
         } else {
              console.error("An unexpected error occurred in getArticles:", error);
+             return []; // Return empty array on any other error
         }
-        return [];
     }
 }
 
@@ -354,52 +327,42 @@ export async function deleteArticle(id: string): Promise<void> {
 
 // READ (related articles with API fallback)
 export async function getRelatedArticles(categoryId: string, currentArticleId: string): Promise<Article[]> {
-    let attempts = 0;
-    const maxAttempts = 2;
+    try {
+        const q = query(
+            articlesCollection,
+            where('categoryIds', 'array-contains', categoryId),
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc'),
+            limit(10)
+        );
 
-    while (attempts < maxAttempts) {
-        attempts++;
+        const snapshot = await getDocs(q);
         
-        try {
-            const q = query(
+        let articles = (await Promise.all(snapshot.docs.map(serializeArticle)))
+            .filter(article => article.id !== currentArticleId);
+
+        return articles.slice(0, 3);
+
+    } catch (error: any) {
+        if (error.code === 'failed-precondition') {
+            const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
+            const readableError = `Query for related articles failed due to missing Firestore index. Please create it here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
+            console.warn(readableError);
+
+            // Fallback to fetching without category filter if index is missing
+            const fallbackQuery = query(
                 articlesCollection,
-                where('categoryIds', 'array-contains', categoryId),
                 where('status', '==', 'published'),
                 orderBy('publishedAt', 'desc'),
-                limit(10)
+                limit(20) // Fetch more to find some related ones
             );
-
-            const snapshot = await getDocs(q);
-            
-            let articles = (await Promise.all(snapshot.docs.map(serializeArticle)))
-                .filter(article => article.id !== currentArticleId);
-
-            const finalArticles = articles.slice(0, 3);
-            return finalArticles;
-
-        } catch (error: any) {
-            if (error.code === 'failed-precondition') {
-                const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
-                const readableError = `Query for related articles failed due to missing Firestore index. Please create it here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
-                console.warn(readableError);
-
-                // Fallback to fetching without category filter if index is missing
-                const fallbackQuery = query(
-                    articlesCollection,
-                    where('status', '==', 'published'),
-                    orderBy('publishedAt', 'desc'),
-                    limit(20) // Fetch more to find some related ones
-                );
-                const fallbackSnapshot = await getDocs(fallbackQuery);
-                const fallbackArticles = (await Promise.all(fallbackSnapshot.docs.map(serializeArticle)))
-                    .filter(article => article.id !== currentArticleId && article.categoryIds.includes(categoryId));
-                return fallbackArticles.slice(0, 3);
-            }
-             // For other errors, we can just return empty
-            console.error("Error fetching related articles", error);
-            return [];
+            const fallbackSnapshot = await getDocs(fallbackQuery);
+            const fallbackArticles = (await Promise.all(fallbackSnapshot.docs.map(serializeArticle)))
+                .filter(article => article.id !== currentArticleId && article.categoryIds.includes(categoryId));
+            return fallbackArticles.slice(0, 3);
         }
+         // For other errors, we can just return empty
+        console.error("Error fetching related articles", error);
+        return [];
     }
-
-    return [];
 }

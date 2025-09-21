@@ -41,7 +41,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   try {
     await fetchAndStoreNews(category, districtName, districtId);
   } catch (e: any) {
-    console.error(`Silently failing news fetch: ${e.message}`);
+    error = e.message || 'An unknown error occurred while fetching articles from the news API.';
+    console.error(`Failed to fetch news: ${error}`);
     // We don't want to block the page render if the API fails,
     // so we'll just log the error and continue.
   }

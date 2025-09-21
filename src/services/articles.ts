@@ -200,53 +200,45 @@ export async function getArticles(options?: {
     const { startAfterId, pageSize = 10, category, district } = options || {};
 
     try {
-        // Step 1: Perform a simple, non-failing query to get a base set of articles.
-        const baseConstraints: QueryConstraint[] = [
+        const constraints: QueryConstraint[] = [
             where('status', '==', 'published'),
             orderBy('publishedAt', 'desc'),
-            limit(200) // Fetch a large batch of recent articles to filter in-memory.
         ];
-        const q = query(articlesCollection, ...baseConstraints);
-        const snapshot = await getDocs(q);
-        const allRecentArticles = await Promise.all(snapshot.docs.map(serializeArticle));
         
-        // Step 2: Apply complex filtering in-memory.
-        let filteredArticles = allRecentArticles;
+        let articlesSnapshot;
+        if (startAfterId) {
+            const lastDoc = await getDoc(doc(articlesCollection, startAfterId));
+            if(lastDoc.exists()){
+                constraints.push(startAfter(lastDoc));
+            }
+        }
+        constraints.push(limit(pageSize * 2)); // Fetch more for in-memory filtering
 
-        // Filter by category
+        const q = query(articlesCollection, ...constraints);
+        articlesSnapshot = await getDocs(q);
+
+        const allArticles = await Promise.all(articlesSnapshot.docs.map(serializeArticle));
+
+        // In-memory filtering
+        let filteredArticles = allArticles;
+
         if (category && category !== 'general') {
             const allCategories = await getCategories();
             const categoryDoc = allCategories.find(c => c.slug === category);
             if (categoryDoc) {
-                filteredArticles = filteredArticles.filter(article =>
-                    article.categoryIds.includes(categoryDoc.id)
+                filteredArticles = filteredArticles.filter(article => 
+                    article.categoryIds && article.categoryIds.includes(categoryDoc.id)
                 );
             }
         }
 
-        // Filter by district
         if (district && district !== 'all') {
             filteredArticles = filteredArticles.filter(article => article.districtId === district);
         }
-
-        // Step 3: Apply pagination to the filtered results.
-        let paginatedArticles = filteredArticles;
-
-        if (startAfterId) {
-            const startIndex = filteredArticles.findIndex(article => article.id === startAfterId);
-            if (startIndex !== -1) {
-                paginatedArticles = filteredArticles.slice(startIndex + 1);
-            } else {
-                // If the startAfterId is not found (e.g., from a different filter set), return an empty array for this page.
-                paginatedArticles = [];
-            }
-        }
-
-        return paginatedArticles.slice(0, pageSize);
+        
+        return filteredArticles.slice(0, pageSize);
 
     } catch (error: any) {
-        // This catch block now handles potential errors from the simple base query,
-        // which could include permission errors or the initial index-creation prompt.
         if (error.code === 'failed-precondition') {
              const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
              const readableError = `Query failed due to missing Firestore index. The app will function, but for optimal performance, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
@@ -381,4 +373,5 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     return [];
 }
+
 

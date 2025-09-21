@@ -24,7 +24,7 @@ export default function FilterControls({ categories, districts }: FilterControls
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  const selectedCategorySlug = searchParams.get('category') || 'general';
+  const selectedCategorySlug = searchParams.get('category');
   const selectedDistrict = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
@@ -54,7 +54,6 @@ export default function FilterControls({ categories, districts }: FilterControls
   };
 
 
-  const allCategories = [{ id: 'general', name: 'All Categories', slug: 'general' }, ...categories];
   const allDistricts = [{ id: 'all', name: 'All Districts' }, ...districts];
 
   return (
@@ -66,12 +65,12 @@ export default function FilterControls({ categories, districts }: FilterControls
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                  <label className="text-sm font-medium mb-2 block">Category</label>
-                <Select onValueChange={(value) => handleFilterChange('category', value)} value={selectedCategorySlug}>
+                <Select onValueChange={(value) => handleFilterChange('category', value)} value={selectedCategorySlug || undefined}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent>
-                        {allCategories.map((category) => (
+                        {categories.map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
                                 {category.name}
                             </SelectItem>

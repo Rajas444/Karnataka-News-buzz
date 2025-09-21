@@ -199,7 +199,7 @@ export async function getArticles(options?: {
     const { startAfterId, pageSize = 10, category, district } = options || {};
     const constraints: QueryConstraint[] = [];
     
-    if (category && category !== 'general') {
+    if (category) {
         const allCategories = await getCategories();
         const categoryDoc = allCategories.find(c => c.slug === category);
         if (categoryDoc) {
@@ -248,7 +248,7 @@ export async function getArticles(options?: {
             
             // Manual filtering in JS as a last resort
             let filteredArticles = articles;
-            if (category && category !== 'general') {
+            if (category) {
                 const allCategories = await getCategories();
                 const categoryDoc = allCategories.find(c => c.slug === category);
                 if (categoryDoc) {

@@ -47,7 +47,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   try {
-    initialArticles = await getArticles({ category, district: districtId, pageSize: 20 });
+    initialArticles = await getArticles({ category: category || 'general', district: districtId, pageSize: 20 });
   } catch (e: any) {
      error = e.message || 'An unknown error occurred while fetching articles from the database.';
   }

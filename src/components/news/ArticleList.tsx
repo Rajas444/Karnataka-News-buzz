@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -73,24 +74,27 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     // This listener fetches the most recent articles for live updates.
     // Filtering is handled by the `filteredArticles` useMemo hook.
+    // The query is simplified to avoid index errors.
     let q = query(
       collection(db, "articles"),
-      where('status', '==', 'published'),
       orderBy("publishedAt", "desc"),
-      limit(20) // Listen to the 20 most recent articles globally
+      limit(50) // Listen to the 50 most recent articles globally
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const updatedArticles: Article[] = [];
         snapshot.forEach(doc => {
             const data = doc.data();
-            updatedArticles.push({
-                id: doc.id,
-                ...data,
-                publishedAt: data.publishedAt?.toDate().toISOString(),
-                createdAt: data.createdAt?.toDate().toISOString(),
-                updatedAt: data.updatedAt?.toDate().toISOString(),
-            } as Article);
+            // Basic client-side filter
+            if (data.status === 'published') {
+                updatedArticles.push({
+                    id: doc.id,
+                    ...data,
+                    publishedAt: data.publishedAt?.toDate().toISOString(),
+                    createdAt: data.createdAt?.toDate().toISOString(),
+                    updatedAt: data.updatedAt?.toDate().toISOString(),
+                } as Article);
+            }
         });
 
         // Merge and de-duplicate, prioritizing real-time updates over paginated ones
@@ -108,19 +112,14 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
         setRealtimeError(null);
 
     }, (error: any) => {
-        if (error.code === 'failed-precondition') {
-             const errorMessage = `Real-time updates are limited. Some filters may require a database index.`;
-            setRealtimeError(errorMessage);
-        } else {
-            console.error("Real-time update failed:", error);
-            setRealtimeError("Could not get live news updates.");
-        }
+        console.error("Real-time update failed:", error);
+        setRealtimeError("Could not get live news updates.");
         setLoading(false);
     });
 
     return () => unsubscribe();
     // Re-run this effect only if the main filters change, to re-establish the listener's base query
-  }, [categorySlug, districtId]);
+  }, []);
 
 
   const filteredArticles = useMemo(() => {
@@ -198,7 +197,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {filteredArticles.map((article) => (
-          <ArticleCard key={article.id} article={article} allCategories={allCategories} />
+          <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
         ))}
       </div>
       {hasMore && (

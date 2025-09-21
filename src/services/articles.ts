@@ -197,46 +197,42 @@ export async function getArticles(options?: {
     category?: string; // This is a category slug
     district?: string; // This is a district ID
 }): Promise<Article[]> {
-    const { startAfterId, pageSize = 10, category, district } = options || {};
+    const { startAfterId, pageSize = 100, category, district } = options || {};
 
     try {
-        const constraints: QueryConstraint[] = [
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
-        ];
-        
         const allCategories = await getCategories();
         const categoryDoc = category ? allCategories.find(c => c.slug === category) : null;
         
-        if (categoryDoc) {
-             constraints.unshift(where('categoryIds', 'array-contains', categoryDoc.id));
-        }
-        if (district && district !== 'all') {
-            constraints.unshift(where('districtId', '==', district));
-        }
-
-        let q = query(collection(db, 'articles'), ...constraints, limit(pageSize));
-
-        if (startAfterId) {
-            const lastVisible = await getDoc(doc(collection(db, 'articles'), startAfterId));
-            if (lastVisible.exists()) {
-                q = query(collection(db, 'articles'), ...constraints, startAfter(lastVisible), limit(pageSize));
-            }
-        }
+        // Always fetch a larger batch and filter in-memory to avoid index errors.
+        const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'), limit(pageSize));
         
         const articlesSnapshot = await getDocs(q);
-        return await Promise.all(articlesSnapshot.docs.map(serializeArticle));
+        const allArticles = await Promise.all(articlesSnapshot.docs.map(serializeArticle));
+
+        // Filter in-memory
+        const filteredArticles = allArticles.filter(article => {
+            if (article.status !== 'published') return false;
+            
+            const categoryMatch = categoryDoc ? article.categoryIds?.includes(categoryDoc.id) : true;
+            const districtMatch = (district && district !== 'all') ? article.districtId === district : true;
+            
+            return categoryMatch && districtMatch;
+        });
+
+        // Handle pagination in-memory
+        if (startAfterId) {
+            const startIndex = filteredArticles.findIndex(a => a.id === startAfterId);
+            if (startIndex !== -1) {
+                return filteredArticles.slice(startIndex + 1);
+            }
+        }
+
+        return filteredArticles;
 
     } catch (error: any) {
-        if (error.code === 'failed-precondition') {
-             const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
-             const readableError = `Query failed due to missing Firestore index. The app will function, but for optimal performance, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
-             console.warn(readableError);
-             return []; // Return empty array on index error
-        } else {
-             console.error("An unexpected error occurred in getArticles:", error);
-             return []; // Return empty array on any other error
-        }
+        // This catch block is a fallback, but the simplified query should prevent index errors.
+        console.error("An unexpected error occurred in getArticles:", error);
+        return []; 
     }
 }
 
@@ -353,4 +349,3 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         return [];
     }
 }
-

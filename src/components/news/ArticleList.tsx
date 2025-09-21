@@ -49,57 +49,37 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     }, [toast]);
 
     useEffect(() => {
-        setIsFallback(false);
         setLoading(true);
 
         const selectedCategory = categorySlug ? allCategories.find(c => c.slug === categorySlug) : null;
         
-        // Don't run listener until categories are loaded if a categorySlug is present
         if (categorySlug && allCategories.length > 0 && !selectedCategory) {
             setArticles([]);
             setLoading(false);
             return;
         }
 
-        const constraints: QueryConstraint[] = [
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
-            limit(50)
-        ];
-
-        // *** IMPORTANT ***
-        // To prevent missing index errors, we only apply ONE of the two filters on the backend.
-        // The category filter is more specific, so we prioritize it.
-        // The district filter will be applied on the client-side if a category is also selected.
-        if (selectedCategory) {
-            constraints.unshift(where('categoryIds', 'array-contains', selectedCategory.id));
-        } else if (districtId && districtId !== 'all') {
-            constraints.unshift(where('districtId', '==', districtId));
-        }
-
-        // If both are selected, we engage a client-side filter fallback.
-        const useClientSideDistrictFilter = !!(selectedCategory && districtId && districtId !== 'all');
-        if (useClientSideDistrictFilter) {
-            setIsFallback(true);
-        }
+        // Always use a simple query to prevent index errors.
+        // Filtering will be done on the client side.
+        const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'), limit(100));
 
         let unsubscribe: (() => void) | undefined;
 
         try {
-            const q = query(collection(db, 'articles'), ...constraints);
-
             unsubscribe = onSnapshot(q, async (querySnapshot) => {
                 let articlesFromSnapshot = await Promise.all(
                     querySnapshot.docs.map(doc => serializeArticleFromDoc(doc))
                 );
 
-                if (useClientSideDistrictFilter) {
-                    articlesFromSnapshot = articlesFromSnapshot.filter(
-                        article => article.districtId === districtId
-                    );
-                }
+                // Perform all filtering in-memory
+                const filteredArticles = articlesFromSnapshot.filter(article => {
+                    if (article.status !== 'published') return false;
+                    const categoryMatch = selectedCategory ? article.categoryIds?.includes(selectedCategory.id) : true;
+                    const districtMatch = (districtId && districtId !== 'all') ? article.districtId === districtId : true;
+                    return categoryMatch && districtMatch;
+                });
 
-                setArticles(articlesFromSnapshot);
+                setArticles(filteredArticles);
                 setLoading(false);
             }, (error) => {
                 console.error("Real-time listener encountered an error:", error);
@@ -112,24 +92,12 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
                 setLoading(false);
             });
         } catch (error: any) {
-             if (error.code === 'failed-precondition') {
-                const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
-                const readableError = `Query for real-time articles failed due to missing Firestore index. The app will function with initial data, but for optimal performance and real-time updates, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
-                console.warn(readableError);
-                 toast({
-                    title: 'Real-time updates paused',
-                    description: 'A database index is needed for this filter. Displaying initial results only.',
-                    variant: 'default',
-                    duration: 10000
-                });
-            } else {
-                 console.error("An unexpected error occurred setting up the real-time listener:", error);
-                 toast({
-                    title: 'Could not load real-time updates.',
-                    description: 'Displaying initial articles only.',
-                    variant: 'destructive'
-                });
-            }
+             console.error("An unexpected error occurred setting up the real-time listener:", error);
+             toast({
+                title: 'Could not load real-time updates.',
+                description: 'Displaying initial articles only.',
+                variant: 'destructive'
+            });
             setArticles(initialArticles);
             setLoading(false);
         }
@@ -163,15 +131,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
 
     return (
         <div className="space-y-6">
-            {isFallback && (
-                <Alert variant="default" className="bg-amber-50 border-amber-200">
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                    <AlertTitle className="text-amber-800">Complex Filter Applied</AlertTitle>
-                    <AlertDescription className="text-amber-700">
-                        Real-time updates are paused for this specific filter combination. The list will not update automatically.
-                    </AlertDescription>
-                </Alert>
-            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {articles.map((article) => (
                     <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />

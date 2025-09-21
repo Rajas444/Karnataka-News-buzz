@@ -47,15 +47,10 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     }, [toast]);
 
     useEffect(() => {
-        // Only start listening after categories are loaded.
-        if (allCategories.length === 0 && initialArticles.length > 0) {
-             setArticles(initialArticles);
-             setLoading(false);
-             return;
-        }
+        // Start with initial articles to prevent flicker
+        setArticles(initialArticles);
+        setLoading(false);
 
-        setLoading(true);
-        
         // A simple query that Firestore can always handle without a custom index.
         const q = query(collection(db, 'articles'), where('status', '==', 'published'), orderBy('publishedAt', 'desc'));
 
@@ -76,10 +71,10 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
             setArticles(filteredArticles);
             setLoading(false);
         }, (error) => {
-            console.error("Real-time listener encountered an error:", error);
+            console.error("[Real-time listener error]:", error);
             toast({
                 title: 'Live updates failed.',
-                description: 'Could not connect to the database for live updates. Displaying initial results only.',
+                description: 'Could not connect for live updates. Displaying latest results.',
                 variant: 'destructive'
             });
             // On error, fall back to client-side filtering of the initial articles.

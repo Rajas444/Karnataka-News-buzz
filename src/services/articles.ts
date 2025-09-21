@@ -195,42 +195,33 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 
 // READ (all with pagination and filters)
 export async function getArticles(options?: {
-    startAfterId?: string;
     pageSize?: number;
     category?: string; // This is a category slug
     district?: string; // This is a district ID
 }): Promise<Article[]> {
-    const { startAfterId, pageSize = 100, category, district } = options || {};
+    const { pageSize = 100, category, district } = options || {};
 
     try {
+        // Only query for published articles, sorted by date. All other filtering is done in-memory.
         const q = query(collection(db, 'articles'), where('status', '==', 'published'), orderBy('publishedAt', 'desc'));
         const articlesSnapshot = await getDocs(q);
         const allArticles = await Promise.all(articlesSnapshot.docs.map(serializeArticle));
 
-        // Perform all filtering in-memory
+        // In-memory filtering
         const allCategories = await getCategories();
         const categoryDoc = category && category !== 'all' ? allCategories.find(c => c.slug === category) : null;
         
         const filteredArticles = allArticles.filter(article => {
             const categoryMatch = categoryDoc ? article.categoryIds?.includes(categoryDoc.id) : true;
             const districtMatch = (district && district !== 'all') ? article.districtId === district : true;
-            
             return categoryMatch && districtMatch;
         });
 
-        // Handle pagination in-memory
-        let paginatedArticles = filteredArticles;
-        if (startAfterId) {
-            const startIndex = filteredArticles.findIndex(a => a.id === startAfterId);
-            if (startIndex !== -1) {
-                paginatedArticles = filteredArticles.slice(startIndex + 1);
-            }
-        }
-
-        return paginatedArticles.slice(0, pageSize);
+        return filteredArticles.slice(0, pageSize);
 
     } catch (error: any) {
         console.error("An unexpected error occurred in getArticles:", error);
+        // This log helps diagnose if even the simple query fails, which would indicate a larger Firebase issue.
         return []; 
     }
 }
@@ -329,8 +320,18 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
+            // This error is expected if a composite index is not set up for this specific query.
+            // Log a helpful message for the developer.
             const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
-            console.warn(`Query for related articles failed due to a missing Firestore index. Please create it here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`);
+            console.warn(`[Firestore] The query for related articles requires a composite index. This is not a critical error, but creating the index will improve performance. Create it here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check your Firestore console.'}`);
+            
+            // Fallback to in-memory filtering
+            console.log('Falling back to in-memory filtering for related articles.');
+            const fallbackQuery = query(articlesCollection, where('status', '==', 'published'), orderBy('publishedAt', 'desc'), limit(50));
+            const fallbackSnapshot = await getDocs(fallbackQuery);
+            const allArticles = await Promise.all(fallbackSnapshot.docs.map(serializeArticle));
+            const related = allArticles.filter(a => a.categoryIds?.includes(categoryId) && a.id !== currentArticleId);
+            return related.slice(0, 3);
         } else {
              console.error("Error fetching related articles", error);
         }

@@ -88,21 +88,24 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
 // STORE (from external API)
 export async function storeCollectedArticle(apiArticle: NewsdataArticle, districtId?: string, searchCategorySlug?: string): Promise<string | null> {
     
+    // Check if an article with the same source URL already exists.
     const q = query(articlesCollection, where('sourceUrl', '==', apiArticle.link), limit(1));
     const existing = await getDocs(q);
     if (!existing.empty) {
+        // Article already exists. We don't need to create a new one.
+        // We can optionally update it if new information (like a district) is found.
         const doc = existing.docs[0];
         const currentData = doc.data();
-        const updates: Partial<Article> = {};
+        const updates: Partial<any> = {};
         let needsUpdate = false;
         
-        // Add district if it's missing
+        // Add district if it's missing from the existing document
         if (districtId && !currentData.districtId) {
             updates.districtId = districtId;
             needsUpdate = true;
         }
 
-        // Add category if it's new
+        // Add category if the article was found via a new category search
         if (searchCategorySlug) {
              const allCategories = await getCategories();
              const searchCatId = allCategories.find(c => c.slug === searchCategorySlug)?.id;
@@ -116,7 +119,7 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
             await updateDoc(doc.ref, updates);
         }
 
-        return doc.id;
+        return null; // Return null to indicate no new article was created.
     }
 
     const allCategories = await getCategories();
@@ -345,3 +348,4 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         return [];
     }
 }
+

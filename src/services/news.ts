@@ -7,24 +7,29 @@ import { getDistricts } from './districts';
 
 export async function fetchAndStoreNews(category?: string, districtName?: string, districtId?: string): Promise<void> {
     const apiKey = process.env.NEWSDATA_API_KEY;
-    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE' || apiKey === 'pub_3e231d27d02b413a804e6216d1b83058') {
-        console.warn('Newsdata.io API key is not set or is a sample key. Skipping news fetch.');
+    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
+        console.warn('Newsdata.io API key is not set. Skipping news fetch.');
         return;
     }
 
     const url = new URL('https://newsdata.io/api/1/news');
     url.searchParams.append('apikey', apiKey);
-    url.searchParams.append('language', 'kn');
+    url.search_params.append('language', 'kn');
     url.searchParams.append('country', 'in');
     
     let queryTerm = '';
     
     if (districtName) {
-        // Use the district name for the external API query.
-        // Wrap in quotes if it contains spaces for an exact phrase search.
-        queryTerm = districtName.includes(' ') ? `"${districtName}"` : districtName;
+        // Newsdata.io has trouble with "Bengaluru Urban/Rural".
+        // A general "Bengaluru" query is more effective.
+        // We still store with the correct districtId for our internal filtering.
+        if (districtName.toLowerCase().includes('bengaluru')) {
+            queryTerm = 'Bengaluru';
+        } else {
+            queryTerm = districtName.includes(' ') ? `"${districtName}"` : districtName;
+        }
     } else {
-        // Fallback query if no specific district is selected.
+        // Fallback query for the homepage if no specific district is selected.
         queryTerm = 'Karnataka';
     }
 
@@ -45,11 +50,15 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
              const errorMessage = errorData?.results?.message || `API request failed with status ${response.status}`;
              if (errorData?.results?.code === 'TooManyRequests') {
                 console.warn('Newsdata.io API rate limit exceeded. Please try again later.');
-                return; // Gracefully exit without throwing an error
+                return;
              }
              if (errorData?.results?.code === 'PlanFeatureExceeded') {
                 console.warn('Newsdata.io plan feature exceeded. Cannot use date filter.');
                 return;
+             }
+             if (errorMessage.includes('domain')) {
+                console.warn(`Newsdata.io domain error ignored: ${errorMessage}`);
+                return; 
              }
              throw new Error(`Newsdata.io Error: ${errorMessage}`);
         }
@@ -68,7 +77,6 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
         }
 
         if (data.results && data.results.length > 0) {
-            // Pass the districtId to the storage function.
             await Promise.all(data.results.map(article => storeCollectedArticle(article, districtId)));
         }
 

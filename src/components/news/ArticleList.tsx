@@ -3,13 +3,12 @@
 
 import { useState, useEffect } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import type { Article, Category, NewsdataArticle } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getCategories } from '@/services/categories';
 import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, onSnapshot, limit, Timestamp, QueryConstraint } from 'firebase/firestore';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { collection, query, where, orderBy, onSnapshot, Timestamp, QueryConstraint } from 'firebase/firestore';
 
 interface ArticleListProps {
     initialArticles: Article[];
@@ -48,61 +47,66 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     }, [toast]);
 
     useEffect(() => {
+        if (allCategories.length === 0) {
+            setArticles(initialArticles);
+            setLoading(false);
+            return;
+        };
+
         setLoading(true);
 
-        const q = query(collection(db, 'articles'));
+        const constraints: QueryConstraint[] = [
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc'),
+        ];
+        
+        const selectedCategory = (categorySlug && categorySlug !== 'all') ? allCategories.find(c => c.slug === categorySlug) : null;
+        if (selectedCategory) {
+            constraints.push(where('categoryIds', 'array-contains', selectedCategory.id));
+        }
 
-        let unsubscribe: (() => void) | undefined;
+        if (districtId && districtId !== 'all') {
+            constraints.push(where('districtId', '==', districtId));
+        }
+        
+        const q = query(collection(db, 'articles'), ...constraints);
 
-        try {
-            unsubscribe = onSnapshot(q, async (querySnapshot) => {
-                let articlesFromSnapshot = await Promise.all(
-                    querySnapshot.docs.map(doc => serializeArticleFromDoc(doc))
-                );
-
-                // Perform filtering and sorting client-side
-                const selectedCategory = (categorySlug && categorySlug !== 'all') ? allCategories.find(c => c.slug === categorySlug) : null;
-                
-                const filtered = articlesFromSnapshot.filter(article => {
-                    if (article.status !== 'published') return false;
+        const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+            const articlesFromSnapshot = await Promise.all(
+                querySnapshot.docs.map(doc => serializeArticleFromDoc(doc))
+            );
+            setArticles(articlesFromSnapshot);
+            setLoading(false);
+        }, (error) => {
+            console.error("Real-time listener encountered an error:", error);
+            if (error.code === 'failed-precondition') {
+                 console.warn(`Firestore index missing. Please create it here: ${error.message.match(/https?:\/\/[^\s]+/)?.[0]}`);
+                 toast({
+                    title: 'Live updates paused.',
+                    description: 'A database index is needed for this filter. Displaying initial results only.',
+                    variant: 'destructive',
+                    duration: 10000,
+                 });
+                 // Fallback to client-side filtering of initial data
+                 const filteredInitial = initialArticles.filter(article => {
                     const categoryMatch = selectedCategory ? article.categoryIds?.includes(selectedCategory.id) : true;
                     const districtMatch = (districtId && districtId !== 'all') ? article.districtId === districtId : true;
                     return categoryMatch && districtMatch;
-                });
-
-                const sorted = filtered.sort((a, b) => {
-                    const dateA = a.publishedAt ? new Date(a.publishedAt) : new Date(0);
-                    const dateB = b.publishedAt ? new Date(b.publishedAt) : new Date(0);
-                    return dateB.getTime() - dateA.getTime();
-                });
-
-                setArticles(sorted);
-                setLoading(false);
-            }, (error) => {
-                console.error("Real-time listener encountered an error:", error);
+                 });
+                 setArticles(filteredInitial);
+            } else {
                 toast({
                     title: 'Real-time updates failed.',
-                    description: 'Could not connect to the database.',
+                    description: 'Could not connect to the database for live updates.',
                     variant: 'destructive'
                 });
-                setArticles(initialArticles); // Fallback to SSR articles
-                setLoading(false);
-            });
-        } catch (error: any) {
-             console.error("An unexpected error occurred setting up the real-time listener:", error);
-             toast({
-                title: 'Could not load real-time updates.',
-                description: 'Displaying initial articles only.',
-                variant: 'destructive'
-            });
-            setArticles(initialArticles);
+                 setArticles(initialArticles); // Fallback to SSR articles
+            }
             setLoading(false);
-        }
+        });
 
         return () => {
-            if (unsubscribe) {
-                unsubscribe();
-            }
+            unsubscribe();
         };
 
     }, [categorySlug, districtId, allCategories, toast, initialArticles]);

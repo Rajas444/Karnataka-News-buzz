@@ -35,14 +35,17 @@ export const placeholderDistricts: District[] = [
 ];
 
 export const placeholderCategories: Category[] = [
-    { id: 'politics', name: 'Politics', slug: 'politics' },
-    { id: 'business', name: 'Business & Economy', slug: 'business' },
-    { id: 'education', name: 'Education', slug: 'education' },
-    { id: 'technology', name: 'Technology', slug: 'technology' },
     { id: 'sports', name: 'Sports', slug: 'sports' },
+    { id: 'technology', name: 'Technology', slug: 'technology' },
+    { id: 'health-lifestyle', name: 'Health & Lifestyle', slug: 'health-lifestyle' },
+    { id: 'agriculture-farming', name: 'Agriculture & Farming', slug: 'agriculture-farming' },
+    { id: 'gaming-esports', name: 'Gaming & Esports', slug: 'gaming-esports' },
+    { id: 'politics', name: 'Politics', slug: 'politics' },
+    { id: 'business-startups', name: 'Business & Startups', slug: 'business-startups' },
+    { id: 'weather-environment', name: 'Weather & Environment', slug: 'weather-environment' },
+    { id: 'society-community', name: 'Society & Community', slug: 'society-community' },
+    { id: 'jobs-career', name: 'Jobs & Career', slug: 'jobs-career' },
     { id: 'entertainment', name: 'Entertainment', slug: 'entertainment' },
-    { id: 'crime', name: 'Crime & Law', slug: 'crime' },
-    { id: 'environment', name: 'Weather & Environment', slug: 'environment' },
 ];
 
 export const placeholderArticles: Article[] = [];

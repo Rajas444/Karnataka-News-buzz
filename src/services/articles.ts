@@ -384,3 +384,4 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     return [];
 }
+

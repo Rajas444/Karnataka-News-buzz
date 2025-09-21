@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
 import { AlertTriangle, Loader2 } from 'lucide-react';
-import type { Article, Category } from '@/lib/types';
+import type { Article, Category, NewsdataArticle } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getCategories } from '@/services/categories';
 import { db } from '@/lib/firebase';
@@ -130,7 +130,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
         <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {articles.map((article) => (
-                    <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
+                    <ArticleCard key={(article as NewsdataArticle).article_id || article.id || article.sourceUrl} article={article} allCategories={allCategories} />
                 ))}
             </div>
         </div>

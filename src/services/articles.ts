@@ -196,36 +196,74 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 // READ (all with pagination and filters)
 export async function getArticles(options?: {
     pageSize?: number;
+    startAfterDoc?: any; // Should be a DocumentSnapshot, but any to avoid client/server type issues.
     category?: string; // This is a category slug
     district?: string; // This is a district ID
-}): Promise<Article[]> {
-    const { pageSize = 100, category, district } = options || {};
+}): Promise<{articles: Article[], lastVisibleDoc: any | null}> {
+    const { pageSize = 10, startAfterDoc, category, district } = options || {};
+
+    const constraints: QueryConstraint[] = [
+        where('status', '==', 'published'),
+        orderBy('publishedAt', 'desc'),
+    ];
+
+    if (startAfterDoc) {
+        constraints.push(startAfter(startAfterDoc));
+    }
+    constraints.push(limit(pageSize));
+
+    const allCategories = await getCategories();
+    const categoryDoc = category && category !== 'all' ? allCategories.find(c => c.slug === category) : null;
+    
+    if(categoryDoc) {
+        constraints.unshift(where('categoryIds', 'array-contains', categoryDoc.id));
+    }
+    if(district && district !== 'all') {
+        constraints.unshift(where('districtId', '==', district));
+    }
+
 
     try {
-        // Only query for published articles, sorted by date. All other filtering is done in-memory.
-        const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'));
-        const articlesSnapshot = await getDocs(q);
-        const allArticles = await Promise.all(articlesSnapshot.docs.map(serializeArticle));
+        const q = query(collection(db, 'articles'), ...constraints);
+        const snapshot = await getDocs(q);
 
-        // In-memory filtering
-        const allCategories = await getCategories();
-        const categoryDoc = category && category !== 'all' ? allCategories.find(c => c.slug === category) : null;
-        
-        const filteredArticles = allArticles.filter(article => {
-            if (article.status !== 'published') return false;
-            const categoryMatch = categoryDoc ? article.categoryIds?.includes(categoryDoc.id) : true;
-            const districtMatch = (district && district !== 'all') ? article.districtId === district : true;
-            return categoryMatch && districtMatch;
-        });
+        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1] || null;
 
-        return filteredArticles.slice(0, pageSize);
+        return { articles, lastVisibleDoc };
 
     } catch (error: any) {
+         if (error.code === 'failed-precondition') {
+            const fallbackQueryConstraints = [
+                where('status', '==', 'published'),
+                orderBy('publishedAt', 'desc')
+            ];
+             if (startAfterDoc) {
+                fallbackQueryConstraints.push(startAfter(startAfterDoc));
+            }
+            fallbackQueryConstraints.push(limit(pageSize * 5)); // Fetch more to filter in memory
+
+            console.warn(`[Firestore] A query failed due to a missing index. The app is falling back to client-side filtering. For optimal performance, create the required index in your Firebase console. Details: ${error.message}`);
+            const fallbackQuery = query(collection(db, 'articles'), ...fallbackQueryConstraints);
+            const fallbackSnapshot = await getDocs(fallbackQuery);
+            const allArticles = await Promise.all(fallbackSnapshot.docs.map(serializeArticle));
+
+            const filteredArticles = allArticles.filter(article => {
+                 const categoryMatch = categoryDoc ? article.categoryIds?.includes(categoryDoc.id) : true;
+                 const districtMatch = (district && district !== 'all') ? article.districtId === district : true;
+                 return categoryMatch && districtMatch;
+            });
+            
+            const paginatedArticles = filteredArticles.slice(0, pageSize);
+            const lastDoc = fallbackSnapshot.docs.find(doc => doc.id === paginatedArticles[paginatedArticles.length - 1]?.id) || null;
+
+            return { articles: paginatedArticles, lastVisibleDoc: lastDoc };
+         }
         console.error("An unexpected error occurred in getArticles:", error);
-        // This log helps diagnose if even the simple query fails, which would indicate a larger Firebase issue.
-        return []; 
+        return { articles: [], lastVisibleDoc: null };
     }
 }
+
 
 
 // READ (one)

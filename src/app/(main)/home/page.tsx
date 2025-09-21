@@ -12,6 +12,7 @@ import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
 import { fetchAndStoreNews } from '@/services/news';
+import { getDoc } from 'firebase/firestore';
 
 type HomePageProps = {
   searchParams?: {
@@ -25,6 +26,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   let error: string | null = null;
   let categories = [];
   let districts = [];
+  let lastVisibleDocJson = null;
 
   const categorySlug = searchParams?.category;
   const districtId = searchParams?.district;
@@ -48,7 +50,17 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   try {
     // Fetch initial articles for server-side rendering
-    initialArticles = await getArticles({ category: categorySlug, district: districtId, pageSize: 20 });
+    const { articles, lastVisibleDoc } = await getArticles({ category: categorySlug, district: districtId, pageSize: 10 });
+    initialArticles = articles;
+    
+    // We need to serialize the DocumentSnapshot because it's not a plain object.
+    if(lastVisibleDoc) {
+        lastVisibleDocJson = {
+            id: lastVisibleDoc.id,
+            // You can't pass the full snapshot, but the ID is enough to reconstruct it on the client
+        };
+    }
+
   } catch (e: any) {
      error = e.message || 'An unknown error occurred while fetching articles from the database.';
      console.error("Error fetching initial articles:", error);
@@ -115,6 +127,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         initialArticles={initialArticles}
                         categorySlug={categorySlug}
                         districtId={districtId}
+                        initialLastVisibleDoc={lastVisibleDocJson}
                     />
                 </section>
             </div>

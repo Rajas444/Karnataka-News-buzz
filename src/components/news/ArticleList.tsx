@@ -1,39 +1,44 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
 import { Loader2 } from 'lucide-react';
-import type { Article, Category, NewsdataArticle } from '@/lib/types';
+import type { Article, Category } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getCategories } from '@/services/categories';
+import { getArticles } from '@/services/articles';
+import { Button } from '../ui/button';
+import { doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, onSnapshot, Timestamp, QueryConstraint } from 'firebase/firestore';
 
 interface ArticleListProps {
     initialArticles: Article[];
     categorySlug?: string;
     districtId?: string;
+    initialLastVisibleDoc?: any;
 }
 
-async function serializeArticleFromDoc(doc: any): Promise<Article> {
-    const data = doc.data();
-    return {
-        id: doc.id,
-        ...data,
-        publishedAt: data.publishedAt ? (data.publishedAt as Timestamp).toDate().toISOString() : null,
-        createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate().toISOString() : null,
-        updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate().toISOString() : null,
-    } as Article;
-}
-
-export default function ArticleList({ initialArticles, categorySlug, districtId }: ArticleListProps) {
+export default function ArticleList({ initialArticles, categorySlug, districtId, initialLastVisibleDoc }: ArticleListProps) {
     const [articles, setArticles] = useState<Article[]>(initialArticles);
     const [allCategories, setAllCategories] = useState<Category[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [lastVisibleDoc, setLastVisibleDoc] = useState<any>(initialLastVisibleDoc);
+    const [hasMore, setHasMore] = useState(initialArticles.length > 0);
     const { toast } = useToast();
 
     useEffect(() => {
+        setArticles(initialArticles);
+        setHasMore(initialArticles.length > 0);
+        if (initialLastVisibleDoc) {
+             const docRef = doc(db, "articles", initialLastVisibleDoc.id);
+             setLastVisibleDoc(docRef);
+        } else {
+             setLastVisibleDoc(null);
+             setHasMore(false);
+        }
+
         async function fetchInitialData() {
             try {
                 const fetchedCategories = await getCategories();
@@ -44,59 +49,32 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
             }
         }
         fetchInitialData();
-    }, [toast]);
+    }, [initialArticles, initialLastVisibleDoc, toast]);
 
-    useEffect(() => {
-        setArticles(initialArticles);
-        setLoading(false);
 
-        const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'));
+    const handleLoadMore = useCallback(async () => {
+        if (!hasMore || loadingMore) return;
 
-        const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-            const allPublishedArticles = await Promise.all(
-                querySnapshot.docs
-                    .map(doc => serializeArticleFromDoc(doc))
-                    .filter(article => article.status === 'published')
-            );
-
-            // Client-side filtering
-            const selectedCategory = (categorySlug && categorySlug !== 'all') ? allCategories.find(c => c.slug === categorySlug) : null;
-            
-            const filteredArticles = allPublishedArticles.filter(article => {
-                const categoryMatch = selectedCategory ? article.categoryIds?.includes(selectedCategory.id) : true;
-                const districtMatch = (districtId && districtId !== 'all') ? article.districtId === districtId : true;
-                return categoryMatch && districtMatch;
+        setLoadingMore(true);
+        try {
+            const { articles: newArticles, lastVisibleDoc: newLastVisibleDoc } = await getArticles({
+                pageSize: 10,
+                startAfterDoc: lastVisibleDoc,
+                category: categorySlug,
+                district: districtId,
             });
             
-            setArticles(filteredArticles);
-            setLoading(false);
-        }, (error) => {
-            console.error("[Real-time listener error]:", error);
-            if (error.code === 'failed-precondition') {
-                 console.warn(`[Firestore] A query failed due to a missing index. The app is falling back to client-side filtering of initial data. For optimal performance, create the required index in your Firebase console.`);
-            } else {
-                toast({
-                    title: 'Live updates failed.',
-                    description: 'Could not connect for live updates. Displaying latest results.',
-                    variant: 'destructive'
-                });
-            }
-            // On error, fall back to client-side filtering of the initial articles.
-            const selectedCategory = (categorySlug && categorySlug !== 'all') ? allCategories.find(c => c.slug === categorySlug) : null;
-            const filteredInitial = initialArticles.filter(article => {
-                const categoryMatch = selectedCategory ? article.categoryIds?.includes(selectedCategory.id) : true;
-                const districtMatch = (districtId && districtId !== 'all') ? article.districtId === districtId : true;
-                return categoryMatch && districtMatch;
-            });
-            setArticles(filteredInitial);
-            setLoading(false);
-        });
+            setArticles(prev => [...prev, ...newArticles]);
+            setLastVisibleDoc(newLastVisibleDoc);
+            setHasMore(newArticles.length > 0);
+        } catch (error) {
+            console.error("Failed to load more articles", error);
+            toast({ title: "Failed to load more news", variant: "destructive" });
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [hasMore, loadingMore, lastVisibleDoc, categorySlug, districtId, toast]);
 
-        return () => {
-            unsubscribe();
-        };
-
-    }, [categorySlug, districtId, allCategories, toast, initialArticles]);
 
     if (loading && articles.length === 0) {
         return (
@@ -121,9 +99,17 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
         <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {articles.map((article) => (
-                    <ArticleCard key={(article as NewsdataArticle).article_id || article.id || article.sourceUrl} article={article} allCategories={allCategories} />
+                    <ArticleCard key={article.id} article={article} allCategories={allCategories} />
                 ))}
             </div>
+            {hasMore && (
+                <div className="text-center mt-8">
+                    <Button onClick={handleLoadMore} disabled={loadingMore}>
+                        {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        {loadingMore ? 'Loading...' : 'Load More News'}
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }

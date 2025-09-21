@@ -123,9 +123,9 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     setLoadingMore(true);
     try {
-      const { articles: newArticles, lastVisibleDoc } = await getArticles({
+      const { articles: newArticles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
         pageSize: 10,
-        startAfterDocId: lastVisibleDocId, // Pass the ID
+        startAfterDocId: lastVisibleDocId,
         category: categorySlug,
         district: districtId,
       });
@@ -140,11 +140,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
          return Array.from(newArticlesMap.values()).sort((a,b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
       });
       
-      if (lastVisibleDoc) {
-          setLastVisibleDocId(lastVisibleDoc.id);
-      } else {
-          setLastVisibleDocId(null);
-      }
+      setLastVisibleDocId(newLastVisibleDocId);
       setHasMore(newArticles.length > 0);
 
     } catch (error) {

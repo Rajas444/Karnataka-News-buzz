@@ -140,7 +140,7 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
     }
 
     // Ensure the category used for the search is included
-    if (searchCategorySlug && searchCategorySlug !== 'general') {
+    if (searchCategorySlug && searchCategorySlug !== 'all' && searchCategorySlug !== 'general') {
         const searchCatId = allCategories.find(c => c.slug === searchCategorySlug)?.id;
         if (searchCatId) {
             apiCategoryIds.add(searchCatId);
@@ -203,37 +203,27 @@ export async function getArticles(options?: {
     const { startAfterId, pageSize = 100, category, district } = options || {};
 
     try {
-        // This is the most basic query that will always work without a custom index.
-        const articlesSnapshot = await getDocs(query(collection(db, 'articles')));
+        const q = query(collection(db, 'articles'), where('status', '==', 'published'), orderBy('publishedAt', 'desc'));
+        const articlesSnapshot = await getDocs(q);
         const allArticles = await Promise.all(articlesSnapshot.docs.map(serializeArticle));
 
         // Perform all filtering in-memory
         const allCategories = await getCategories();
-        const categoryDoc = category ? allCategories.find(c => c.slug === category) : null;
+        const categoryDoc = category && category !== 'all' ? allCategories.find(c => c.slug === category) : null;
         
         const filteredArticles = allArticles.filter(article => {
-            if (article.status !== 'published') return false;
-            
             const categoryMatch = categoryDoc ? article.categoryIds?.includes(categoryDoc.id) : true;
             const districtMatch = (district && district !== 'all') ? article.districtId === district : true;
             
             return categoryMatch && districtMatch;
         });
 
-        // Sort in-memory
-        const sortedArticles = filteredArticles.sort((a, b) => {
-            const dateA = a.publishedAt ? new Date(a.publishedAt) : new Date(0);
-            const dateB = b.publishedAt ? new Date(b.publishedAt) : new Date(0);
-            return dateB.getTime() - dateA.getTime();
-        });
-
-
         // Handle pagination in-memory
-        let paginatedArticles = sortedArticles;
+        let paginatedArticles = filteredArticles;
         if (startAfterId) {
-            const startIndex = sortedArticles.findIndex(a => a.id === startAfterId);
+            const startIndex = filteredArticles.findIndex(a => a.id === startAfterId);
             if (startIndex !== -1) {
-                paginatedArticles = sortedArticles.slice(startIndex + 1);
+                paginatedArticles = filteredArticles.slice(startIndex + 1);
             }
         }
 
@@ -317,14 +307,14 @@ export async function deleteArticle(id: string): Promise<void> {
 }
 
 
-// READ (related articles with API fallback)
+// READ (related articles)
 export async function getRelatedArticles(categoryId: string, currentArticleId: string): Promise<Article[]> {
     if (!categoryId) return [];
     try {
         const q = query(
             articlesCollection,
-            where('categoryIds', 'array-contains', categoryId),
             where('status', '==', 'published'),
+            where('categoryIds', 'array-contains', categoryId),
             orderBy('publishedAt', 'desc'),
             limit(4) // Fetch a bit more to ensure we have 3 after filtering self
         );
@@ -340,12 +330,10 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
             const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
-            const readableError = `Query for related articles failed due to missing Firestore index. Please create it here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
-            console.warn(readableError);
+            console.warn(`Query for related articles failed due to a missing Firestore index. Please create it here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`);
         } else {
              console.error("Error fetching related articles", error);
         }
         return [];
     }
 }
-

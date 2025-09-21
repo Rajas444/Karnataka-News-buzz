@@ -34,7 +34,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     const { toast } = useToast();
 
     useEffect(() => {
-        async function fetchInitialCategories() {
+        async function fetchInitialData() {
             try {
                 const fetchedCategories = await getCategories();
                 setAllCategories(fetchedCategories);
@@ -43,65 +43,53 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
                 toast({ title: 'Error loading category data', variant: 'destructive' });
             }
         }
-        fetchInitialCategories();
+        fetchInitialData();
     }, [toast]);
 
     useEffect(() => {
-        if (allCategories.length === 0) {
-            setArticles(initialArticles);
-            setLoading(false);
-            return;
-        };
+        // Only start listening after categories are loaded.
+        if (allCategories.length === 0 && initialArticles.length > 0) {
+             setArticles(initialArticles);
+             setLoading(false);
+             return;
+        }
 
         setLoading(true);
-
-        const constraints: QueryConstraint[] = [
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
-        ];
         
-        const selectedCategory = (categorySlug && categorySlug !== 'all') ? allCategories.find(c => c.slug === categorySlug) : null;
-        if (selectedCategory) {
-            constraints.push(where('categoryIds', 'array-contains', selectedCategory.id));
-        }
-
-        if (districtId && districtId !== 'all') {
-            constraints.push(where('districtId', '==', districtId));
-        }
-        
-        const q = query(collection(db, 'articles'), ...constraints);
+        // A simple query that Firestore can always handle without a custom index.
+        const q = query(collection(db, 'articles'), where('status', '==', 'published'), orderBy('publishedAt', 'desc'));
 
         const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-            const articlesFromSnapshot = await Promise.all(
+            const allPublishedArticles = await Promise.all(
                 querySnapshot.docs.map(doc => serializeArticleFromDoc(doc))
             );
-            setArticles(articlesFromSnapshot);
+
+            // Client-side filtering
+            const selectedCategory = (categorySlug && categorySlug !== 'all') ? allCategories.find(c => c.slug === categorySlug) : null;
+            
+            const filteredArticles = allPublishedArticles.filter(article => {
+                const categoryMatch = selectedCategory ? article.categoryIds?.includes(selectedCategory.id) : true;
+                const districtMatch = (districtId && districtId !== 'all') ? article.districtId === districtId : true;
+                return categoryMatch && districtMatch;
+            });
+            
+            setArticles(filteredArticles);
             setLoading(false);
         }, (error) => {
             console.error("Real-time listener encountered an error:", error);
-            if (error.code === 'failed-precondition') {
-                 console.warn(`Firestore index missing. Please create it here: ${error.message.match(/https?:\/\/[^\s]+/)?.[0]}`);
-                 toast({
-                    title: 'Live updates paused.',
-                    description: 'A database index is needed for this filter. Displaying initial results only.',
-                    variant: 'destructive',
-                    duration: 10000,
-                 });
-                 // Fallback to client-side filtering of initial data
-                 const filteredInitial = initialArticles.filter(article => {
-                    const categoryMatch = selectedCategory ? article.categoryIds?.includes(selectedCategory.id) : true;
-                    const districtMatch = (districtId && districtId !== 'all') ? article.districtId === districtId : true;
-                    return categoryMatch && districtMatch;
-                 });
-                 setArticles(filteredInitial);
-            } else {
-                toast({
-                    title: 'Real-time updates failed.',
-                    description: 'Could not connect to the database for live updates.',
-                    variant: 'destructive'
-                });
-                 setArticles(initialArticles); // Fallback to SSR articles
-            }
+            toast({
+                title: 'Live updates failed.',
+                description: 'Could not connect to the database for live updates. Displaying initial results only.',
+                variant: 'destructive'
+            });
+            // On error, fall back to client-side filtering of the initial articles.
+            const selectedCategory = (categorySlug && categorySlug !== 'all') ? allCategories.find(c => c.slug === categorySlug) : null;
+            const filteredInitial = initialArticles.filter(article => {
+                const categoryMatch = selectedCategory ? article.categoryIds?.includes(selectedCategory.id) : true;
+                const districtMatch = (districtId && districtId !== 'all') ? article.districtId === districtId : true;
+                return categoryMatch && districtMatch;
+            });
+            setArticles(filteredInitial);
             setLoading(false);
         });
 

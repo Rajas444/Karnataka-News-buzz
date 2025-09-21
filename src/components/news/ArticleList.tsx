@@ -47,7 +47,12 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     }, [toast]);
 
     useEffect(() => {
-        if (allCategories.length === 0) return; // Wait for categories to be loaded
+        // Do not run the listener until categories are loaded, as they are needed for filtering.
+        if (allCategories.length === 0) {
+            // If there's an initial load without categories, just stop showing the loader.
+            if(initialArticles.length > 0) setLoading(false);
+            return;
+        };
 
         setLoading(true);
 
@@ -57,7 +62,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
             limit(50)
         ];
 
-        const selectedCategory = categorySlug && allCategories.find(c => c.slug === categorySlug);
+        const selectedCategory = categorySlug ? allCategories.find(c => c.slug === categorySlug) : null;
 
         if (selectedCategory) {
             constraints.unshift(where('categoryIds', 'array-contains', selectedCategory.id));
@@ -81,6 +86,12 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
                 const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
                 const readableError = `Query for real-time articles failed due to missing Firestore index. The app will function with initial data, but for optimal performance and real-time updates, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
                 console.warn(readableError);
+                 toast({
+                    title: 'Real-time updates paused',
+                    description: 'A database index is needed for this filter. Displaying initial results only.',
+                    variant: 'default',
+                    duration: 8000
+                });
             } else {
                 toast({
                     title: 'Could not load real-time updates.',
@@ -88,7 +99,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
                     variant: 'destructive'
                 });
             }
-            setArticles(initialArticles); // Fallback to server-rendered articles
+            setArticles(initialArticles); // Fallback to server-rendered articles on any listener error.
             setLoading(false);
         });
 
@@ -96,14 +107,12 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
 
     }, [categorySlug, districtId, allCategories, toast, initialArticles]);
 
-    if (loading) {
+    if (loading && articles.length === 0) {
         return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {initialArticles.slice(0, 4).map((article) => (
-                    <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
-                ))}
+             <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-        );
+        )
     }
 
     if (articles.length === 0) {

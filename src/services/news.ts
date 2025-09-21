@@ -1,6 +1,5 @@
 
 
-
 'use server';
 
 import type { NewsdataArticle, NewsdataResponse, GnewsResponse, GnewsArticle } from '@/lib/types';
@@ -66,12 +65,12 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
     const url = new URL('https://newsdata.io/api/1/news');
     url.searchParams.append('apikey', newsdataApiKey);
     url.searchParams.append('language', 'kn');
-    url.searchPams.append('country', 'in');
+    url.searchParams.append('country', 'in');
     
     let queryTerm = 'Karnataka';
     if (districtName) {
         // Special handling for Bengaluru districts
-        if (districtName.toLowerCase().includes('bengaluru')) {
+        if (districtName.toLowerCase() === 'bengaluru urban' || districtName.toLowerCase() === 'bengaluru rural') {
             queryTerm = 'Bengaluru';
         } else {
             // Use quotes for multi-word district names to get more specific results

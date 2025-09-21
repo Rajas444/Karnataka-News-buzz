@@ -11,6 +11,7 @@ import CommunityHighlights from '@/components/posts/CommunityHighlights';
 import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
+import { fetchAndStoreNews } from '@/services/news';
 
 type HomePageProps = {
   searchParams?: {
@@ -33,6 +34,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       districts = await getDistricts();
   } catch (e) {
       console.error("Failed to fetch filters data", e);
+  }
+
+  const districtName = districts.find(d => d.id === districtId)?.name;
+
+  try {
+    await fetchAndStoreNews(category, districtName, districtId);
+  } catch (e: any) {
+    console.error(`Silently failing news fetch: ${e.message}`);
+    // We don't want to block the page render if the API fails,
+    // so we'll just log the error and continue.
   }
 
   try {

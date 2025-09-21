@@ -19,14 +19,11 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
     
     let queryTerm = '';
     
-    // For Bengaluru, a general search is more effective.
     if (districtName && (districtName.toLowerCase().includes('bengaluru urban') || districtName.toLowerCase().includes('bengaluru rural'))) {
       queryTerm = 'Bengaluru';
     } else if (districtName) {
-      // For other districts, use the name. Wrap in quotes if it contains spaces.
       queryTerm = districtName.includes(' ') ? `"${districtName}"` : districtName;
     } else {
-        // Fallback query for the homepage if no specific district is selected.
         queryTerm = '"Karnataka"';
     }
 
@@ -53,7 +50,6 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
                 console.warn('Newsdata.io plan feature exceeded. Cannot use date filter.');
                 return;
              }
-             // This error appears often on free plans, we can ignore it.
              if (errorMessage.includes('domain')) {
                 console.warn(`Newsdata.io domain error ignored: ${errorMessage}`);
                 return; 

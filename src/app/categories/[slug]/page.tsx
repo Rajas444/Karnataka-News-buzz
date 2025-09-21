@@ -10,6 +10,7 @@ import { ArrowRight } from 'lucide-react';
 import FilterControls from '@/components/news/FilterControls';
 import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
+import { fetchAndStoreNews } from '@/services/news';
 
 
 type CategoryPageProps = {
@@ -23,7 +24,7 @@ type CategoryPageProps = {
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const categorySlug = params.slug;
-  const district = searchParams?.district;
+  const districtId = searchParams?.district;
 
   let articles: Article[] = [];
   let error: string | null = null;
@@ -38,10 +39,16 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   }
 
   const category = categories.find(c => c.slug === categorySlug);
+  const districtName = districts.find(d => d.id === districtId)?.name;
 
   try {
-    // Fetch from our database
-    articles = await getArticles({ category: category?.slug, district, pageSize: 20 });
+    await fetchAndStoreNews(category?.slug, districtName, districtId);
+  } catch(e: any) {
+    console.error(`Silently failing news fetch: ${e.message}`);
+  }
+
+  try {
+    articles = await getArticles({ category: category?.slug, district: districtId, pageSize: 20 });
   } catch (e: any) {
       error = e.message || 'An unknown error occurred while fetching articles.';
   }
@@ -121,7 +128,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                     <ArticleList 
                         initialArticles={initialArticles} 
                         category={category?.slug}
-                        district={district}
+                        district={districtId}
                     />
                 </section>
             )}

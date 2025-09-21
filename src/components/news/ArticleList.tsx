@@ -66,16 +66,18 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
 
   useEffect(() => {
-    // This effect sets up the real-time listener for live updates.
     if (!db) return;
 
     setLoading(true);
     setRealtimeError(null);
 
+    // This listener fetches the most recent articles for live updates.
+    // Filtering is handled by the `filteredArticles` useMemo hook.
     let q = query(
       collection(db, "articles"),
+      where('status', '==', 'published'),
       orderBy("publishedAt", "desc"),
-      limit(20) // Listen to the 20 most recent articles
+      limit(20) // Listen to the 20 most recent articles globally
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -91,7 +93,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
             } as Article);
         });
 
-        // Merge and de-duplicate, prioritizing real-time updates
+        // Merge and de-duplicate, prioritizing real-time updates over paginated ones
         const allArticlesMap = new Map();
         [...updatedArticles, ...articles].forEach(article => {
             if (!allArticlesMap.has(article.id)) {
@@ -107,10 +109,8 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     }, (error: any) => {
         if (error.code === 'failed-precondition') {
-            const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
-             const errorMessage = `Real-time updates for this filter are paused. To enable them, a database index is required.`;
+             const errorMessage = `Real-time updates are limited. Some filters may require a database index.`;
             setRealtimeError(errorMessage);
-            console.warn(`[Firestore] ${errorMessage} Create it here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check your Firestore console.'}`);
         } else {
             console.error("Real-time update failed:", error);
             setRealtimeError("Could not get live news updates.");
@@ -119,9 +119,8 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     });
 
     return () => unsubscribe();
-    // We only want to re-run this effect if the filters change, to set up a new listener.
-    // The articles themselves are handled inside the listener.
-  }, []); // Intentionally left empty to run once
+    // Re-run this effect only if the main filters change, to re-establish the listener's base query
+  }, [categorySlug, districtId]);
 
 
   const filteredArticles = useMemo(() => {
@@ -213,3 +212,5 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     </div>
   );
 }
+
+    

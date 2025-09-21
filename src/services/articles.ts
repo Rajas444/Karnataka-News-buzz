@@ -198,46 +198,75 @@ export async function getArticles(options?: {
     district?: string; // This is a district ID
 }): Promise<Article[]> {
     const { startAfterId, pageSize = 10, category, district } = options || {};
+    let articlesSnapshot;
 
     try {
-        const constraints: QueryConstraint[] = [orderBy('publishedAt', 'desc')];
-        
-        // We fetch a larger batch size to allow for in-memory filtering.
-        // This is not perfectly efficient but avoids complex index requirements.
-        constraints.push(limit(100));
+        const constraints: QueryConstraint[] = [
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc'),
+            limit(pageSize),
+        ];
 
-        const q = query(articlesCollection, ...constraints);
-        const articlesSnapshot = await getDocs(q);
-
-        const allArticles = await Promise.all(articlesSnapshot.docs.map(serializeArticle));
-
-        // In-memory filtering
-        let filteredArticles = allArticles.filter(article => article.status === 'published');
-
+        // Handle category filter
         if (category && category !== 'general') {
             const allCategories = await getCategories();
             const categoryDoc = allCategories.find(c => c.slug === category);
             if (categoryDoc) {
-                filteredArticles = filteredArticles.filter(article => 
-                    article.categoryIds && article.categoryIds.includes(categoryDoc.id)
-                );
-            }
-        }
-
-        if (district && district !== 'all') {
-            filteredArticles = filteredArticles.filter(article => article.districtId === district);
-        }
-
-        // Manual pagination
-        let paginatedArticles = filteredArticles;
-        if (startAfterId) {
-            const startIndex = filteredArticles.findIndex(a => a.id === startAfterId);
-            if (startIndex !== -1) {
-                paginatedArticles = filteredArticles.slice(startIndex + 1);
+                // Remove the previous where clause and add the new one
+                constraints.shift(); // remove where('status'...)
+                constraints.unshift(where('categoryIds', 'array-contains', categoryDoc.id));
+                constraints.unshift(where('status', '==', 'published'));
             }
         }
         
-        return paginatedArticles.slice(0, pageSize);
+        // Handle district filter
+        if (district && district !== 'all') {
+            const districtConstraint = where('districtId', '==', district);
+             // Check if a category filter is already applied
+            if (constraints.some(c => c.type === 'where' && (c as any)._field.isEqual(new FieldPath('categoryIds')))) {
+                // If yes, we need to create a composite query
+                const categoryConstraint = constraints.find(c => c.type === 'where' && (c as any)._field.isEqual(new FieldPath('categoryIds')))!;
+                // Rebuild constraints for composite query
+                const newConstraints = [
+                    categoryConstraint,
+                    districtConstraint,
+                    where('status', '==', 'published'),
+                    orderBy('publishedAt', 'desc'),
+                    limit(pageSize),
+                ];
+                 if (startAfterId) {
+                    const lastVisible = await getDoc(doc(articlesCollection, startAfterId));
+                    newConstraints.push(startAfter(lastVisible));
+                }
+                const q = query(articlesCollection, ...newConstraints);
+                articlesSnapshot = await getDocs(q);
+
+            } else {
+                 // If no category filter, just add the district filter
+                constraints.unshift(districtConstraint);
+                 if (startAfterId) {
+                    const lastVisible = await getDoc(doc(articlesCollection, startAfterId));
+                    constraints.push(startAfter(lastVisible));
+                }
+                const q = query(articlesCollection, ...constraints);
+                articlesSnapshot = await getDocs(q);
+            }
+
+        } else {
+            // Default path if no district filter
+             if (startAfterId) {
+                const lastVisible = await getDoc(doc(articlesCollection, startAfterId));
+                constraints.push(startAfter(lastVisible));
+            }
+            const q = query(articlesCollection, ...constraints);
+            articlesSnapshot = await getDocs(q);
+        }
+
+        if (articlesSnapshot.empty) {
+            return [];
+        }
+
+        return Promise.all(articlesSnapshot.docs.map(serializeArticle));
 
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
@@ -247,11 +276,9 @@ export async function getArticles(options?: {
         } else {
              console.error("An unexpected error occurred in getArticles:", error);
         }
-        // Return an empty array on ANY error to prevent the page from crashing.
         return [];
     }
 }
-
 
 
 // READ (one)
@@ -376,6 +403,3 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     return [];
 }
-
-
-

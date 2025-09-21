@@ -20,8 +20,8 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
     let queryTerm = 'Karnataka';
     
     if (districtName) {
-      // For Bengaluru, a broader search term is more effective.
-      if (districtName.toLowerCase().includes('bengaluru')) {
+      // For Bengaluru districts, a broader "Bengaluru" search term is more effective.
+      if (districtName.toLowerCase() === 'bengaluru urban' || districtName.toLowerCase() === 'bengaluru rural') {
         queryTerm = 'Bengaluru';
       } else {
         // Use exact match for other districts to improve relevance.

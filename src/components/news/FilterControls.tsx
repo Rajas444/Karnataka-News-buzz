@@ -45,14 +45,11 @@ export default function FilterControls({ categories, districts }: FilterControls
   const handleFilterChange = (type: 'category' | 'district', value: string) => {
     let newQueryString;
     if (type === 'category') {
-        const isGeneral = value === 'general';
-        newQueryString = createQueryString({ category: isGeneral ? null : value, district: searchParams.get('district') });
+      newQueryString = createQueryString({ category: value, district: searchParams.get('district') });
     } else { // district
-        const isAllDistricts = value === 'all';
-        newQueryString = createQueryString({ category: searchParams.get('category'), district: isAllDistricts ? null : value });
+      newQueryString = createQueryString({ category: searchParams.get('category'), district: value });
     }
     
-    // Always use the /home path for filtering
     router.push(`/home?${newQueryString}`);
   };
 

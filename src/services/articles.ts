@@ -199,68 +199,65 @@ export async function getArticles(options?: {
 }): Promise<Article[]> {
     const { startAfterId, pageSize = 10, category, district } = options || {};
 
-    try {
-        // This is the robust way to handle complex filtering without depending on composite indexes.
-        // 1. Fetch a larger dataset based on a simple index (publishedAt).
-        // 2. Filter this dataset in memory.
+    let allRecentArticles: Article[] = [];
 
-        // Fetch a sufficiently large number of recent articles to filter from.
-        // For real-world apps with huge datasets, a search service like Algolia or a more
-        // structured database (SQL) would be better. For Firestore, this is a viable workaround.
+    try {
+        // This is a simple query that Firestore can handle without a composite index.
         const q = query(
             articlesCollection,
             where('status', '==', 'published'),
             orderBy('publishedAt', 'desc'),
-            limit(200) // Fetch up to 200 recent articles
+            limit(200) // Fetch a base set of recent articles
         );
         
         const snapshot = await getDocs(q);
-        const allRecentArticles = await Promise.all(snapshot.docs.map(serializeArticle));
-
-        // Now, filter these results in memory
-        let filteredArticles = allRecentArticles;
-
-        // Filter by category
-        if (category && category !== 'general') {
-            const allCategories = await getCategories();
-            const categoryDoc = allCategories.find(c => c.slug === category);
-            if (categoryDoc) {
-                filteredArticles = filteredArticles.filter(article => 
-                    article.categoryIds.includes(categoryDoc.id)
-                );
-            }
-        }
-        
-        // Filter by district
-        if (district && district !== 'all') {
-            filteredArticles = filteredArticles.filter(article => article.districtId === district);
-        }
-
-        // Now, apply pagination to the filtered results
-        let paginatedArticles = filteredArticles;
-
-        if (startAfterId) {
-            const startIndex = filteredArticles.findIndex(article => article.id === startAfterId);
-            if (startIndex !== -1) {
-                paginatedArticles = filteredArticles.slice(startIndex + 1);
-            } else {
-                 paginatedArticles = [];
-            }
-        }
-        
-        return paginatedArticles.slice(0, pageSize);
+        allRecentArticles = await Promise.all(snapshot.docs.map(serializeArticle));
 
     } catch (error: any) {
-        // This outer catch is a final safety net.
-        console.error("An unexpected error occurred in getArticles:", error);
         if (error.code === 'failed-precondition') {
              const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
-             const readableError = `Query failed due to missing Firestore index. Please create it here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
+             const readableError = `Query failed due to missing Firestore index. The app will function, but for optimal performance, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
              console.error(readableError);
+        } else {
+             console.error("An unexpected error occurred in getArticles:", error);
         }
-        // Return empty array on failure to prevent app crash
+        // Return empty array on any failure to prevent app crash
         return [];
     }
+
+    // Now, filter this base dataset in memory
+    let filteredArticles = allRecentArticles;
+
+    // Filter by category
+    if (category && category !== 'general') {
+        const allCategories = await getCategories();
+        const categoryDoc = allCategories.find(c => c.slug === category);
+        if (categoryDoc) {
+            filteredArticles = filteredArticles.filter(article => 
+                article.categoryIds.includes(categoryDoc.id)
+            );
+        }
+    }
+    
+    // Filter by district
+    if (district && district !== 'all') {
+        filteredArticles = filteredArticles.filter(article => article.districtId === district);
+    }
+
+    // Apply pagination to the filtered results
+    let paginatedArticles = filteredArticles;
+
+    if (startAfterId) {
+        const startIndex = filteredArticles.findIndex(article => article.id === startAfterId);
+        if (startIndex !== -1) {
+            paginatedArticles = filteredArticles.slice(startIndex + 1);
+        } else {
+            // If the startAfterId is not found (e.g., from a different filter set), return empty
+            paginatedArticles = [];
+        }
+    }
+    
+    return paginatedArticles.slice(0, pageSize);
 }
 
 
@@ -385,4 +382,5 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     return [];
 }
+
 

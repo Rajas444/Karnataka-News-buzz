@@ -16,6 +16,8 @@ import {
   collection,
   orderBy,
   limit,
+  where,
+  QueryConstraint
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -29,10 +31,10 @@ interface ArticleListProps {
 export default function ArticleList({ initialArticles, categorySlug, districtId, initialLastVisibleDocId }: ArticleListProps) {
   const [articles, setArticles] = useState<Article[]>(initialArticles);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(initialArticles.length === 0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(initialLastVisibleDocId || null);
-  const [hasMore, setHasMore] = useState(initialArticles.length > 0);
+  const [hasMore, setHasMore] = useState(initialArticles.length > 0 && initialLastVisibleDocId !== null);
   const [realtimeError, setRealtimeError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -41,6 +43,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     setHasMore(initialArticles.length > 0 && initialLastVisibleDocId !== null);
     setRealtimeError(null);
     setLastVisibleDocId(initialLastVisibleDocId || null);
+    setLoading(false);
 
     async function fetchInitialData() {
       try {
@@ -57,36 +60,44 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   useEffect(() => {
     if (!db) return;
 
-    // This listener fetches all recent articles for real-time updates.
-    // Filtering is handled by the `filteredArticles` useMemo hook.
-    setLoading(true);
     setRealtimeError(null);
 
-    const q = query(
-      collection(db, "articles"),
+    const categoryId = allCategories.find(c => c.slug === categorySlug)?.id;
+
+    let constraints: QueryConstraint[] = [
+      where('status', '==', 'published'),
       orderBy("publishedAt", "desc"),
-      limit(50)
-    );
+      limit(20) // Limit real-time updates to recent articles
+    ];
+
+    if (categorySlug && categorySlug !== 'all' && categoryId) {
+      constraints.push(where('categoryIds', 'array-contains', categoryId));
+    }
+    if (districtId && districtId !== 'all') {
+      constraints.push(where('districtId', '==', districtId));
+    }
+
+    const q = query(collection(db, "articles"), ...constraints);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const updatedArticles: Article[] = [];
         snapshot.forEach(doc => {
             const data = doc.data();
-            if (data.status === 'published') {
-                updatedArticles.push({
-                    id: doc.id,
-                    ...data,
-                    publishedAt: data.publishedAt?.toDate().toISOString(),
-                    createdAt: data.createdAt?.toDate().toISOString(),
-                    updatedAt: data.updatedAt?.toDate().toISOString(),
-                } as Article);
-            }
+            updatedArticles.push({
+                id: doc.id,
+                ...data,
+                publishedAt: data.publishedAt?.toDate().toISOString(),
+                createdAt: data.createdAt?.toDate().toISOString(),
+                updatedAt: data.updatedAt?.toDate().toISOString(),
+            } as Article);
         });
 
-        // Merge new articles with existing ones, preventing duplicates
         setArticles(prev => {
             const allArticlesMap = new Map();
-            [...updatedArticles, ...prev].forEach(article => {
+            // Add new articles first to give them priority
+            updatedArticles.forEach(article => allArticlesMap.set(article.id, article));
+            // Then add previous articles, avoiding duplicates
+            prev.forEach(article => {
                 if (!allArticlesMap.has(article.id)) {
                     allArticlesMap.set(article.id, article);
                 }
@@ -94,32 +105,27 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
             return Array.from(allArticlesMap.values()).sort((a,b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
         });
 
-        setLoading(false);
+        if(loading) setLoading(false);
         setRealtimeError(null);
 
     }, (error: any) => {
         console.error("Real-time update failed:", error);
-        setRealtimeError("Could not get live news updates.");
-        setLoading(false);
+        if (error.code === 'failed-precondition') {
+             setRealtimeError("A database index is required for this filter. Live updates may be missing.");
+             toast({
+                 title: 'Index Required for Live Updates',
+                 description: 'A composite index is needed for this query. Some live updates might not appear.',
+                 variant: 'destructive'
+             })
+        } else {
+            setRealtimeError("Could not get live news updates.");
+        }
+        if(loading) setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [categorySlug, districtId, allCategories, loading]);
 
-
-  const filteredArticles = useMemo(() => {
-    let result = articles;
-    if (categorySlug && categorySlug !== 'all') {
-      const categoryId = allCategories.find(c => c.slug === categorySlug)?.id;
-      if (categoryId) {
-        result = result.filter(a => a.categoryIds?.includes(categoryId));
-      }
-    }
-    if (districtId && districtId !== 'all') {
-      result = result.filter(a => a.districtId === districtId);
-    }
-    return result;
-  }, [articles, categorySlug, districtId, allCategories]);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;
@@ -132,17 +138,8 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
         category: categorySlug,
         district: districtId,
       });
-
-      setArticles(prev => {
-         const newArticlesMap = new Map(prev.map(a => [a.id, a]));
-         newArticles.forEach(a => {
-            if (!newArticlesMap.has(a.id)) {
-                newArticlesMap.set(a.id, a);
-            }
-         });
-         return Array.from(newArticlesMap.values()).sort((a,b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-      });
       
+      setArticles(prev => [...prev, ...newArticles]);
       setLastVisibleDocId(newLastVisibleDocId);
       setHasMore(newArticles.length > 0 && newLastVisibleDocId !== null);
 
@@ -162,7 +159,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     )
   }
 
-  if (!loading && filteredArticles.length === 0) {
+  if (!loading && articles.length === 0) {
     return (
       <div className="text-center py-12 bg-card rounded-lg">
         <h2 className="text-2xl font-bold mb-4 font-kannada">No Articles Found</h2>
@@ -182,7 +179,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {filteredArticles.map((article) => (
+        {articles.map((article) => (
           <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
         ))}
       </div>

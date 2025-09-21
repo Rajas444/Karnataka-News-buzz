@@ -205,6 +205,7 @@ export async function getArticles(options?: {
     const { pageSize = 10, startAfterDocId, category, district } = options || {};
 
     let constraints: QueryConstraint[] = [
+        where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
     ];
     
@@ -214,49 +215,32 @@ export async function getArticles(options?: {
              constraints.push(startAfter(startAfterDoc));
         }
     }
-    
-    // Fetch a larger batch to allow for in-memory filtering.
-    // This is a trade-off for avoiding complex indexes.
-    const fetchLimit = 50; 
-    constraints.push(limit(fetchLimit));
-    
+
     const allCategories = (category && category !== 'all') ? await getCategories() : [];
     const categoryDocId = category && category !== 'all' ? allCategories.find(c => c.slug === category)?.id : null;
+
+    if (categoryDocId) {
+        constraints.push(where('categoryIds', 'array-contains', categoryDocId));
+    }
+
+    if (district && district !== 'all') {
+        constraints.push(where('districtId', '==', district));
+    }
+    
+    constraints.push(limit(pageSize));
     
     try {
         const q = query(collection(db, 'articles'), ...constraints);
         const snapshot = await getDocs(q);
 
-        const allDocs = snapshot.docs;
-        let articles: Article[] = [];
+        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        const lastVisibleDocInPage = snapshot.docs.length === pageSize ? snapshot.docs[snapshot.docs.length - 1].id : null;
 
-        for (const doc of allDocs) {
-            const article = await serializeArticle(doc);
-            
-            // In-memory filtering
-            if (article.status !== 'published') continue;
-            
-            const categoryMatch = categoryDocId
-                ? article.categoryIds?.includes(categoryDocId)
-                : true;
-
-            const districtMatch = district && district !== 'all'
-                ? article.districtId === district
-                : true;
-
-            if(categoryMatch && districtMatch) {
-                articles.push(article);
-            }
-        }
-        
-        const pageOfArticles = articles.slice(0, pageSize);
-        const lastVisibleDocInFetchedSet = articles.length > 0 ? articles[articles.length - 1].id : null;
-        
-        const lastVisibleDocIdInPage = pageOfArticles.length >= pageSize ? lastVisibleDocInFetchedSet : null;
-
-        return { articles: pageOfArticles, lastVisibleDocId: lastVisibleDocIdInPage };
+        return { articles, lastVisibleDocId: lastVisibleDocInPage };
 
     } catch (error: any) {
+        // This will now properly throw an error if an index is missing,
+        // which will be caught by the page component and displayed to the user.
         console.error("An unexpected error occurred in getArticles:", error);
         throw error;
     }

@@ -122,12 +122,14 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
     const allCategories = await getCategories();
     
     const apiCategoryIds = new Set<string>();
+    const normalize = (str: string) => str.toLowerCase().replace(/&/g, 'and').replace(/\s+/g, '-');
+
 
     // Match API categories to our DB categories
     if (apiArticle.category) {
         apiArticle.category.forEach(apiCat => {
-            const normalizedApiCat = apiCat.toLowerCase().trim();
-            const found = allCategories.find(c => c.slug === normalizedApiCat || c.name.toLowerCase() === normalizedApiCat);
+            const normalizedApiCat = normalize(apiCat);
+            const found = allCategories.find(c => normalize(c.slug) === normalizedApiCat || normalize(c.name) === normalizedApiCat);
             if (found) {
                 apiCategoryIds.add(found.id);
             }
@@ -149,7 +151,7 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
         const generalCatId = allCategories.find(c => c.slug === 'general')?.id;
         if (generalCatId) {
             finalCategoryIds.push(generalCatId);
-        } else if (allCategories[0]) {
+        } else if (allCategories.length > 0) {
             // Fallback to the first available category if 'general' doesn't exist
             finalCategoryIds.push(allCategories[0].id);
         }
@@ -199,11 +201,16 @@ export async function getArticles(options?: {
     const { startAfterId, pageSize = 10, category, district } = options || {};
     const constraints: QueryConstraint[] = [];
     
-    if (category) {
+    // Default to 'published' status if not specified otherwise
+    constraints.push(where('status', '==', 'published'));
+    
+    if (category && category !== 'general') {
         const allCategories = await getCategories();
         const categoryDoc = allCategories.find(c => c.slug === category);
         if (categoryDoc) {
             constraints.push(where('categoryIds', 'array-contains', categoryDoc.id));
+        } else {
+            console.warn(`Category slug "${category}" not found. Returning all articles.`);
         }
     }
     
@@ -234,7 +241,8 @@ export async function getArticles(options?: {
     } catch (error: any) {
         if (error.code === 'failed-precondition' && error.message.includes('index')) {
              const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
-             console.warn(`Query failed due to missing index. Please create it in your Firebase console: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'} The app will fall back to a less optimal query.`);
+             const readableError = `Query failed due to missing Firestore index. Please create it here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
+             console.error(readableError);
              
              // Construct a fallback query without the specific filter causing the index issue, then filter in-memory.
              const fallbackConstraints = [orderBy('publishedAt', 'desc'), limit(pageSize * 2)]; // fetch more to have enough after filtering
@@ -248,7 +256,7 @@ export async function getArticles(options?: {
             
             // Manual filtering in JS as a last resort
             let filteredArticles = articles;
-            if (category) {
+            if (category && category !== 'general') {
                 const allCategories = await getCategories();
                 const categoryDoc = allCategories.find(c => c.slug === category);
                 if (categoryDoc) {
@@ -260,6 +268,7 @@ export async function getArticles(options?: {
             }
             return filteredArticles.slice(0, pageSize);
         }
+        // Re-throw other errors
         throw error;
     }
 }
@@ -347,6 +356,7 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         const q = query(
             articlesCollection,
             where('categoryIds', 'array-contains', categoryId),
+            where('status', '==', 'published'),
             orderBy('publishedAt', 'desc'),
             limit(10)
         );
@@ -384,4 +394,5 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     return [];
 }
+
 

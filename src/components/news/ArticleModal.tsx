@@ -5,19 +5,34 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useArticleModal } from '@/components/providers/article-modal-provider';
 import { getArticle } from '@/services/articles';
-import type { Article } from '@/lib/types';
-import { Loader2, MapPin, X } from 'lucide-react';
+import type { Article, Category } from '@/lib/types';
+import { Loader2, MapPin, X, User, ExternalLink, Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import ShareButtons from '@/components/shared/ShareButtons';
 import RelatedArticles from './RelatedArticles';
+import { getCategories } from '@/services/categories';
+import Link from 'next/link';
 
 export default function ArticleModal() {
   const { isOpen, onClose, articleId } = useArticleModal();
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(false);
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    async function fetchCategories() {
+        try {
+            const fetchedCategories = await getCategories();
+            setAllCategories(fetchedCategories);
+        } catch (e) {
+            console.error("Failed to fetch categories for modal", e);
+        }
+    }
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -47,6 +62,11 @@ export default function ArticleModal() {
       onClose();
   }
 
+  const articleCategories = article?.categoryIds?.map(catId => 
+      allCategories.find(c => c.id === catId)
+  ).filter((c): c is Category => !!c) || [];
+
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0">
@@ -61,6 +81,11 @@ export default function ArticleModal() {
                   {article.district && (
                     <span className="flex items-center gap-1">
                       <MapPin className="h-3 w-3" /> {article.district}
+                    </span>
+                  )}
+                  {article.author && (
+                    <span className="flex items-center gap-1">
+                        <User className="h-3 w-3" /> {article.author}
                     </span>
                   )}
                 </div>
@@ -100,6 +125,27 @@ export default function ArticleModal() {
                         className="prose dark:prose-invert max-w-none font-kannada"
                         dangerouslySetInnerHTML={{ __html: article.content.replace(/\n/g, '<p>') }} 
                     />
+
+                    <div className="mt-8 space-y-4">
+                        {articleCategories.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="text-sm font-semibold flex items-center gap-1.5"><Tag className="h-4 w-4"/> Categories:</h4>
+                                {articleCategories.map(cat => (
+                                    <Badge key={cat.id} variant="secondary">{cat.name}</Badge>
+                                ))}
+                            </div>
+                        )}
+
+                        {article.sourceUrl && (
+                             <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-semibold flex items-center gap-1.5"><ExternalLink className="h-4 w-4"/> Source:</h4>
+                                 <Link href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate">
+                                    {article.sourceUrl}
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+
                     {article.categoryIds?.[0] && (
                         <RelatedArticles
                             categoryId={article.categoryIds[0]}

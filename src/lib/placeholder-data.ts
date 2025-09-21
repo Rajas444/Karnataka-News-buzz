@@ -35,6 +35,7 @@ export const placeholderDistricts: District[] = [
 ];
 
 export const placeholderCategories: Category[] = [
+    { id: 'general', name: 'General', slug: 'general' },
     { id: 'sports', name: 'Sports', slug: 'sports' },
     { id: 'technology', name: 'Technology', slug: 'technology' },
     { id: 'health-lifestyle', name: 'Health & Lifestyle', slug: 'health-lifestyle' },

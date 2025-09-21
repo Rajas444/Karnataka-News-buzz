@@ -32,7 +32,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     const [articles, setArticles] = useState<Article[]>(initialArticles);
     const [allCategories, setAllCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isFallback, setIsFallback] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -51,17 +50,29 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     useEffect(() => {
         setLoading(true);
 
-        const selectedCategory = categorySlug ? allCategories.find(c => c.slug === categorySlug) : null;
+        const selectedCategory = (categorySlug && categorySlug !== 'all') ? allCategories.find(c => c.slug === categorySlug) : null;
         
-        if (categorySlug && allCategories.length > 0 && !selectedCategory) {
+        if ((categorySlug && categorySlug !== 'all') && allCategories.length > 0 && !selectedCategory) {
             setArticles([]);
             setLoading(false);
             return;
         }
 
-        // Always use a simple query to prevent index errors.
-        // Filtering will be done on the client side.
-        const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'), limit(100));
+        const constraints: QueryConstraint[] = [
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc'),
+            limit(50)
+        ];
+
+        if (selectedCategory) {
+            constraints.push(where('categoryIds', 'array-contains', selectedCategory.id));
+        }
+
+        if (districtId && districtId !== 'all') {
+            constraints.push(where('districtId', '==', districtId));
+        }
+
+        const q = query(collection(db, 'articles'), ...constraints);
 
         let unsubscribe: (() => void) | undefined;
 
@@ -71,18 +82,15 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
                     querySnapshot.docs.map(doc => serializeArticleFromDoc(doc))
                 );
 
-                // Perform all filtering in-memory
-                const filteredArticles = articlesFromSnapshot.filter(article => {
-                    if (article.status !== 'published') return false;
-                    const categoryMatch = selectedCategory ? article.categoryIds?.includes(selectedCategory.id) : true;
-                    const districtMatch = (districtId && districtId !== 'all') ? article.districtId === districtId : true;
-                    return categoryMatch && districtMatch;
-                });
-
-                setArticles(filteredArticles);
+                setArticles(articlesFromSnapshot);
                 setLoading(false);
             }, (error) => {
                 console.error("Real-time listener encountered an error:", error);
+                 if (error.code === 'failed-precondition') {
+                    const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
+                    const readableError = `Query failed due to missing Firestore index. The app will function, but for optimal performance, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
+                    console.warn(readableError);
+                }
                 toast({
                     title: 'Real-time updates failed.',
                     description: 'Displaying initial articles only.',
@@ -93,6 +101,11 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
             });
         } catch (error: any) {
              console.error("An unexpected error occurred setting up the real-time listener:", error);
+             if (error.code === 'failed-precondition') {
+                const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
+                const readableError = `Query failed due to missing Firestore index. The app will function, but for optimal performance, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
+                console.warn(readableError);
+            }
              toast({
                 title: 'Could not load real-time updates.',
                 description: 'Displaying initial articles only.',

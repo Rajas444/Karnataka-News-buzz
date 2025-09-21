@@ -92,7 +92,7 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
         // "agriculture-farming", "gaming-esports", "society-community", "jobs-career" don't have direct maps
     };
 
-    if (category && category !== 'general') {
+    if (category && category !== 'all' && category !== 'general') {
         const apiCategory = categoryMap[category];
         if (apiCategory) {
             url.searchParams.append('category', apiCategory);

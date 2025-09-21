@@ -24,14 +24,14 @@ export default function FilterControls({ categories, districts }: FilterControls
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  const selectedCategorySlug = searchParams.get('category');
+  const selectedCategorySlug = searchParams.get('category') || 'all';
   const selectedDistrict = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
     (paramsToUpdate: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams.toString());
       Object.entries(paramsToUpdate).forEach(([key, value]) => {
-        if (value && value !== 'all' && value !== 'general') {
+        if (value && value !== 'all') {
           params.set(key, value);
         } else {
           params.delete(key);
@@ -55,6 +55,7 @@ export default function FilterControls({ categories, districts }: FilterControls
 
 
   const allDistricts = [{ id: 'all', name: 'All Districts' }, ...districts];
+  const allCategories = [{ id: 'all', name: 'All Categories', slug: 'all' }, ...categories];
 
   return (
     <Card>
@@ -65,12 +66,12 @@ export default function FilterControls({ categories, districts }: FilterControls
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                  <label className="text-sm font-medium mb-2 block">Category</label>
-                <Select onValueChange={(value) => handleFilterChange('category', value)} value={selectedCategorySlug || undefined}>
+                <Select onValueChange={(value) => handleFilterChange('category', value)} value={selectedCategorySlug}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent>
-                        {categories.map((category) => (
+                        {allCategories.map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
                                 {category.name}
                             </SelectItem>

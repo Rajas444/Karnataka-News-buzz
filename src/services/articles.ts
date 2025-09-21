@@ -201,14 +201,15 @@ export async function getArticles(options?: {
     const { startAfterId, pageSize = 10, category, district } = options || {};
     const constraints: QueryConstraint[] = [];
     
-    // Default to 'published' status if not specified otherwise
     constraints.push(where('status', '==', 'published'));
     
+    let categoryId: string | undefined;
     if (category && category !== 'general') {
         const allCategories = await getCategories();
         const categoryDoc = allCategories.find(c => c.slug === category);
         if (categoryDoc) {
-            constraints.push(where('categoryIds', 'array-contains', categoryDoc.id));
+            categoryId = categoryDoc.id;
+            constraints.push(where('categoryIds', 'array-contains', categoryId));
         } else {
             console.warn(`Category slug "${category}" not found. Returning all articles.`);
         }
@@ -218,7 +219,6 @@ export async function getArticles(options?: {
         constraints.push(where('districtId', '==', district));
     }
     
-    // Always sort by publishedAt descending, this is the primary sort key.
     constraints.push(orderBy('publishedAt', 'desc'));
     
     if (startAfterId) {
@@ -236,39 +236,42 @@ export async function getArticles(options?: {
 
     try {
         const snapshot = await getDocs(q);
-        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
-        return articles;
+        return await Promise.all(snapshot.docs.map(serializeArticle));
     } catch (error: any) {
         if (error.code === 'failed-precondition' && error.message.includes('index')) {
              const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
              const readableError = `Query failed due to missing Firestore index. Please create it here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
              console.error(readableError);
              
-             // Construct a fallback query without the specific filter causing the index issue, then filter in-memory.
-             const fallbackConstraints = [orderBy('publishedAt', 'desc'), limit(pageSize * 2)]; // fetch more to have enough after filtering
+             // Fallback logic
+             console.log("Attempting fallback query without complex constraints.");
+             const fallbackConstraints = [
+                where('status', '==', 'published'),
+                orderBy('publishedAt', 'desc'),
+                limit(pageSize * 5) // Fetch a larger batch for in-memory filtering
+             ];
              if (startAfterId) {
                 const lastVisibleDoc = await getDoc(doc(articlesCollection, startAfterId));
                 if (lastVisibleDoc.exists()) fallbackConstraints.push(startAfter(lastVisibleDoc));
              }
              const fallbackQuery = query(articlesCollection, ...fallbackConstraints);
              const fallbackSnapshot = await getDocs(fallbackQuery);
-             const articles = await Promise.all(fallbackSnapshot.docs.map(serializeArticle));
+             const allArticles = await Promise.all(fallbackSnapshot.docs.map(serializeArticle));
             
-            // Manual filtering in JS as a last resort
-            let filteredArticles = articles;
-            if (category && category !== 'general') {
-                const allCategories = await getCategories();
-                const categoryDoc = allCategories.find(c => c.slug === category);
-                if (categoryDoc) {
-                    filteredArticles = filteredArticles.filter(a => a.categoryIds.includes(categoryDoc.id));
-                }
+            // Manual filtering in JS
+            let filteredArticles = allArticles;
+            if (categoryId) {
+                filteredArticles = filteredArticles.filter(a => a.categoryIds.includes(categoryId));
             }
             if (district && district !== 'all') {
                  filteredArticles = filteredArticles.filter(a => a.districtId === district);
             }
+            
+            console.log(`Fallback query returned ${allArticles.length} docs, filtered down to ${filteredArticles.length}.`);
             return filteredArticles.slice(0, pageSize);
         }
         // Re-throw other errors
+        console.error("An unexpected error occurred while fetching articles:", error);
         throw error;
     }
 }
@@ -394,5 +397,3 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     return [];
 }
-
-

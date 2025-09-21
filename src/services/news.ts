@@ -7,30 +7,27 @@ import { getDistricts } from './districts';
 
 export async function fetchAndStoreNews(category?: string, districtName?: string, districtId?: string): Promise<void> {
     const apiKey = process.env.NEWSDATA_API_KEY;
-    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
-        console.warn('Newsdata.io API key is not set. Skipping news fetch.');
+    if (!apiKey || apiKey === 'YOUR_API_KEY_HERE' || apiKey === '') {
+        console.warn('News fetching is disabled. No API key found.');
         return;
     }
 
     const url = new URL('https://newsdata.io/api/1/news');
     url.searchParams.append('apikey', apiKey);
-    url.search_params.append('language', 'kn');
+    url.searchParams.append('language', 'kn');
     url.searchParams.append('country', 'in');
     
     let queryTerm = '';
     
-    if (districtName) {
-        // Newsdata.io has trouble with "Bengaluru Urban/Rural".
-        // A general "Bengaluru" query is more effective.
-        // We still store with the correct districtId for our internal filtering.
-        if (districtName.toLowerCase().includes('bengaluru')) {
-            queryTerm = 'Bengaluru';
-        } else {
-            queryTerm = districtName.includes(' ') ? `"${districtName}"` : districtName;
-        }
+    // For Bengaluru, a general search is more effective.
+    if (districtName && (districtName.toLowerCase().includes('bengaluru urban') || districtName.toLowerCase().includes('bengaluru rural'))) {
+      queryTerm = 'Bengaluru';
+    } else if (districtName) {
+      // For other districts, use the name. Wrap in quotes if it contains spaces.
+      queryTerm = districtName.includes(' ') ? `"${districtName}"` : districtName;
     } else {
         // Fallback query for the homepage if no specific district is selected.
-        queryTerm = 'Karnataka';
+        queryTerm = '"Karnataka"';
     }
 
     url.searchParams.append('q', queryTerm);
@@ -56,6 +53,7 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
                 console.warn('Newsdata.io plan feature exceeded. Cannot use date filter.');
                 return;
              }
+             // This error appears often on free plans, we can ignore it.
              if (errorMessage.includes('domain')) {
                 console.warn(`Newsdata.io domain error ignored: ${errorMessage}`);
                 return; 

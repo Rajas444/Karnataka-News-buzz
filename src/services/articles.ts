@@ -106,18 +106,18 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 
     let content = apiArticle.content || apiArticle.description || '';
     
-    // Only extract content if BOTH content and description are missing.
-    if (!apiArticle.content && !apiArticle.description && apiArticle.link) {
-        console.log(`Content is missing for '${apiArticle.title}'. Extracting from URL.`);
-        try {
-            const extracted = await extractArticleContent({ url: apiArticle.link });
-            if (extracted.content) {
-              content = extracted.content;
-            }
-        } catch (e) {
-            console.error(`Failed to extract content for ${apiArticle.link}`, e);
-        }
-    }
+    // AI Content extraction is disabled to prevent API errors.
+    // if (!apiArticle.content && !apiArticle.description && apiArticle.link) {
+    //     console.log(`Content is missing for '${apiArticle.title}'. Extracting from URL.`);
+    //     try {
+    //         const extracted = await extractArticleContent({ url: apiArticle.link });
+    //         if (extracted.content) {
+    //           content = extracted.content;
+    //         }
+    //     } catch (e) {
+    //         console.error(`Failed to extract content for ${apiArticle.link}`, e);
+    //     }
+    // }
 
     const newArticleData = {
         title: apiArticle.title,

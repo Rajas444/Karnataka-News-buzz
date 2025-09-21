@@ -23,15 +23,15 @@ interface ArticleListProps {
   initialArticles: Article[];
   categorySlug?: string;
   districtId?: string;
-  initialLastVisibleDoc?: any;
+  initialLastVisibleDocId?: string | null;
 }
 
-export default function ArticleList({ initialArticles, categorySlug, districtId, initialLastVisibleDoc }: ArticleListProps) {
+export default function ArticleList({ initialArticles, categorySlug, districtId, initialLastVisibleDocId }: ArticleListProps) {
   const [articles, setArticles] = useState<Article[]>(initialArticles);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(initialLastVisibleDoc?.id || null);
+  const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(initialLastVisibleDocId || null);
   const [hasMore, setHasMore] = useState(initialArticles.length > 0);
   const [realtimeError, setRealtimeError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -40,7 +40,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     setArticles(initialArticles);
     setHasMore(initialArticles.length > 0);
     setRealtimeError(null);
-    setLastVisibleDocId(initialLastVisibleDoc?.id || null);
+    setLastVisibleDocId(initialLastVisibleDocId || null);
 
     async function fetchInitialData() {
       try {
@@ -51,7 +51,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       }
     }
     fetchInitialData();
-  }, [initialArticles, initialLastVisibleDoc]);
+  }, [initialArticles, initialLastVisibleDocId]);
 
 
   useEffect(() => {

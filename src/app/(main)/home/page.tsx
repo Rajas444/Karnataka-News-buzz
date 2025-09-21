@@ -27,7 +27,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   let error: string | null = null;
   let categories = [];
   let districts = [];
-  let lastVisibleDocJson = null;
+  let lastVisibleDocId: string | null = null;
 
   const categorySlug = searchParams?.category;
   const districtId = searchParams?.district;
@@ -54,12 +54,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     const { articles, lastVisibleDoc } = await getArticles({ category: categorySlug, district: districtId, pageSize: 10 });
     initialArticles = articles;
     
-    // We need to serialize the DocumentSnapshot because it's not a plain object.
+    // We only pass the ID of the document, not the whole object, to avoid serialization errors.
     if(lastVisibleDoc) {
-        lastVisibleDocJson = {
-            id: lastVisibleDoc.id,
-            // Pass the ID to reconstruct the doc reference on the client for pagination
-        };
+        lastVisibleDocId = lastVisibleDoc.id;
     }
 
   } catch (e: any) {
@@ -128,7 +125,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         initialArticles={initialArticles}
                         categorySlug={categorySlug}
                         districtId={districtId}
-                        initialLastVisibleDoc={lastVisibleDocJson}
+                        initialLastVisibleDocId={lastVisibleDocId}
                     />
                 </section>
             </div>

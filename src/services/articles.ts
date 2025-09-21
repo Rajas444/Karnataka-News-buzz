@@ -1,5 +1,6 @@
 
 
+
 'use server';
 
 import { db, storage } from '@/lib/firebase';
@@ -86,7 +87,7 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
 
 
 // STORE (from external API)
-export async function storeCollectedArticle(apiArticle: NewsdataArticle, districtId?: string): Promise<string | null> {
+export async function storeCollectedArticle(apiArticle: NewsdataArticle, districtId?: string, searchCategorySlug?: string): Promise<string | null> {
     
     const q = query(articlesCollection, where('sourceUrl', '==', apiArticle.link), limit(1));
     const existing = await getDocs(q);
@@ -100,33 +101,49 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
     }
 
     const allCategories = await getCategories();
-    const categoryIds = apiArticle.category.map(apiCat => {
-        const found = allCategories.find(c => c.name.toLowerCase() === apiCat.toLowerCase() || c.slug === apiCat.toLowerCase());
-        return found?.id;
-    }).filter((id): id is string => !!id);
-
-    let content = apiArticle.content || apiArticle.description || '';
     
-    // AI Content extraction is disabled to prevent API errors.
-    // if (!apiArticle.content && !apiArticle.description && apiArticle.link) {
-    //     console.log(`Content is missing for '${apiArticle.title}'. Extracting from URL.`);
-    //     try {
-    //         const extracted = await extractArticleContent({ url: apiArticle.link });
-    //         if (extracted.content) {
-    //           content = extracted.content;
-    //         }
-    //     } catch (e) {
-    //         console.error(`Failed to extract content for ${apiArticle.link}`, e);
-    //     }
-    // }
+    // Create a Set for quick lookups
+    const allDbCategoryIds = new Set(allCategories.map(c => c.id));
+    
+    // Map API category strings to our database category IDs
+    const apiCategoryIds = new Set(
+        apiArticle.category
+            .map(apiCat => {
+                const found = allCategories.find(c => c.name.toLowerCase() === apiCat.toLowerCase() || c.slug === apiCat.toLowerCase());
+                return found?.id;
+            })
+            .filter((id): id is string => !!id)
+    );
+
+    // Ensure the category used for the search is included
+    if (searchCategorySlug && searchCategorySlug !== 'general') {
+        const searchCatId = allCategories.find(c => c.slug === searchCategorySlug)?.id;
+        if (searchCatId) {
+            apiCategoryIds.add(searchCatId);
+        }
+    }
+    
+    let finalCategoryIds = Array.from(apiCategoryIds);
+
+    // If no categories were matched, default to "General"
+    if (finalCategoryIds.length === 0) {
+        const generalCatId = allCategories.find(c => c.slug === 'general')?.id;
+        if (generalCatId) {
+            finalCategoryIds.push(generalCatId);
+        } else if (allCategories[0]) {
+            // Fallback to the first available category if 'general' doesn't exist
+            finalCategoryIds.push(allCategories[0].id);
+        }
+    }
+
 
     const newArticleData = {
         title: apiArticle.title,
-        content: content,
+        content: apiArticle.content || apiArticle.description || '',
         imageUrl: apiArticle.image_url,
         author: apiArticle.creator?.join(', ') || apiArticle.source_id,
         authorId: apiArticle.source_id,
-        categoryIds: categoryIds.length > 0 ? categoryIds : [allCategories.find(c => c.slug === 'general')?.id || 'general'],
+        categoryIds: finalCategoryIds,
         status: 'published' as const,
         publishedAt: Timestamp.fromDate(new Date(apiArticle.pubDate)),
         sourceUrl: apiArticle.link,
@@ -197,7 +214,8 @@ export async function getArticles(options?: {
         return articles;
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
-             console.warn(`Query failed due to missing index. Please create it in your Firebase console. The app will fall back to client-side sorting. Error: ${error.message}`);
+             const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
+             console.warn(`Query failed due to missing index. Please create it in your Firebase console: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'} The app will fall back to client-side sorting.`);
              // Construct a fallback query without the order by that might cause issues with inequality filters
              const fallbackConstraints = constraints.filter(c => c.type !== 'orderBy');
              const fallbackQuery = query(articlesCollection, ...fallbackConstraints);

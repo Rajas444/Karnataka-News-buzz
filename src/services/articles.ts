@@ -4,7 +4,7 @@
 
 import { db, storage } from '@/lib/firebase';
 import type { Article, ArticleFormValues, NewsdataArticle } from '@/lib/types';
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint, Timestamp, limit, startAfter, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint, Timestamp, limit, startAfter, writeBatch, DocumentSnapshot } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 import { getCategories } from './categories';
@@ -15,8 +15,10 @@ import { getDistricts } from './districts';
 const articlesCollection = collection(db, 'articles');
 
 // Helper function to serialize article data, converting Timestamps to ISO strings
-async function serializeArticle(doc: any): Promise<Article> {
+async function serializeArticle(doc: DocumentSnapshot): Promise<Article> {
     const data = doc.data();
+    if (!data) throw new Error("Document data is undefined.");
+
     let districtName: string | undefined = undefined;
     if (data.districtId) {
         const districts = await getDistricts();
@@ -29,7 +31,7 @@ async function serializeArticle(doc: any): Promise<Article> {
         publishedAt: data.publishedAt ? (data.publishedAt as Timestamp).toDate().toISOString() : null,
         createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate().toISOString() : null,
         updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate().toISOString() : null,
-        district: districtName, // This is now a derived field for display
+        district: districtName,
     } as Article;
 }
 
@@ -199,60 +201,58 @@ export async function getArticles(options?: {
     startAfterDocId?: string;
     category?: string;
     district?: string;
-}): Promise<{articles: Article[], lastVisibleDoc: any | null}> {
+}): Promise<{articles: Article[], lastVisibleDocId: string | null}> {
     const { pageSize = 10, startAfterDocId, category, district } = options || {};
 
     let constraints: QueryConstraint[] = [
         orderBy('publishedAt', 'desc'),
     ];
     
-    let startAfterDoc;
     if (startAfterDocId) {
-        startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
+        const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
         if (startAfterDoc.exists()) {
              constraints.push(startAfter(startAfterDoc));
         }
     }
     
-    const useDistrictFilter = district && district !== 'all';
-    const useCategoryFilter = category && category !== 'all';
-    const needsInMemoryFiltering = useCategoryFilter || useDistrictFilter;
-
-    // Fetch more and filter in memory to handle complex filters and status check
-    const fetchLimit = needsInMemoryFiltering ? pageSize * 5 : pageSize * 2;
+    // Fetch a larger batch to allow for in-memory filtering.
+    // This is a trade-off for avoiding complex indexes.
+    const fetchLimit = pageSize * 3; 
     constraints.push(limit(fetchLimit));
     
-    const allCategories = useCategoryFilter ? await getCategories() : [];
-    const categoryDoc = useCategoryFilter ? allCategories.find(c => c.slug === category) : null;
+    const allCategories = (category && category !== 'all') ? await getCategories() : [];
+    const categoryDocId = category && category !== 'all' ? allCategories.find(c => c.slug === category)?.id : null;
     
     try {
         const q = query(collection(db, 'articles'), ...constraints);
         const snapshot = await getDocs(q);
 
-        let articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        const allDocs = snapshot.docs;
+        let articles: Article[] = [];
 
-        // In-memory filtering
-        articles = articles.filter(article => {
-            const statusMatch = article.status === 'published';
-            if (!statusMatch) return false;
-
-            const categoryMatch = useCategoryFilter 
-                ? article.categoryIds?.includes(categoryDoc!.id) 
-                : true;
+        for (const doc of allDocs) {
+            const article = await serializeArticle(doc);
             
-            const districtMatch = useDistrictFilter 
+            // In-memory filtering
+            if (article.status !== 'published') continue;
+            
+            const categoryMatch = categoryDocId
+                ? article.categoryIds?.includes(categoryDocId)
+                : true;
+
+            const districtMatch = district && district !== 'all'
                 ? article.districtId === district
                 : true;
-            
-            return categoryMatch && districtMatch;
-        });
 
+            if(categoryMatch && districtMatch) {
+                articles.push(article);
+            }
+        }
+        
         const pageOfArticles = articles.slice(0, pageSize);
+        const lastVisibleDocIdInPage = pageOfArticles.length > 0 ? pageOfArticles[pageOfArticles.length - 1].id : null;
 
-        const lastVisibleId = pageOfArticles.length > 0 ? pageOfArticles[pageOfArticles.length - 1].id : null;
-        const lastVisibleFirestoreDoc = lastVisibleId ? snapshot.docs.find(d => d.id === lastVisibleId) : null;
-
-        return { articles: pageOfArticles, lastVisibleDoc: lastVisibleFirestoreDoc || null };
+        return { articles: pageOfArticles, lastVisibleDocId: lastVisibleDocIdInPage };
 
     } catch (error: any) {
         console.error("An unexpected error occurred in getArticles:", error);
@@ -337,27 +337,39 @@ export async function deleteArticle(id: string): Promise<void> {
 export async function getRelatedArticles(categoryId: string, currentArticleId: string): Promise<Article[]> {
     if (!categoryId) return [];
     try {
-        // Simplified query to avoid index errors.
         const q = query(
             articlesCollection,
             where('status', '==', 'published'),
+            where('categoryIds', 'array-contains', categoryId),
+            where('__name__', '!=', currentArticleId), // Exclude the current article
+            orderBy('__name__'), // Firestore requires an orderBy when using a '!=' filter
             orderBy('publishedAt', 'desc'),
-            limit(50) // Fetch more and filter in memory
+            limit(3)
         );
 
         const snapshot = await getDocs(q);
         
-        let articles = await Promise.all(snapshot.docs.map(serializeArticle));
-        
-        // Exclude the current article and filter by category in memory.
-        articles = articles.filter(article => 
-            article.id !== currentArticleId && article.categoryIds?.includes(categoryId)
-        );
-
-        return articles.slice(0, 3);
+        // This is a more direct way to query. If it fails due to indexing, the fallback below can be used.
+        return Promise.all(snapshot.docs.map(serializeArticle));
 
     } catch (error: any) {
-        console.error("Error fetching related articles", error);
-        return [];
+        console.warn("Complex query for related articles failed, using fallback. Consider creating an index.", error.message);
+        try {
+             // Fallback: Fetch by category and date, then filter in memory.
+            const fallbackQuery = query(
+                articlesCollection,
+                where('status', '==', 'published'),
+                where('categoryIds', 'array-contains', categoryId),
+                orderBy('publishedAt', 'desc'),
+                limit(4) // Fetch one extra to account for the current article
+            );
+            const snapshot = await getDocs(fallbackQuery);
+            const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+            return articles.filter(article => article.id !== currentArticleId).slice(0,3);
+
+        } catch (fallbackError) {
+            console.error("Fallback query for related articles also failed:", fallbackError);
+            return [];
+        }
     }
 }

@@ -198,20 +198,19 @@ export async function getArticles(options?: {
     district?: string; // This is a district ID
 }): Promise<Article[]> {
     const { startAfterId, pageSize = 10, category, district } = options || {};
-    
-    const constraints: QueryConstraint[] = [
-        where('status', '==', 'published'),
-        orderBy('publishedAt', 'desc'),
-        limit(200) // Fetch a base set of recent articles
-    ];
-    
-    const q = query(articlesCollection, ...constraints);
-    
+
     try {
+        // Step 1: Perform a simple, non-failing query to get a base set of articles.
+        const baseConstraints: QueryConstraint[] = [
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc'),
+            limit(200) // Fetch a large batch of recent articles to filter in-memory.
+        ];
+        const q = query(articlesCollection, ...baseConstraints);
         const snapshot = await getDocs(q);
         const allRecentArticles = await Promise.all(snapshot.docs.map(serializeArticle));
         
-        // Now, filter this base dataset in memory
+        // Step 2: Apply complex filtering in-memory.
         let filteredArticles = allRecentArticles;
 
         // Filter by category
@@ -230,7 +229,7 @@ export async function getArticles(options?: {
             filteredArticles = filteredArticles.filter(article => article.districtId === district);
         }
 
-        // Apply pagination to the filtered results
+        // Step 3: Apply pagination to the filtered results.
         let paginatedArticles = filteredArticles;
 
         if (startAfterId) {
@@ -238,6 +237,7 @@ export async function getArticles(options?: {
             if (startIndex !== -1) {
                 paginatedArticles = filteredArticles.slice(startIndex + 1);
             } else {
+                // If the startAfterId is not found (e.g., from a different filter set), return an empty array for this page.
                 paginatedArticles = [];
             }
         }
@@ -245,6 +245,8 @@ export async function getArticles(options?: {
         return paginatedArticles.slice(0, pageSize);
 
     } catch (error: any) {
+        // This catch block now handles potential errors from the simple base query,
+        // which could include permission errors or the initial index-creation prompt.
         if (error.code === 'failed-precondition') {
              const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
              const readableError = `Query failed due to missing Firestore index. The app will function, but for optimal performance, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
@@ -252,7 +254,7 @@ export async function getArticles(options?: {
         } else {
              console.error("An unexpected error occurred in getArticles:", error);
         }
-        // Return empty array on any failure to prevent app crash
+        // Return an empty array on ANY error to prevent the page from crashing.
         return [];
     }
 }
@@ -379,3 +381,4 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     return [];
 }
+

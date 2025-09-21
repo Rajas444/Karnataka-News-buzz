@@ -196,7 +196,7 @@ export async function getArticles(options?: {
         return articles;
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
-             console.warn(`Query failed due to missing index, returning unsorted results for this filter: ${error.message}`);
+             console.warn(`Query failed due to missing index. Please create it in your Firebase console. The app will fall back to client-side sorting. Error: ${error.message}`);
              // Construct a fallback query without the order by that might cause issues with inequality filters
              const fallbackConstraints = constraints.filter(c => c.type !== 'orderBy');
              const fallbackQuery = query(articlesCollection, ...fallbackConstraints);

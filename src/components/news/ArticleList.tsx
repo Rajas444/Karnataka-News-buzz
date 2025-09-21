@@ -47,12 +47,10 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     }, [toast]);
 
     useEffect(() => {
-        // Do not run the listener until categories are loaded, as they are needed for filtering.
-        if (allCategories.length === 0) {
-            // If there's an initial load without categories, just stop showing the loader.
-            if(initialArticles.length > 0) setLoading(false);
+        // Only establish the listener if we have the category data needed for filtering.
+        if (allCategories.length === 0 && categorySlug) {
             return;
-        };
+        }
 
         setLoading(true);
 
@@ -90,7 +88,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
                     title: 'Real-time updates paused',
                     description: 'A database index is needed for this filter. Displaying initial results only.',
                     variant: 'default',
-                    duration: 8000
+                    duration: 10000
                 });
             } else {
                 toast({
@@ -115,7 +113,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
         )
     }
 
-    if (articles.length === 0) {
+    if (!loading && articles.length === 0) {
         return (
             <div className="text-center py-12 bg-card rounded-lg">
                 <h2 className="text-2xl font-bold mb-4 font-kannada">No Articles Found</h2>

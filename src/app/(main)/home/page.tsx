@@ -51,11 +51,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     initialArticles = await getArticles({ category: categorySlug, district: districtId, pageSize: 20 });
   } catch (e: any) {
      error = e.message || 'An unknown error occurred while fetching articles from the database.';
+     console.error("Error fetching initial articles:", error);
   }
   
   const topArticle = initialArticles.length > 0 ? initialArticles[0] : null;
-  // ArticleList will now handle fetching and listening, so we only need the top article here.
-  const otherArticles = initialArticles.length > 1 ? initialArticles.slice(1, 5) : []; // Pass a few to avoid layout shift
 
   const renderErrorState = () => (
     <div className="text-center bg-card p-8 rounded-lg">
@@ -71,7 +70,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <FilterControls categories={categories} districts={districts} />
       </section>
 
-       {error && <div className="mb-8">{renderErrorState()}</div>}
+       {error && !initialArticles.length && <div className="mb-8">{renderErrorState()}</div>}
 
       <div className="space-y-12">
         {topArticle && (

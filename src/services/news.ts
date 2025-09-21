@@ -70,7 +70,7 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
     let queryTerm = 'Karnataka';
     if (districtName) {
         // Special handling for Bengaluru districts
-        if (districtName.toLowerCase() === 'bengaluru urban' || districtName.toLowerCase() === 'bengaluru rural') {
+        if (districtName.toLowerCase().includes('bengaluru')) {
             queryTerm = 'Bengaluru';
         } else {
             // Use quotes for multi-word district names to get more specific results
@@ -113,8 +113,9 @@ export async function fetchAndStoreNews(category?: string, districtName?: string
             }
         }
         
-        // --- GNews Fallback Logic ---
-        if (fetchedArticles.length < 5) {
+        // --- GNews Fallback Logic (Now disabled by checking for API Key) ---
+        const gnewsApiKey = process.env.GNEWS_API_KEY;
+        if (gnewsApiKey && gnewsApiKey !== 'YOUR_API_KEY_HERE' && gnewsApiKey !== '' && fetchedArticles.length < 5) {
             console.log(`Newsdata.io returned ${fetchedArticles.length} articles. Fetching more from GNews.`);
             const gnewsArticles = await fetchFromGNews(queryTerm);
             const mappedGnewsArticles = gnewsArticles.map(mapGnewsToNewsdata);

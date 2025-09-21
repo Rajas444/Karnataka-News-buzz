@@ -199,46 +199,43 @@ export async function getArticles(options?: {
 }): Promise<Article[]> {
     
     const { startAfterId, pageSize = 10, category, district } = options || {};
-    const constraints: QueryConstraint[] = [];
-    
-    constraints.push(where('status', '==', 'published'));
-    
     let categoryId: string | undefined;
-    if (category && category !== 'general') {
-        const allCategories = await getCategories();
-        const categoryDoc = allCategories.find(c => c.slug === category);
-        if (categoryDoc) {
-            categoryId = categoryDoc.id;
-            constraints.push(where('categoryIds', 'array-contains', categoryId));
-        } else {
-            console.warn(`Category slug "${category}" not found. Returning all articles.`);
-        }
-    }
-    
-    if (district && district !== 'all') {
-        constraints.push(where('districtId', '==', district));
-    }
-    
-    constraints.push(orderBy('publishedAt', 'desc'));
-    
-    if (startAfterId) {
-        const lastVisibleDoc = await getDoc(doc(articlesCollection, startAfterId));
-        if (lastVisibleDoc.exists()) {
-            constraints.push(startAfter(lastVisibleDoc));
-        } else {
-            console.warn(`Last visible document with id ${startAfterId} not found.`);
-        }
-    }
-    
-    constraints.push(limit(pageSize));
-    
-    const q = query(articlesCollection, ...constraints);
 
     try {
+        const constraints: QueryConstraint[] = [];
+        
+        constraints.push(where('status', '==', 'published'));
+        
+        if (category && category !== 'general') {
+            const allCategories = await getCategories();
+            const categoryDoc = allCategories.find(c => c.slug === category);
+            if (categoryDoc) {
+                categoryId = categoryDoc.id;
+                constraints.push(where('categoryIds', 'array-contains', categoryId));
+            }
+        }
+        
+        if (district && district !== 'all') {
+            constraints.push(where('districtId', '==', district));
+        }
+        
+        constraints.push(orderBy('publishedAt', 'desc'));
+        
+        if (startAfterId) {
+            const lastVisibleDoc = await getDoc(doc(articlesCollection, startAfterId));
+            if (lastVisibleDoc.exists()) {
+                constraints.push(startAfter(lastVisibleDoc));
+            }
+        }
+        
+        constraints.push(limit(pageSize));
+        
+        const q = query(articlesCollection, ...constraints);
         const snapshot = await getDocs(q);
         return await Promise.all(snapshot.docs.map(serializeArticle));
+
     } catch (error: any) {
-        if (error.code === 'failed-precondition' && error.message.includes('index')) {
+        if (error.code === 'failed-precondition') {
              const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
              const readableError = `Query failed due to missing Firestore index. Please create it here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
              console.error(readableError);
@@ -270,7 +267,7 @@ export async function getArticles(options?: {
             console.log(`Fallback query returned ${allArticles.length} docs, filtered down to ${filteredArticles.length}.`);
             return filteredArticles.slice(0, pageSize);
         }
-        // Re-throw other errors
+        
         console.error("An unexpected error occurred while fetching articles:", error);
         throw error;
     }

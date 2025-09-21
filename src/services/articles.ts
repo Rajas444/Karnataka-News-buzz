@@ -191,26 +191,58 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 
 
 // READ (all with pagination and filters)
-export async function getArticles(options?: { 
-    startAfterId?: string; 
+export async function getArticles(options?: {
+    startAfterId?: string;
     pageSize?: number;
     category?: string; // This is a category slug
     district?: string; // This is a district ID
 }): Promise<Article[]> {
     const { startAfterId, pageSize = 10, category, district } = options || {};
-
-    let allRecentArticles: Article[] = [];
-
+    
+    const constraints: QueryConstraint[] = [
+        where('status', '==', 'published'),
+        orderBy('publishedAt', 'desc'),
+        limit(200) // Fetch a base set of recent articles
+    ];
+    
+    const q = query(articlesCollection, ...constraints);
+    
     try {
-        const q = query(
-            articlesCollection,
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
-            limit(200) // Fetch a base set of recent articles
-        );
-        
         const snapshot = await getDocs(q);
-        allRecentArticles = await Promise.all(snapshot.docs.map(serializeArticle));
+        const allRecentArticles = await Promise.all(snapshot.docs.map(serializeArticle));
+        
+        // Now, filter this base dataset in memory
+        let filteredArticles = allRecentArticles;
+
+        // Filter by category
+        if (category && category !== 'general') {
+            const allCategories = await getCategories();
+            const categoryDoc = allCategories.find(c => c.slug === category);
+            if (categoryDoc) {
+                filteredArticles = filteredArticles.filter(article =>
+                    article.categoryIds.includes(categoryDoc.id)
+                );
+            }
+        }
+
+        // Filter by district
+        if (district && district !== 'all') {
+            filteredArticles = filteredArticles.filter(article => article.districtId === district);
+        }
+
+        // Apply pagination to the filtered results
+        let paginatedArticles = filteredArticles;
+
+        if (startAfterId) {
+            const startIndex = filteredArticles.findIndex(article => article.id === startAfterId);
+            if (startIndex !== -1) {
+                paginatedArticles = filteredArticles.slice(startIndex + 1);
+            } else {
+                paginatedArticles = [];
+            }
+        }
+
+        return paginatedArticles.slice(0, pageSize);
 
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
@@ -223,40 +255,6 @@ export async function getArticles(options?: {
         // Return empty array on any failure to prevent app crash
         return [];
     }
-
-    // Now, filter this base dataset in memory
-    let filteredArticles = allRecentArticles;
-
-    // Filter by category
-    if (category && category !== 'general') {
-        const allCategories = await getCategories();
-        const categoryDoc = allCategories.find(c => c.slug === category);
-        if (categoryDoc) {
-            filteredArticles = filteredArticles.filter(article => 
-                article.categoryIds.includes(categoryDoc.id)
-            );
-        }
-    }
-    
-    // Filter by district
-    if (district && district !== 'all') {
-        filteredArticles = filteredArticles.filter(article => article.districtId === district);
-    }
-
-    // Apply pagination to the filtered results
-    let paginatedArticles = filteredArticles;
-
-    if (startAfterId) {
-        const startIndex = filteredArticles.findIndex(article => article.id === startAfterId);
-        if (startIndex !== -1) {
-            paginatedArticles = filteredArticles.slice(startIndex + 1);
-        } else {
-            // If the startAfterId is not found (e.g., from a different filter set), return empty
-            paginatedArticles = [];
-        }
-    }
-    
-    return paginatedArticles.slice(0, pageSize);
 }
 
 
@@ -381,6 +379,3 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     return [];
 }
-
-
-

@@ -202,7 +202,6 @@ export async function getArticles(options?: {
     let allRecentArticles: Article[] = [];
 
     try {
-        // This is a simple query that Firestore can handle without a composite index.
         const q = query(
             articlesCollection,
             where('status', '==', 'published'),
@@ -382,5 +381,6 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     return [];
 }
+
 
 

@@ -47,8 +47,8 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     }, [toast]);
 
     useEffect(() => {
-        // Only establish the listener if we have the category data needed for filtering.
         if (allCategories.length === 0 && categorySlug) {
+            setLoading(false);
             return;
         }
 
@@ -70,20 +70,34 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
             constraints.unshift(where('districtId', '==', districtId));
         }
 
-        const q = query(collection(db, 'articles'), ...constraints);
+        let unsubscribe: (() => void) | undefined;
 
-        const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-            const articlesFromSnapshot = await Promise.all(
-                querySnapshot.docs.map(doc => serializeArticleFromDoc(doc))
-            );
-            setArticles(articlesFromSnapshot);
-            setLoading(false);
-        }, (error) => {
-            console.error("Real-time listener failed:", error);
+        try {
+            const q = query(collection(db, 'articles'), ...constraints);
+
+            unsubscribe = onSnapshot(q, async (querySnapshot) => {
+                const articlesFromSnapshot = await Promise.all(
+                    querySnapshot.docs.map(doc => serializeArticleFromDoc(doc))
+                );
+                setArticles(articlesFromSnapshot);
+                setLoading(false);
+            }, (error) => {
+                // This internal error handler will catch runtime errors after setup.
+                console.error("Real-time listener encountered an error:", error);
+                toast({
+                    title: 'Real-time updates failed.',
+                    description: 'Displaying initial articles only.',
+                    variant: 'destructive'
+                });
+                setArticles(initialArticles);
+                setLoading(false);
+            });
+        } catch (error: any) {
+             // This outer try-catch handles initial query setup errors, like missing indexes.
             if (error.code === 'failed-precondition') {
                 const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
                 const readableError = `Query for real-time articles failed due to missing Firestore index. The app will function with initial data, but for optimal performance and real-time updates, please create the index here: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'}`;
-                console.warn(readableError);
+                console.warn(readableError); // Use console.warn to avoid Next.js error overlay
                  toast({
                     title: 'Real-time updates paused',
                     description: 'A database index is needed for this filter. Displaying initial results only.',
@@ -91,7 +105,8 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
                     duration: 10000
                 });
             } else {
-                toast({
+                 console.error("An unexpected error occurred setting up the real-time listener:", error);
+                 toast({
                     title: 'Could not load real-time updates.',
                     description: 'Displaying initial articles only.',
                     variant: 'destructive'
@@ -99,9 +114,13 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
             }
             setArticles(initialArticles); // Fallback to server-rendered articles on any listener error.
             setLoading(false);
-        });
+        }
 
-        return () => unsubscribe();
+        return () => {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
 
     }, [categorySlug, districtId, allCategories, toast, initialArticles]);
 

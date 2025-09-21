@@ -16,12 +16,12 @@ export async function createCategory(data: Omit<Category, 'id'>): Promise<Catego
 
 // READ (all)
 export async function getCategories(): Promise<Category[]> {
-    const q = query(categoriesCollection, orderBy('name'));
+    const q = query(categoriesCollection, orderBy('name', 'asc'));
     const snapshot = await getDocs(q);
     
     if (snapshot.empty) {
-        console.log('No categories found in Firestore, using placeholder data.');
-        return placeholderCategories;
+        console.log('No categories found in Firestore, using and sorting placeholder data.');
+        return placeholderCategories.sort((a, b) => a.name.localeCompare(b.name));
     }
 
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));

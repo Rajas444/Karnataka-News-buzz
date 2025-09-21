@@ -1,6 +1,5 @@
 
 
-
 'use server';
 
 import { db, storage } from '@/lib/firebase';
@@ -92,28 +91,48 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
     const q = query(articlesCollection, where('sourceUrl', '==', apiArticle.link), limit(1));
     const existing = await getDocs(q);
     if (!existing.empty) {
-        // If the article exists, check if we need to add the districtId to it.
         const doc = existing.docs[0];
-        if (districtId && !doc.data().districtId) {
-            await updateDoc(doc.ref, { districtId: districtId });
+        const currentData = doc.data();
+        const updates: Partial<Article> = {};
+        let needsUpdate = false;
+        
+        // Add district if it's missing
+        if (districtId && !currentData.districtId) {
+            updates.districtId = districtId;
+            needsUpdate = true;
         }
+
+        // Add category if it's new
+        if (searchCategorySlug) {
+             const allCategories = await getCategories();
+             const searchCatId = allCategories.find(c => c.slug === searchCategorySlug)?.id;
+             if (searchCatId && !currentData.categoryIds?.includes(searchCatId)) {
+                 updates.categoryIds = [...(currentData.categoryIds || []), searchCatId];
+                 needsUpdate = true;
+             }
+        }
+
+        if (needsUpdate) {
+            await updateDoc(doc.ref, updates);
+        }
+
         return doc.id;
     }
 
     const allCategories = await getCategories();
     
-    // Create a Set for quick lookups
-    const allDbCategoryIds = new Set(allCategories.map(c => c.id));
-    
-    // Map API category strings to our database category IDs
-    const apiCategoryIds = new Set(
-        apiArticle.category
-            .map(apiCat => {
-                const found = allCategories.find(c => c.name.toLowerCase() === apiCat.toLowerCase() || c.slug === apiCat.toLowerCase());
-                return found?.id;
-            })
-            .filter((id): id is string => !!id)
-    );
+    const apiCategoryIds = new Set<string>();
+
+    // Match API categories to our DB categories
+    if (apiArticle.category) {
+        apiArticle.category.forEach(apiCat => {
+            const normalizedApiCat = apiCat.toLowerCase().trim();
+            const found = allCategories.find(c => c.slug === normalizedApiCat || c.name.toLowerCase() === normalizedApiCat);
+            if (found) {
+                apiCategoryIds.add(found.id);
+            }
+        });
+    }
 
     // Ensure the category used for the search is included
     if (searchCategorySlug && searchCategorySlug !== 'general') {
@@ -173,19 +192,16 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 export async function getArticles(options?: { 
     startAfterId?: string; 
     pageSize?: number;
-    category?: string;
+    category?: string; // This is a category slug
     district?: string; // This is a district ID
 }): Promise<Article[]> {
     
     const { startAfterId, pageSize = 10, category, district } = options || {};
     const constraints: QueryConstraint[] = [];
     
-    // Always sort by publishedAt descending
-    constraints.push(orderBy('publishedAt', 'desc'));
-
     if (category && category !== 'general') {
         const allCategories = await getCategories();
-        const categoryDoc = allCategories.find(c => c.slug === category || c.id === category);
+        const categoryDoc = allCategories.find(c => c.slug === category);
         if (categoryDoc) {
             constraints.push(where('categoryIds', 'array-contains', categoryDoc.id));
         }
@@ -194,6 +210,9 @@ export async function getArticles(options?: {
     if (district && district !== 'all') {
         constraints.push(where('districtId', '==', district));
     }
+    
+    // Always sort by publishedAt descending, this is the primary sort key.
+    constraints.push(orderBy('publishedAt', 'desc'));
     
     if (startAfterId) {
         const lastVisibleDoc = await getDoc(doc(articlesCollection, startAfterId));
@@ -213,18 +232,33 @@ export async function getArticles(options?: {
         const articles = await Promise.all(snapshot.docs.map(serializeArticle));
         return articles;
     } catch (error: any) {
-        if (error.code === 'failed-precondition') {
+        if (error.code === 'failed-precondition' && error.message.includes('index')) {
              const requiredIndexUrl = error.message.match(/https?:\/\/[^\s]+/);
-             console.warn(`Query failed due to missing index. Please create it in your Firebase console: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'} The app will fall back to client-side sorting.`);
-             // Construct a fallback query without the order by that might cause issues with inequality filters
-             const fallbackConstraints = constraints.filter(c => c.type !== 'orderBy');
+             console.warn(`Query failed due to missing index. Please create it in your Firebase console: ${requiredIndexUrl ? requiredIndexUrl[0] : 'Check Firestore console.'} The app will fall back to a less optimal query.`);
+             
+             // Construct a fallback query without the specific filter causing the index issue, then filter in-memory.
+             const fallbackConstraints = [orderBy('publishedAt', 'desc'), limit(pageSize * 2)]; // fetch more to have enough after filtering
+             if (startAfterId) {
+                const lastVisibleDoc = await getDoc(doc(articlesCollection, startAfterId));
+                if (lastVisibleDoc.exists()) fallbackConstraints.push(startAfter(lastVisibleDoc));
+             }
              const fallbackQuery = query(articlesCollection, ...fallbackConstraints);
              const fallbackSnapshot = await getDocs(fallbackQuery);
              const articles = await Promise.all(fallbackSnapshot.docs.map(serializeArticle));
             
-            // Manual sort in JS as a last resort
-            articles.sort((a, b) => (new Date(b.publishedAt).getTime() || 0) - (new Date(a.publishedAt).getTime() || 0));
-            return articles;
+            // Manual filtering in JS as a last resort
+            let filteredArticles = articles;
+            if (category && category !== 'general') {
+                const allCategories = await getCategories();
+                const categoryDoc = allCategories.find(c => c.slug === category);
+                if (categoryDoc) {
+                    filteredArticles = filteredArticles.filter(a => a.categoryIds.includes(categoryDoc.id));
+                }
+            }
+            if (district && district !== 'all') {
+                 filteredArticles = filteredArticles.filter(a => a.districtId === district);
+            }
+            return filteredArticles.slice(0, pageSize);
         }
         throw error;
     }

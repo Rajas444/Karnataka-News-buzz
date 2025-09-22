@@ -98,37 +98,33 @@ export async function getArticles(options?: {
         const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'));
         const snapshot = await getDocs(q);
 
-        let articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        let allArticles = await Promise.all(snapshot.docs.map(serializeArticle));
 
         // Filter in-code to avoid index dependency
-        articles = articles.filter(article => article.status === 'published');
+        let filteredArticles = allArticles.filter(article => article.status === 'published');
         
         if (categorySlug && categorySlug !== 'all') {
             const categories = await getCategories();
             const categoryId = categories.find(c => c.slug === categorySlug)?.id;
             if (categoryId) {
-                articles = articles.filter(article => article.categoryIds.includes(categoryId));
+                filteredArticles = filteredArticles.filter(article => article.categoryIds.includes(categoryId));
             }
         }
 
         if (districtId && districtId !== 'all') {
-            articles = articles.filter(article => article.districtId === districtId);
+            filteredArticles = filteredArticles.filter(article => article.districtId === districtId);
         }
         
-        // Manual pagination
-        let paginatedArticles = articles;
+        // Manual pagination on the filtered list
+        let paginatedArticles = filteredArticles;
         let newLastVisibleDocId: string | null = null;
         
-        const startIndex = startAfterDocId ? articles.findIndex(a => a.id === startAfterDocId) + 1 : 0;
+        const startIndex = startAfterDocId ? filteredArticles.findIndex(a => a.id === startAfterDocId) + 1 : 0;
         
-        if (startIndex > 0 && startAfterDocId) {
-            paginatedArticles = articles.slice(startIndex, startIndex + pageSize);
-        } else {
-            paginatedArticles = articles.slice(0, pageSize);
-        }
+        paginatedArticles = filteredArticles.slice(startIndex, startIndex + pageSize);
 
-        if (articles.length > startIndex + pageSize) {
-            newLastVisibleDocId = articles[startIndex + pageSize - 1]?.id;
+        if (filteredArticles.length > startIndex + pageSize) {
+            newLastVisibleDocId = paginatedArticles[paginatedArticles.length - 1]?.id;
         }
 
         return {
@@ -185,10 +181,11 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
     imagePath = snapshot.ref.fullPath;
   }
 
-  const { categoryId, ...restOfData } = data as any;
+  const { categoryId, districtId, ...restOfData } = data as any;
   
   await updateDoc(docRef, {
     ...restOfData,
+    districtId: districtId,
     categoryIds: data.categoryIds,
     imageUrl,
     imagePath,

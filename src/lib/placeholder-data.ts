@@ -58,7 +58,7 @@ export const placeholderArticles: Article[] = [
     "data-ai-hint": 'census survey',
     author: 'KNP Staff Reporter',
     authorId: 'staff-1',
-    categoryIds: ['politics', 'society-community'],
+    categoryIds: ['general', 'politics'],
     status: 'published',
     publishedAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),

@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import type { Article, Category } from '@/lib/types';
@@ -37,19 +36,16 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   const [hasMore, setHasMore] = useState(initialArticles.length > 0 && initialLastVisibleDocId !== null);
   const [realtimeError, setRealtimeError] = useState<string | null>(null);
   const { toast } = useToast();
-  
-  const categoryId = useMemo(() => {
-    if (!categorySlug || categorySlug === 'all') return null;
-    return allCategories.find(c => c.slug === categorySlug)?.id;
-  }, [categorySlug, allCategories]);
 
   useEffect(() => {
+    // When the initial articles from the server change (e.g., due to filter change),
+    // reset the state of this component.
     setArticles(initialArticles);
-    setHasMore(initialArticles.length > 0 && initialLastVisibleDocId !== null);
-    setRealtimeError(null);
-    setLastVisibleDocId(initialLastVisibleDocId || null);
-    setLoading(false);
-
+    setLastVisibleDocId(initialLastVisibleDocId);
+    setHasMore(initialArticles.length > 0 && !!initialLastVisibleDocId);
+  }, [initialArticles, initialLastVisibleDocId]);
+  
+  useEffect(() => {
     async function fetchInitialData() {
       try {
         const fetchedCategories = await getCategories();
@@ -59,74 +55,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       }
     }
     fetchInitialData();
-  }, [initialArticles, initialLastVisibleDocId]);
-
-
-  useEffect(() => {
-    if (!db) return;
-
-    setRealtimeError(null);
-
-    const constraints: QueryConstraint[] = [
-        where('status', '==', 'published'),
-        orderBy("publishedAt", "desc"),
-        limit(20) 
-    ];
-    
-    // This logic ensures we only apply one filter at a time for real-time queries to avoid index errors.
-    // The initial server-side load handles combined filters correctly.
-    if (districtId && districtId !== 'all') {
-      constraints.push(where('districtId', '==', districtId));
-    } else if (categoryId) {
-      constraints.push(where('categoryIds', 'array-contains', categoryId));
-    }
-
-    const q = query(collection(db, "articles"), ...constraints);
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const liveArticles: Article[] = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            liveArticles.push({
-                id: doc.id,
-                ...data,
-                publishedAt: data.publishedAt?.toDate().toISOString(),
-                createdAt: data.createdAt?.toDate().toISOString(),
-                updatedAt: data.updatedAt?.toDate().toISOString(),
-            } as Article);
-        });
-
-        setArticles(prev => {
-            const allArticlesMap = new Map();
-            // Add new articles first to give them priority
-            liveArticles.forEach(article => allArticlesMap.set(article.id, article));
-            // Then add previous articles, avoiding duplicates
-            prev.forEach(article => {
-                if (!allArticlesMap.has(article.id)) {
-                    allArticlesMap.set(article.id, article);
-                }
-            });
-
-            const finalArticles = Array.from(allArticlesMap.values());
-            return finalArticles.sort((a,b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-        });
-
-        if(loading) setLoading(false);
-        setRealtimeError(null);
-
-    }, (error: any) => {
-        console.error("Real-time update failed:", error);
-         if (error.code === 'failed-precondition') {
-            setRealtimeError("A database index is required for this filter combination. Live updates may be incomplete.");
-        } else {
-            setRealtimeError("Could not connect for live updates. You are viewing a static list.");
-        }
-        if(loading) setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [loading, categoryId, districtId]);
-
+  }, []);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;
@@ -136,17 +65,21 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       const { articles: newArticles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
         pageSize: 10,
         startAfterDocId: lastVisibleDocId,
-        category: categorySlug,
-        district: districtId,
+        categorySlug: categorySlug,
+        districtId: districtId,
       });
       
       setArticles(prev => [...prev, ...newArticles]);
       setLastVisibleDocId(newLastVisibleDocId);
       setHasMore(newArticles.length > 0 && newLastVisibleDocId !== null);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to load more articles", error);
-      toast({ title: "Failed to load more news", variant: "destructive" });
+      if (error.code === 'failed-precondition') {
+          toast({ title: "Filter query requires a database index", variant: "destructive" });
+      } else {
+        toast({ title: "Failed to load more news", variant: "destructive" });
+      }
     } finally {
       setLoadingMore(false);
     }
@@ -184,7 +117,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
           <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
         ))}
       </div>
-      {hasMore && articles.length > 0 && (
+      {hasMore && (
         <div className="text-center mt-8">
           <Button onClick={handleLoadMore} disabled={loadingMore}>
             {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

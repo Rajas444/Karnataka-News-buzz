@@ -199,19 +199,27 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 export async function getArticles(options?: {
   pageSize?: number;
   startAfterDocId?: string;
-  category?: string;
-  district?: string;
+  categorySlug?: string;
+  districtId?: string;
+  allCategories?: Category[];
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-  const { pageSize = 100, startAfterDocId } = options || {};
+  const { pageSize = 10, startAfterDocId, categorySlug, districtId, allCategories = [] } = options || {};
 
   try {
-    // This simplified query fetches all published articles, sorted by date.
-    // Filtering by category or district will be handled in the calling function.
     const constraints: QueryConstraint[] = [
         where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
         limit(pageSize)
     ];
+    
+    const categoryId = allCategories.find(c => c.slug === categorySlug)?.id;
+
+    if (categoryId && categoryId !== 'all') {
+        constraints.push(where('categoryIds', 'array-contains', categoryId));
+    }
+    if (districtId && districtId !== 'all') {
+        constraints.push(where('districtId', '==', districtId));
+    }
 
     if (startAfterDocId) {
       const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
@@ -234,9 +242,9 @@ export async function getArticles(options?: {
 
   } catch (error: any) {
     if (error.code === 'failed-precondition') {
-        console.error(`[DEVELOPER INFO] Firestore query failed: ${error.message}`);
-        // Return empty results to prevent the page from crashing.
-        return { articles: [], lastVisibleDocId: null };
+        console.error(`[DEVELOPER INFO] Firestore query failed, likely requires an index: ${error.message}`);
+        // Instead of returning empty, re-throw the error so the page can handle it.
+        throw error;
     }
     // Re-throw other errors
     throw error;

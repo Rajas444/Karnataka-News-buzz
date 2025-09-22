@@ -23,7 +23,7 @@ type HomePageProps = {
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
-  let allFetchedArticles: Article[] = [];
+  let initialArticles: Article[] = [];
   let error: string | null = null;
   let categories: Category[] = [];
   let districts = [];
@@ -33,14 +33,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const districtId = searchParams?.district;
 
   try {
-    categories = await getCategories();
-    districts = await getDistricts();
+    [categories, districts] = await Promise.all([getCategories(), getDistricts()]);
   } catch (e) {
     console.error("Failed to fetch filters data", e);
   }
 
   const districtName = districts.find(d => d.id === districtId)?.name;
-  const categoryId = categories.find(c => c.slug === categorySlug)?.id;
 
   try {
     // Attempt to fetch fresh news in the background. This won't block the page render.
@@ -51,28 +49,19 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   try {
-    // Fetch a broad set of published articles, sorted by date.
-    // Filtering will now be handled in the code below.
-    const { articles, lastVisibleDoc } = await getArticles({
-      pageSize: 100, // Fetch a larger batch for effective in-code filtering
+    const { articles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
+      pageSize: 10,
+      categorySlug,
+      districtId,
+      allCategories: categories,
     });
-    allFetchedArticles = articles;
-
-    if (lastVisibleDoc) {
-      lastVisibleDocId = lastVisibleDoc.id;
-    }
+    initialArticles = articles;
+    lastVisibleDocId = newLastVisibleDocId;
 
   } catch (e: any) {
     error = e.message || 'An unknown error occurred while fetching articles from the database.';
     console.error("Error fetching initial articles:", error);
   }
-
-  // Apply filtering in code, which is more resilient than complex DB queries.
-  const initialArticles = allFetchedArticles.filter(article => {
-    const hasCategory = !categoryId || categoryId === 'all' || (article.categoryIds && article.categoryIds.includes(categoryId));
-    const hasDistrict = !districtId || districtId === 'all' || article.districtId === districtId;
-    return hasCategory && hasDistrict;
-  }).slice(0, 10); // Take the first 10 for the initial page load
 
 
   const topArticle = initialArticles.length > 0 ? initialArticles[0] : null;

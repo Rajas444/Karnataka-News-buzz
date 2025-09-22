@@ -88,10 +88,10 @@ const generateUserReportFlow = ai.defineFlow(
     } catch (error: any) {
         console.error("Error in generateUserReportFlow:", error);
         // Provide a more specific error message if it's a credentials issue
-        if (error.message.includes('credential')) {
+        if (error.code === 'app/invalid-credential' || error.message.includes('credential')) {
              throw new Error('Failed to generate report: Firebase Admin credentials are not set up correctly.');
         }
-        throw new Error('Failed to generate user report.');
+        throw new Error(`Failed to generate user report: ${error.message}`);
     }
   }
 );

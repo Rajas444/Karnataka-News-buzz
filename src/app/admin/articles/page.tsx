@@ -26,7 +26,7 @@ export default function ManageArticlesPage() {
   useEffect(() => {
     async function fetchArticles() {
       try {
-        const fetchedArticles = await getArticles();
+        const { articles: fetchedArticles } = await getArticles();
         setArticles(fetchedArticles);
       } catch (error) {
         toast({ title: 'Error fetching articles', variant: 'destructive' });
@@ -132,7 +132,7 @@ export default function ManageArticlesPage() {
                         </Badge>
                         </TableCell>
                         <TableCell>{article.author}</TableCell>
-                        <TableCell>{article.publishedAt ? format(article.publishedAt, 'PPP') : 'Not Published'}</TableCell>
+                        <TableCell>{article.publishedAt ? format(new Date(article.publishedAt), 'PPP') : 'Not Published'}</TableCell>
                         <TableCell>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

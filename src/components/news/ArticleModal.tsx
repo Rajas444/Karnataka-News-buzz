@@ -123,8 +123,11 @@ export default function ArticleModal() {
                     
                     <div 
                         className="prose dark:prose-invert max-w-none font-kannada"
-                        dangerouslySetInnerHTML={{ __html: article.content.replace(/\n/g, '<p>') }} 
-                    />
+                    >
+                      {article.content.split('\n').map((paragraph, index) => (
+                        <p key={index}>{paragraph}</p>
+                      ))}
+                    </div>
 
                     <div className="mt-8 space-y-4">
                         {articleCategories.length > 0 && (

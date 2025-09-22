@@ -206,7 +206,6 @@ export async function getArticles(options?: {
 
     let constraints: QueryConstraint[] = [
         where('status', '==', 'published'),
-        orderBy('publishedAt', 'desc'),
     ];
 
     try {
@@ -222,6 +221,9 @@ export async function getArticles(options?: {
         if (district && district !== 'all') {
             constraints.push(where('districtId', '==', district));
         }
+
+        // The orderBy must be the last field in the query constraints for startAfter to work correctly
+        constraints.push(orderBy('publishedAt', 'desc'));
 
         if (startAfterDocId) {
             const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));

@@ -16,6 +16,8 @@ import {
   collection,
   orderBy,
   limit,
+  where,
+  QueryConstraint,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -37,9 +39,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   const { toast } = useToast();
   
   const categoryId = useMemo(() => {
-    return categorySlug && categorySlug !== 'all' 
-      ? allCategories.find(c => c.slug === categorySlug)?.id 
-      : null;
+    return allCategories.find(c => c.slug === categorySlug)?.id;
   }, [categorySlug, allCategories]);
 
   useEffect(() => {
@@ -66,12 +66,26 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     setRealtimeError(null);
 
-    // Basic query that will not fail due to missing indexes.
-    const q = query(
-        collection(db, "articles"), 
+    const constraints: QueryConstraint[] = [
+        where('status', '==', 'published'),
         orderBy("publishedAt", "desc"),
         limit(20) 
-    );
+    ];
+
+    if (categoryId && categorySlug !== 'all') {
+      constraints.push(where('categoryIds', 'array-contains', categoryId));
+    }
+    
+    // NOTE: Combining multiple filters ('where' on different fields) requires a composite index.
+    // If you filter by category AND district, you'll need an index for that.
+    // To keep the app resilient, we only apply ONE of the main filters for real-time updates.
+    // The initial server-side load handles combined filters correctly (with try-catch).
+    
+    if (!categoryId && districtId && districtId !== 'all') {
+      constraints.push(where('districtId', '==', districtId));
+    }
+
+    const q = query(collection(db, "articles"), ...constraints);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const liveArticles: Article[] = [];
@@ -97,16 +111,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
                 }
             });
 
-            let finalArticles = Array.from(allArticlesMap.values()).filter(a => a.status === 'published');
-            
-            // Re-apply filters to the merged list to ensure consistency
-            if (categoryId) {
-                finalArticles = finalArticles.filter(a => a.categoryIds?.includes(categoryId));
-            }
-             if (districtId && districtId !== 'all') {
-                finalArticles = finalArticles.filter(a => a.districtId === districtId);
-            }
-
+            const finalArticles = Array.from(allArticlesMap.values());
             return finalArticles.sort((a,b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
         });
 
@@ -115,12 +120,16 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     }, (error: any) => {
         console.error("Real-time update failed:", error);
-        setRealtimeError("Could not connect for live updates. You are viewing a static list.");
+         if (error.code === 'failed-precondition' && categoryId) {
+            setRealtimeError("Live updates for this category are disabled. A database index is required. You are viewing a static list.");
+        } else {
+            setRealtimeError("Could not connect for live updates. You are viewing a static list.");
+        }
         if(loading) setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [loading, categoryId, districtId]);
+  }, [loading, categoryId, categorySlug, districtId]);
 
 
   const handleLoadMore = useCallback(async () => {

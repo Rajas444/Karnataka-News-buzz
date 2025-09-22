@@ -205,6 +205,8 @@ export async function getArticles(options?: {
   const { pageSize = 100, startAfterDocId } = options || {};
 
   try {
+    // This simplified query fetches all published articles, sorted by date.
+    // Filtering by category or district will be handled in the calling function.
     const constraints: QueryConstraint[] = [
         where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),

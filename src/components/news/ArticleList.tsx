@@ -31,7 +31,7 @@ interface ArticleListProps {
 export default function ArticleList({ initialArticles, categorySlug, districtId, initialLastVisibleDocId }: ArticleListProps) {
   const [articles, setArticles] = useState<Article[]>(initialArticles);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(initialArticles.length === 0);
+  const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(initialLastVisibleDocId || null);
   const [hasMore, setHasMore] = useState(initialArticles.length > 0 && initialLastVisibleDocId !== null);
@@ -39,6 +39,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   const { toast } = useToast();
   
   const categoryId = useMemo(() => {
+    if (!categorySlug || categorySlug === 'all') return null;
     return allCategories.find(c => c.slug === categorySlug)?.id;
   }, [categorySlug, allCategories]);
 
@@ -71,18 +72,13 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
         orderBy("publishedAt", "desc"),
         limit(20) 
     ];
-
-    if (categoryId && categorySlug !== 'all') {
-      constraints.push(where('categoryIds', 'array-contains', categoryId));
-    }
     
-    // NOTE: Combining multiple filters ('where' on different fields) requires a composite index.
-    // If you filter by category AND district, you'll need an index for that.
-    // To keep the app resilient, we only apply ONE of the main filters for real-time updates.
-    // The initial server-side load handles combined filters correctly (with try-catch).
-    
-    if (!categoryId && districtId && districtId !== 'all') {
+    // This logic ensures we only apply one filter at a time for real-time queries to avoid index errors.
+    // The initial server-side load handles combined filters correctly.
+    if (districtId && districtId !== 'all') {
       constraints.push(where('districtId', '==', districtId));
+    } else if (categoryId) {
+      constraints.push(where('categoryIds', 'array-contains', categoryId));
     }
 
     const q = query(collection(db, "articles"), ...constraints);
@@ -120,8 +116,8 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     }, (error: any) => {
         console.error("Real-time update failed:", error);
-         if (error.code === 'failed-precondition' && categoryId) {
-            setRealtimeError("Live updates for this category are disabled. A database index is required. You are viewing a static list.");
+         if (error.code === 'failed-precondition') {
+            setRealtimeError("A database index is required for this filter combination. Live updates may be incomplete.");
         } else {
             setRealtimeError("Could not connect for live updates. You are viewing a static list.");
         }
@@ -129,7 +125,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     });
 
     return () => unsubscribe();
-  }, [loading, categoryId, categorySlug, districtId]);
+  }, [loading, categoryId, districtId]);
 
 
   const handleLoadMore = useCallback(async () => {

@@ -209,6 +209,9 @@ export async function getArticles(options?: {
     ];
 
     try {
+        // This is the key change: We build a query that Firestore can handle without a custom index for simple cases.
+        // If BOTH category and district are specified, the query might require an index. The catch block will handle this.
+        
         // Add filters if they are provided and not 'all'
         if (category && category !== 'all') {
             const allCategories = await getCategories();
@@ -243,20 +246,12 @@ export async function getArticles(options?: {
         return { articles, lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null };
 
     } catch (error: any) {
-        // This is the crucial part: catch the "missing index" error and fail gracefully.
         if (error.code === 'failed-precondition') {
-             console.error(`
-                **********************************************************************************
-                * FIRESTORE ERROR: A composite index is required for this query.
-                * Message: ${error.message}
-                * To fix this, create the index in your Firebase console. The link is usually
-                * provided in the error message in your browser's developer console.
-                * The app will not crash, but the query returned no results.
-                **********************************************************************************
-            `);
+             // This is a graceful failure. Log a clear message for the developer and return empty.
+             console.error(`[DEVELOPER INFO] A Firestore composite index is required for this query to work. The app will not crash, but no articles were returned. Please create the index using the link from the browser console, or by inspecting the full error object: ${error.message}`);
              return { articles: [], lastVisibleDocId: null };
         }
-        // Re-throw other unexpected errors
+        // For any other type of error, re-throw it so it can be debugged.
         throw error;
     }
 }

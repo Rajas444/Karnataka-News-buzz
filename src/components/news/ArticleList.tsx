@@ -17,6 +17,9 @@ import {
   limit,
   where,
   QueryConstraint,
+  startAfter,
+  getDocs,
+  doc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -30,11 +33,9 @@ interface ArticleListProps {
 export default function ArticleList({ initialArticles, categorySlug, districtId, initialLastVisibleDocId }: ArticleListProps) {
   const [articles, setArticles] = useState<Article[]>(initialArticles);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(initialLastVisibleDocId || null);
   const [hasMore, setHasMore] = useState(initialArticles.length > 0 && initialLastVisibleDocId !== null);
-  const [realtimeError, setRealtimeError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -75,25 +76,21 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     } catch (error: any) {
       console.error("Failed to load more articles", error);
-      if (error.code === 'failed-precondition') {
-          toast({ title: "Filter query requires a database index", variant: "destructive" });
+      if (error.code === 'failed-precondition' || error.message?.includes('index')) {
+          toast({ 
+              title: "Filter query requires a database index", 
+              description: "Live updates for this filter combination may be incomplete.",
+              variant: "destructive" 
+          });
       } else {
         toast({ title: "Failed to load more news", variant: "destructive" });
       }
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, lastVisibleDocId, toast, categorySlug, districtId]);
+  }, [hasMore, loadingMore, lastVisibleDocId, toast, categorySlug, districtId, allCategories]);
   
-  if (loading && articles.length === 0) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
-  if (!loading && articles.length === 0) {
+  if (articles.length === 0) {
     return (
       <div className="text-center py-12 bg-card rounded-lg">
         <h2 className="text-2xl font-bold mb-4 font-kannada">No Articles Found</h2>
@@ -106,12 +103,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
   return (
     <div className="space-y-6">
-      {realtimeError && (
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md flex items-center gap-3">
-          <ShieldAlert className="h-5 w-5"/>
-          <p className="text-sm font-medium">{realtimeError}</p>
-        </div>
-      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {articles.map((article) => (
           <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />

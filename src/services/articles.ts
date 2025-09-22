@@ -198,59 +198,65 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 // READ (all with pagination and filters)
 export async function getArticles(options?: {
   pageSize?: number;
-  startAfterDocId?: string;
+  startAfterDocId?: string | null;
   categorySlug?: string;
   districtId?: string;
   allCategories?: Category[];
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-  const { pageSize = 10, startAfterDocId, categorySlug, districtId, allCategories = [] } = options || {};
+    const { pageSize = 10, startAfterDocId, categorySlug, districtId, allCategories = [] } = options || {};
 
-  try {
-    const constraints: QueryConstraint[] = [
-        where('status', '==', 'published'),
-        orderBy('publishedAt', 'desc'),
-        limit(pageSize)
-    ];
-    
-    const categoryId = allCategories.find(c => c.slug === categorySlug)?.id;
-
-    if (categoryId && categoryId !== 'all') {
-        constraints.push(where('categoryIds', 'array-contains', categoryId));
-    }
-    if (districtId && districtId !== 'all') {
-        constraints.push(where('districtId', '==', districtId));
+    let categoriesToUse = allCategories;
+    if (categoriesToUse.length === 0) {
+        categoriesToUse = await getCategories();
     }
 
-    if (startAfterDocId) {
-      const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
-      if (startAfterDoc.exists()) {
-        constraints.push(startAfter(startAfterDoc));
-      }
-    }
+    try {
+        const constraints: QueryConstraint[] = [
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc'),
+        ];
+        
+        if (categorySlug && categorySlug !== 'all') {
+            const categoryId = categoriesToUse.find(c => c.slug === categorySlug)?.id;
+            if (categoryId) {
+                constraints.push(where('categoryIds', 'array-contains', categoryId));
+            }
+        }
+        if (districtId && districtId !== 'all') {
+            constraints.push(where('districtId', '==', districtId));
+        }
 
-    const q = query(collection(db, 'articles'), ...constraints);
-    
-    const snapshot = await getDocs(q);
+        if (startAfterDocId) {
+            const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
+            if (startAfterDoc.exists()) {
+                constraints.push(startAfter(startAfterDoc));
+            }
+        }
+        
+        constraints.push(limit(pageSize));
 
-    const articles = await Promise.all(snapshot.docs.map(serializeArticle));
-    const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+        const q = query(collection(db, 'articles'), ...constraints);
+        const snapshot = await getDocs(q);
 
-    return {
-      articles,
-      lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null,
-    };
+        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
 
-  } catch (error: any) {
-    if (error.code === 'failed-precondition') {
-        console.error(`[DEVELOPER INFO] Firestore query failed, likely requires an index: ${error.message}`);
-        // Instead of returning empty, re-throw the error so the page can handle it.
+        return {
+            articles,
+            lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null,
+        };
+    } catch (error: any) {
+        if (error.code === 'failed-precondition') {
+            const devError = new Error(`[DEVELOPER INFO] A Firestore composite index is required for this query to work. The app will not crash, but no articles were returned. Please create the index using the link from the browser console, or by inspecting the full error object: ${error.message}`);
+            console.error(devError);
+            // Re-throw to be caught by the calling page component
+            throw devError;
+        }
+        // Re-throw other errors
+        console.error("An unexpected error occurred in getArticles:", error);
         throw error;
     }
-    // Re-throw other errors
-    throw error;
-  }
 }
-
 
 
 // READ (one)

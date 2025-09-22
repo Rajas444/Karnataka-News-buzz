@@ -80,7 +80,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <FilterControls categories={categories} districts={districts} />
       </section>
 
-       {error && !initialArticles.length && <div className="mb-8">{renderErrorState()}</div>}
+       {error && <div className="mb-8">{renderErrorState()}</div>}
 
       <div className="space-y-12">
         {topArticle && (

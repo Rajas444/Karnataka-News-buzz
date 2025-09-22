@@ -204,8 +204,8 @@ export async function getArticles(options?: {
 }): Promise<{articles: Article[], lastVisibleDocId: string | null}> {
     const { pageSize = 10, startAfterDocId, category, district } = options || {};
 
+    // Base query - sort by published date. Avoids index errors.
     let constraints: QueryConstraint[] = [
-        where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
     ];
     
@@ -216,31 +216,34 @@ export async function getArticles(options?: {
         }
     }
 
-    const allCategories = (category && category !== 'all') ? await getCategories() : [];
-    const categoryDocId = category && category !== 'all' ? allCategories.find(c => c.slug === category)?.id : null;
-
-    if (categoryDocId) {
-        constraints.push(where('categoryIds', 'array-contains', categoryDocId));
-    }
-
-    if (district && district !== 'all') {
-        constraints.push(where('districtId', '==', district));
-    }
-    
-    constraints.push(limit(pageSize));
+    // Fetch a larger batch size to allow for in-memory filtering.
+    // This is a tradeoff to avoid index errors. We fetch more docs and filter them in the application.
+    const fetchLimit = (category && category !== 'all') || (district && district !== 'all') ? pageSize * 5 : pageSize;
+    constraints.push(limit(fetchLimit));
     
     try {
         const q = query(collection(db, 'articles'), ...constraints);
         const snapshot = await getDocs(q);
 
-        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
-        const lastVisibleDocInPage = snapshot.docs.length === pageSize ? snapshot.docs[snapshot.docs.length - 1].id : null;
+        const allFetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
+        
+        // In-memory filtering
+        const allCategories = (category && category !== 'all') ? await getCategories() : [];
+        const categoryDocId = category && category !== 'all' ? allCategories.find(c => c.slug === category)?.id : null;
 
-        return { articles, lastVisibleDocId: lastVisibleDocInPage };
+        const filteredArticles = allFetchedArticles.filter(article => {
+            if (article.status !== 'published') return false;
+            const categoryMatch = !categoryDocId || article.categoryIds?.includes(categoryDocId);
+            const districtMatch = !district || district === 'all' || article.districtId === district;
+            return categoryMatch && districtMatch;
+        });
+
+        const articles = filteredArticles.slice(0, pageSize);
+        const lastVisibleDocId = articles.length > 0 && filteredArticles.length > pageSize ? articles[articles.length - 1].id : null;
+
+        return { articles, lastVisibleDocId: lastVisibleDocId };
 
     } catch (error: any) {
-        // This will now properly throw an error if an index is missing,
-        // which will be caught by the page component and displayed to the user.
         console.error("An unexpected error occurred in getArticles:", error);
         throw error;
     }
@@ -362,3 +365,5 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         }
     }
 }
+
+    

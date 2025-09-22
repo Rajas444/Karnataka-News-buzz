@@ -4,10 +4,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Download, Loader2, AlertTriangle } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { generatePlaceholderReport } from '@/ai/flows/generate-placeholder-report-flow';
+import { generateUserReport } from '@/ai/flows/generate-user-report-flow';
 
 export default function ReportsPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -21,7 +20,7 @@ export default function ReportsPage() {
     });
 
     try {
-      const result = await generatePlaceholderReport();
+      const result = await generateUserReport();
       
       // Create a Blob from the CSV string
       const blob = new Blob([result.csvData], { type: 'text/csv;charset=utf-8;' });
@@ -36,8 +35,8 @@ export default function ReportsPage() {
       document.body.removeChild(link);
 
       toast({
-        title: 'Placeholder Report Generated',
-        description: `Successfully generated a sample report for ${result.userCount} users.`,
+        title: 'Report Generated',
+        description: `Successfully generated a report for ${result.userCount} users.`,
       });
     } catch (error: any) {
       console.error('Report generation failed:', error);
@@ -59,14 +58,6 @@ export default function ReportsPage() {
           Generate and download reports for your news portal.
         </p>
       </div>
-
-      <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Developer Preview</AlertTitle>
-          <AlertDescription>
-            This report generation is a placeholder. To use live data from Firebase, you must set the `FIREBASE_SERVICE_ACCOUNT` environment variable with your project's service account credentials. The placeholder returns sample data.
-          </AlertDescription>
-      </Alert>
 
       <Card className="max-w-xl">
         <CardHeader>

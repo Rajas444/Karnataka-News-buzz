@@ -70,13 +70,13 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       limit(20) // Limit real-time updates to recent articles
     ];
 
-    if (categorySlug && categorySlug !== 'all' && categoryId) {
+    // Prioritize district filter if both are present to avoid needing a composite index for live updates
+    if (districtId && districtId !== 'all') {
+        constraints.push(where('districtId', '==', districtId));
+    } else if (categorySlug && categorySlug !== 'all' && categoryId) {
       constraints.push(where('categoryIds', 'array-contains', categoryId));
     }
-    if (districtId && districtId !== 'all') {
-      constraints.push(where('districtId', '==', districtId));
-    }
-
+    
     const q = query(collection(db, "articles"), ...constraints);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -111,7 +111,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     }, (error: any) => {
         console.error("Real-time update failed:", error);
         if (error.code === 'failed-precondition') {
-             setRealtimeError("A database index is required for this filter. Live updates may be missing.");
+             setRealtimeError("A database index is required for this filter combination. Live updates may be incomplete.");
              toast({
                  title: 'Index Required for Live Updates',
                  description: 'A composite index is needed for this query. Some live updates might not appear.',
@@ -150,8 +150,19 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       setLoadingMore(false);
     }
   }, [hasMore, loadingMore, lastVisibleDocId, categorySlug, districtId, toast]);
+  
 
-  if (loading && articles.length === 0) {
+  const filteredArticles = useMemo(() => {
+    const categoryId = allCategories.find(c => c.slug === categorySlug)?.id;
+
+    return articles.filter(article => {
+      const categoryMatch = !categoryId || (article.categoryIds && article.categoryIds.includes(categoryId));
+      const districtMatch = !districtId || districtId === 'all' || article.districtId === districtId;
+      return categoryMatch && districtMatch;
+    });
+  }, [articles, categorySlug, districtId, allCategories]);
+
+  if (loading && filteredArticles.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -159,7 +170,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     )
   }
 
-  if (!loading && articles.length === 0) {
+  if (!loading && filteredArticles.length === 0) {
     return (
       <div className="text-center py-12 bg-card rounded-lg">
         <h2 className="text-2xl font-bold mb-4 font-kannada">No Articles Found</h2>
@@ -179,7 +190,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {articles.map((article) => (
+        {filteredArticles.map((article) => (
           <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
         ))}
       </div>

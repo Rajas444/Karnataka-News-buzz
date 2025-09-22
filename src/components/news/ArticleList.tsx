@@ -62,22 +62,13 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     setRealtimeError(null);
 
-    const categoryId = allCategories.find(c => c.slug === categorySlug)?.id;
-
-    let constraints: QueryConstraint[] = [
-      where('status', '==', 'published'),
-      orderBy("publishedAt", "desc"),
-      limit(20) // Limit real-time updates to recent articles
-    ];
-
-    // Prioritize district filter if both are present to avoid needing a composite index for live updates
-    if (districtId && districtId !== 'all') {
-        constraints.push(where('districtId', '==', districtId));
-    } else if (categorySlug && categorySlug !== 'all' && categoryId) {
-      constraints.push(where('categoryIds', 'array-contains', categoryId));
-    }
-    
-    const q = query(collection(db, "articles"), ...constraints);
+    // This is a simple, universal query that will not fail due to missing indexes.
+    // It fetches the most recent articles, and we filter them on the client.
+    const q = query(collection(db, "articles"), 
+        where('status', '==', 'published'),
+        orderBy("publishedAt", "desc"),
+        limit(20) 
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const updatedArticles: Article[] = [];
@@ -110,21 +101,12 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     }, (error: any) => {
         console.error("Real-time update failed:", error);
-        if (error.code === 'failed-precondition') {
-             setRealtimeError("A database index is required for this filter combination. Live updates may be incomplete.");
-             toast({
-                 title: 'Index Required for Live Updates',
-                 description: 'A composite index is needed for this query. Some live updates might not appear.',
-                 variant: 'destructive'
-             })
-        } else {
-            setRealtimeError("Could not get live news updates.");
-        }
+        setRealtimeError("Could not get live news updates.");
         if(loading) setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [categorySlug, districtId, allCategories, loading]);
+  }, [loading]);
 
 
   const handleLoadMore = useCallback(async () => {
@@ -153,7 +135,9 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   
 
   const filteredArticles = useMemo(() => {
-    const categoryId = allCategories.find(c => c.slug === categorySlug)?.id;
+    const categoryId = categorySlug && categorySlug !== 'all' 
+      ? allCategories.find(c => c.slug === categorySlug)?.id 
+      : null;
 
     return articles.filter(article => {
       const categoryMatch = !categoryId || (article.categoryIds && article.categoryIds.includes(categoryId));

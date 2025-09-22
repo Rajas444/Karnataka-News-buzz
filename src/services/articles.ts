@@ -42,7 +42,7 @@ async function serializeArticle(doc: DocumentSnapshot): Promise<Article> {
 
 
 // CREATE (from Article Form)
-export async function createArticle(data: ArticleFormValues & { categoryIds: string[], districtId?: string }): Promise<Article> {
+export async function createArticle(data: ArticleFormValues & { categoryIds: string[] }): Promise<Article> {
   let imageUrl = data.imageUrl || null;
   let imagePath = '';
 
@@ -60,11 +60,13 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
     imageUrl = await getDownloadURL(snapshot.ref);
     imagePath = snapshot.ref.fullPath;
   }
-
-  const { categoryId, ...restOfData } = data;
+  
+  const { categoryId, districtId, ...restOfData } = data as any;
 
   const docRef = await addDoc(articlesCollection, {
     ...restOfData,
+    categoryIds: data.categoryIds,
+    districtId: districtId || null,
     imageUrl,
     imagePath,
     status: data.status || 'draft',
@@ -96,16 +98,10 @@ export async function getArticles(options?: {
     try {
         const constraints: QueryConstraint[] = [
              orderBy('publishedAt', 'desc'),
-             limit(pageSize),
         ];
         
-        if (startAfterDocId) {
-            const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
-            if (startAfterDoc.exists()) {
-                constraints.push(startAfter(startAfterDoc));
-            }
-        }
-        
+        // This query is intentionally simple to avoid index errors.
+        // We will fetch a larger batch initially and filter in-memory.
         const q = query(collection(db, 'articles'), ...constraints);
         const snapshot = await getDocs(q);
 
@@ -126,11 +122,25 @@ export async function getArticles(options?: {
             articles = articles.filter(article => article.districtId === districtId);
         }
         
-        const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+        // Manual pagination
+        let paginatedArticles = articles;
+        let newLastVisibleDocId: string | null = null;
+        
+        const startIndex = startAfterDocId ? articles.findIndex(a => a.id === startAfterDocId) + 1 : 0;
+        
+        if (startIndex > 0 && startAfterDocId) {
+            paginatedArticles = articles.slice(startIndex, startIndex + pageSize);
+        } else {
+            paginatedArticles = articles.slice(0, pageSize);
+        }
+
+        if (articles.length > startIndex + pageSize) {
+            newLastVisibleDocId = articles[startIndex + pageSize - 1]?.id;
+        }
 
         return {
-            articles,
-            lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null,
+            articles: paginatedArticles,
+            lastVisibleDocId: newLastVisibleDocId,
         };
     } catch (error: any) {
         console.error("An unexpected error occurred in getArticles:", error);
@@ -177,10 +187,12 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
     imagePath = snapshot.ref.fullPath;
   }
 
-  const { categoryId, ...restOfData } = data;
+  const { categoryId, districtId, ...restOfData } = data as any;
   
   await updateDoc(docRef, {
     ...restOfData,
+    categoryIds: data.categoryIds,
+    districtId: districtId || null,
     imageUrl,
     imagePath,
     publishedAt: data.publishedAt ? Timestamp.fromDate(new Date(data.publishedAt)) : serverTimestamp(),
@@ -216,8 +228,8 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
     try {
         const q = query(
             articlesCollection,
-            where('status', '==', 'published'),
             where('categoryIds', 'array-contains', categoryId),
+            where('status', '==', 'published'),
             orderBy('publishedAt', 'desc'),
             limit(4) // Fetch 4 to have a replacement if the current article is in the results
         );

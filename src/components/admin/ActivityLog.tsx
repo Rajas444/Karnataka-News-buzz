@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import Image from 'next/image';
 
 const activities = [
     { user: 'Admin User', action: 'published', article: 'New Metro Line...', time: '5 minutes ago', avatarSeed: '1' },
@@ -22,7 +23,7 @@ export default function ActivityLog() {
             {activities.map((activity, index) => (
                 <div key={index} className="flex items-start gap-4">
                     <Avatar className="h-9 w-9">
-                        <AvatarImage src={`https://picsum.photos/seed/${activity.avatarSeed}/40/40`} alt="Avatar" data-ai-hint="people" />
+                        <Image src={`https://picsum.photos/seed/${activity.avatarSeed}/40/40`} alt="Avatar" width={40} height={40} data-ai-hint="people" />
                         <AvatarFallback>{activity.user.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="grid gap-1">

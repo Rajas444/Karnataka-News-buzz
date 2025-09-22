@@ -61,12 +61,11 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
     imagePath = snapshot.ref.fullPath;
   }
   
-  const { categoryId, districtId, ...restOfData } = data as any;
+  const { categoryId, ...restOfData } = data as any;
 
   const docRef = await addDoc(articlesCollection, {
     ...restOfData,
     categoryIds: data.categoryIds,
-    districtId: districtId || null,
     imageUrl,
     imagePath,
     status: data.status || 'draft',
@@ -96,13 +95,7 @@ export async function getArticles(options?: {
     const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
 
     try {
-        const constraints: QueryConstraint[] = [
-             orderBy('publishedAt', 'desc'),
-        ];
-        
-        // This query is intentionally simple to avoid index errors.
-        // We will fetch a larger batch initially and filter in-memory.
-        const q = query(collection(db, 'articles'), ...constraints);
+        const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'));
         const snapshot = await getDocs(q);
 
         let articles = await Promise.all(snapshot.docs.map(serializeArticle));
@@ -144,7 +137,12 @@ export async function getArticles(options?: {
         };
     } catch (error: any) {
         console.error("An unexpected error occurred in getArticles:", error);
-        return { articles: [], lastVisibleDocId: null };
+        if (error.code === 'failed-precondition') {
+             const devError = new Error(`[DEVELOPER INFO] A Firestore composite index is required for this query to work. The app will not crash, but no articles were returned. Please create the index using the link from the browser console, or by inspecting the full error object: ${error.message}`);
+            console.error(devError);
+            throw devError;
+        }
+        throw error;
     }
 }
 
@@ -164,7 +162,7 @@ export async function getArticle(id: string): Promise<Article | null> {
 }
 
 // UPDATE
-export async function updateArticle(id: string, data: ArticleFormValues & { categoryIds: string[], districtId?: string }): Promise<Article> {
+export async function updateArticle(id: string, data: ArticleFormValues & { categoryIds: string[] }): Promise<Article> {
   const docRef = doc(db, 'articles', id);
   let imageUrl = data.imageUrl || null;
   let imagePath = data.imagePath || '';
@@ -187,12 +185,11 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
     imagePath = snapshot.ref.fullPath;
   }
 
-  const { categoryId, districtId, ...restOfData } = data as any;
+  const { categoryId, ...restOfData } = data as any;
   
   await updateDoc(docRef, {
     ...restOfData,
     categoryIds: data.categoryIds,
-    districtId: districtId || null,
     imageUrl,
     imagePath,
     publishedAt: data.publishedAt ? Timestamp.fromDate(new Date(data.publishedAt)) : serverTimestamp(),

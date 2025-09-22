@@ -124,7 +124,7 @@ export default function ArticleModal() {
                     <div 
                         className="prose dark:prose-invert max-w-none font-kannada"
                     >
-                      {article.content.split('\n').map((paragraph, index) => (
+                      {article.content.split('\\n').map((paragraph, index) => (
                         <p key={index}>{paragraph}</p>
                       ))}
                     </div>

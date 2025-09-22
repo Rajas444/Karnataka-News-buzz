@@ -4,7 +4,7 @@
 
 import { db, storage } from '@/lib/firebase';
 import type { Article, ArticleFormValues, NewsdataArticle, Category } from '@/lib/types';
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint, Timestamp, limit, startAfter, writeBatch, DocumentSnapshot } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint, Timestamp, limit, startAfter, writeBatch, DocumentSnapshot, Query } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 import { getCategories } from './categories';
@@ -199,46 +199,44 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 export async function getArticles(options?: {
   pageSize?: number;
   startAfterDocId?: string;
-  category?: string; // slug
-  district?: string; // id
+  category?: string; // slug - kept for function signature, but filtering is moved
+  district?: string; // id - kept for function signature, but filtering is moved
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-  const { pageSize = 100, startAfterDocId, category, district } = options || {};
+  const { pageSize = 100, startAfterDocId } = options || {};
 
-  let constraints: QueryConstraint[] = [where('status', '==', 'published')];
+  let q: Query;
+  try {
+    const constraints: QueryConstraint[] = [
+        where('status', '==', 'published'),
+        orderBy('publishedAt', 'desc'),
+        limit(pageSize)
+    ];
 
-  // Prioritize the most specific filter to avoid composite index errors.
-  // We will apply the second filter in the application code.
-  if (district && district !== 'all') {
-    constraints.push(where('districtId', '==', district));
-  } else if (category && category !== 'all') {
-    const allCategories = await getCategories();
-    const categoryId = allCategories.find((c) => c.slug === category)?.id;
-    if (categoryId) {
-      constraints.push(where('categoryIds', 'array-contains', categoryId));
+    if (startAfterDocId) {
+      const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
+      if (startAfterDoc.exists()) {
+        constraints.push(startAfter(startAfterDoc));
+      }
     }
+
+    q = query(collection(db, 'articles'), ...constraints);
+    
+    const snapshot = await getDocs(q);
+
+    const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+    const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+
+    return {
+      articles,
+      lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null,
+    };
+
+  } catch (error: any) {
+    // This catch block is a failsafe. If a query *still* fails, we prevent a server crash.
+    console.error(`[DEVELOPER INFO] Firestore query failed: ${error.message}`);
+    // Return empty results to prevent the page from crashing.
+    return { articles: [], lastVisibleDocId: null };
   }
-
-  constraints.push(orderBy('publishedAt', 'desc'));
-
-  if (startAfterDocId) {
-    const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
-    if (startAfterDoc.exists()) {
-      constraints.push(startAfter(startAfterDoc));
-    }
-  }
-
-  constraints.push(limit(pageSize));
-
-  const q = query(collection(db, 'articles'), ...constraints);
-  const snapshot = await getDocs(q);
-
-  const articles = await Promise.all(snapshot.docs.map(serializeArticle));
-  const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
-
-  return {
-    articles,
-    lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null,
-  };
 }
 
 

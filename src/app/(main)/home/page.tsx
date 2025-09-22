@@ -51,11 +51,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   try {
-    // Fetch a broad set of articles based on the primary filter
+    // Fetch a broad set of published articles, sorted by date.
+    // Filtering will now be handled in the code below.
     const { articles, lastVisibleDoc } = await getArticles({
-      category: categorySlug,
-      district: districtId,
-      pageSize: 100, // Fetch more to allow for in-code filtering
+      pageSize: 100, // Fetch a larger batch for effective in-code filtering
     });
     allFetchedArticles = articles;
 
@@ -68,7 +67,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     console.error("Error fetching initial articles:", error);
   }
 
-  // Apply secondary filtering in code
+  // Apply filtering in code, which is more resilient than complex DB queries.
   const initialArticles = allFetchedArticles.filter(article => {
     const hasCategory = !categoryId || categoryId === 'all' || (article.categoryIds && article.categoryIds.includes(categoryId));
     const hasDistrict = !districtId || districtId === 'all' || article.districtId === districtId;

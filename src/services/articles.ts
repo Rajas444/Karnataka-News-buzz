@@ -3,13 +3,12 @@
 'use server';
 
 import { db, storage } from '@/lib/firebase';
-import type { Article, ArticleFormValues, NewsdataArticle, Category } from '@/lib/types';
+import type { Article, ArticleFormValues, Category } from '@/lib/types';
 import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint, Timestamp, limit, startAfter, writeBatch, DocumentSnapshot, Query } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 import { getCategories } from './categories';
 import { extractArticleContent } from '@/ai/flows/extract-article-content';
-import { fetchAndStoreNews } from './news';
 import { getDistricts } from './districts';
 
 const articlesCollection = collection(db, 'articles');
@@ -86,129 +85,14 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
   return serializeArticle(docSnap);
 }
 
-
-// STORE (from external API)
-export async function storeCollectedArticle(apiArticle: NewsdataArticle, districtId?: string, searchCategorySlug?: string): Promise<string | null> {
-    
-    // Check if an article with the same source URL already exists.
-    const q = query(articlesCollection, where('sourceUrl', '==', apiArticle.link), limit(1));
-    const existing = await getDocs(q);
-    if (!existing.empty) {
-        // Article already exists. We don't need to create a new one.
-        // We can optionally update it if new information (like a district) is found.
-        const doc = existing.docs[0];
-        const currentData = doc.data();
-        const updates: Partial<any> = {};
-        let needsUpdate = false;
-        
-        // Add district if it's missing from the existing document
-        if (districtId && !currentData.districtId) {
-            updates.districtId = districtId;
-            needsUpdate = true;
-        }
-
-        // Add category if the article was found via a new category search
-        if (searchCategorySlug) {
-             const allCategories = await getCategories();
-             const searchCatId = allCategories.find(c => c.slug === searchCategorySlug)?.id;
-             if (searchCatId && !currentData.categoryIds?.includes(searchCatId)) {
-                 updates.categoryIds = [...(currentData.categoryIds || []), searchCatId];
-                 needsUpdate = true;
-             }
-        }
-
-        if (needsUpdate) {
-            await updateDoc(doc.ref, updates);
-        }
-
-        return null; // Return null to indicate no new article was created.
-    }
-
-    const allCategories = await getCategories();
-    
-    const apiCategoryIds = new Set<string>();
-    const normalize = (str: string) => str.toLowerCase().replace(/&/g, 'and').replace(/\s+/g, '-');
-
-
-    // Match API categories to our DB categories
-    if (apiArticle.category) {
-        apiArticle.category.forEach(apiCat => {
-            const normalizedApiCat = normalize(apiCat);
-            const found = allCategories.find(c => normalize(c.slug) === normalizedApiCat || normalize(c.name) === normalizedApiCat);
-            if (found) {
-                apiCategoryIds.add(found.id);
-            }
-        });
-    }
-
-    // Ensure the category used for the search is included
-    if (searchCategorySlug && searchCategorySlug !== 'all' && searchCategorySlug !== 'general') {
-        const searchCatId = allCategories.find(c => c.slug === searchCategorySlug)?.id;
-        if (searchCatId) {
-            apiCategoryIds.add(searchCatId);
-        }
-    }
-    
-    let finalCategoryIds = Array.from(apiCategoryIds);
-
-    // If no categories were matched, default to "General"
-    if (finalCategoryIds.length === 0) {
-        const generalCatId = allCategories.find(c => c.slug === 'general')?.id;
-        if (generalCatId) {
-            finalCategoryIds.push(generalCatId);
-        } else if (allCategories.length > 0) {
-            // Fallback to the first available category if 'general' doesn't exist
-            finalCategoryIds.push(allCategories[0].id);
-        }
-    }
-
-
-    const newArticleData = {
-        title: apiArticle.title,
-        content: apiArticle.content || apiArticle.description || '',
-        imageUrl: apiArticle.image_url,
-        author: apiArticle.creator?.join(', ') || apiArticle.source_id,
-        authorId: apiArticle.source_id,
-        categoryIds: finalCategoryIds,
-        status: 'published' as const,
-        publishedAt: Timestamp.fromDate(new Date(apiArticle.pubDate)),
-        sourceUrl: apiArticle.link,
-        seo: {
-            keywords: apiArticle.keywords || [],
-            metaDescription: apiArticle.description || '',
-        },
-        views: 0,
-        districtId: districtId && districtId !== 'all' ? districtId : null,
-    };
-
-    try {
-        const docRef = await addDoc(articlesCollection, {
-            ...newArticleData,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-        });
-        return docRef.id;
-    } catch (error) {
-        console.error("Error storing collected article:", error);
-        return null;
-    }
-}
-
-
 // READ (all with pagination and filters)
 export async function getArticles(options?: {
   pageSize?: number;
   startAfterDocId?: string | null;
   categorySlug?: string;
   districtId?: string;
-  allCategories?: Category[];
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 10, startAfterDocId, categorySlug, districtId, allCategories = [] } = options || {};
-
-    let categoriesToUse = allCategories;
-    if (categoriesToUse.length === 0) {
-        categoriesToUse = await getCategories();
-    }
+    const { pageSize = 100, startAfterDocId, categorySlug, districtId } = options || {};
 
     try {
         const constraints: QueryConstraint[] = [
@@ -216,16 +100,6 @@ export async function getArticles(options?: {
             orderBy('publishedAt', 'desc'),
         ];
         
-        if (categorySlug && categorySlug !== 'all') {
-            const categoryId = categoriesToUse.find(c => c.slug === categorySlug)?.id;
-            if (categoryId) {
-                constraints.push(where('categoryIds', 'array-contains', categoryId));
-            }
-        }
-        if (districtId && districtId !== 'all') {
-            constraints.push(where('districtId', '==', districtId));
-        }
-
         if (startAfterDocId) {
             const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
             if (startAfterDoc.exists()) {
@@ -246,13 +120,6 @@ export async function getArticles(options?: {
             lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null,
         };
     } catch (error: any) {
-        if (error.code === 'failed-precondition') {
-            const devError = new Error(`[DEVELOPER INFO] A Firestore composite index is required for this query to work. The app will not crash, but no articles were returned. Please create the index using the link from the browser console, or by inspecting the full error object: ${error.message}`);
-            console.error(devError);
-            // Re-throw to be caught by the calling page component
-            throw devError;
-        }
-        // Re-throw other errors
         console.error("An unexpected error occurred in getArticles:", error);
         throw error;
     }

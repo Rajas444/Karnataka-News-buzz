@@ -12,8 +12,6 @@ import CommunityHighlights from '@/components/posts/CommunityHighlights';
 import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
-import { fetchAndStoreNews } from '@/services/news';
-import { getDoc } from 'firebase/firestore';
 
 type HomePageProps = {
   searchParams?: {
@@ -41,22 +39,21 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const districtName = districts.find(d => d.id === districtId)?.name;
 
   try {
-    // Attempt to fetch fresh news in the background. This won't block the page render.
-    // Errors are handled inside the function and logged to the console.
-    fetchAndStoreNews(categorySlug, districtName, districtId);
-  } catch (e: any) {
-    console.error(`Failed to fetch news from external API: ${e.message}`);
-  }
-
-  try {
     const { articles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
       pageSize: 10,
       categorySlug,
       districtId,
-      allCategories: categories,
     });
     initialArticles = articles;
     lastVisibleDocId = newLastVisibleDocId;
+
+    // Apply secondary filtering in code
+    if (categorySlug && districtId && categorySlug !== 'all' && districtId !== 'all') {
+      const categoryId = categories.find(c => c.slug === categorySlug)?.id;
+      if (categoryId) {
+        initialArticles = initialArticles.filter(article => article.categoryIds.includes(categoryId));
+      }
+    }
 
   } catch (e: any) {
     error = e.message || 'An unknown error occurred while fetching articles from the database.';

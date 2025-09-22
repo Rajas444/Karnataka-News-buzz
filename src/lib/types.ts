@@ -65,51 +65,6 @@ export const articleFormSchema = z.object({
 
 export type ArticleFormValues = z.infer<typeof articleFormSchema>;
 
-// Types for Newsdata.io
-export interface NewsdataArticle {
-  article_id: string;
-  title: string;
-  link: string;
-  description: string | null;
-  image_url: string | null;
-  pubDate: string;
-  source_id: string;
-  category: string[];
-  country: string[];
-  language: string;
-  creator: string[] | null;
-  content: string | null;
-  keywords: string[] | null;
-}
-
-export interface NewsdataResponse {
-  status: string;
-  totalResults: number;
-  results: NewsdataArticle[];
-  nextPage: string | null;
-}
-
-
-// Types for GNews
-export interface GnewsArticle {
-  title: string;
-  description: string;
-  content: string;
-  url: string;
-  image: string;
-  publishedAt: string;
-  source: {
-    name: string;
-    url: string;
-  };
-}
-
-export interface GnewsResponse {
-  totalArticles: number;
-  articles: GnewsArticle[];
-}
-
-
 // Types for Jobs
 export type JobType = 'Government' | 'Private' | 'Fresher' | 'Internship';
 

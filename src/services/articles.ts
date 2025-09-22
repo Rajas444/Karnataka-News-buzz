@@ -25,7 +25,18 @@ async function serializeArticle(doc: DocumentSnapshot): Promise<Article> {
 
     return {
         id: doc.id,
-        ...data,
+        title: data.title,
+        content: data.content, // Ensure content is explicitly included
+        imageUrl: data.imageUrl,
+        imagePath: data.imagePath,
+        author: data.author,
+        authorId: data.authorId,
+        categoryIds: data.categoryIds,
+        status: data.status,
+        seo: data.seo,
+        views: data.views,
+        sourceUrl: data.sourceUrl,
+        districtId: data.districtId,
         publishedAt: data.publishedAt ? (data.publishedAt as Timestamp).toDate().toISOString() : null,
         createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate().toISOString() : null,
         updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate().toISOString() : null,
@@ -92,7 +103,7 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
+    const { pageSize = 1000, startAfterDocId, categorySlug, districtId } = options || {}; // Fetch all by default now
 
     try {
         const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'));
@@ -116,14 +127,11 @@ export async function getArticles(options?: {
         }
         
         // Manual pagination on the filtered list
-        let paginatedArticles = filteredArticles;
-        let newLastVisibleDocId: string | null = null;
-        
         const startIndex = startAfterDocId ? filteredArticles.findIndex(a => a.id === startAfterDocId) + 1 : 0;
-        
-        paginatedArticles = filteredArticles.slice(startIndex, startIndex + pageSize);
+        const paginatedArticles = filteredArticles.slice(startIndex, startIndex + (options?.pageSize || 10));
 
-        if (filteredArticles.length > startIndex + pageSize) {
+        let newLastVisibleDocId: string | null = null;
+        if (filteredArticles.length > startIndex + (options?.pageSize || 10)) {
             newLastVisibleDocId = paginatedArticles[paginatedArticles.length - 1]?.id;
         }
 

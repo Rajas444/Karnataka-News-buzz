@@ -12,6 +12,7 @@ import CommunityHighlights from '@/components/posts/CommunityHighlights';
 import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
+import { placeholderArticles } from '@/lib/placeholder-data';
 
 type HomePageProps = {
   searchParams?: {
@@ -51,8 +52,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     console.error("Error fetching initial articles:", error);
   }
 
+  const topArticle = placeholderArticles.length > 0 ? placeholderArticles[0] : (initialArticles.length > 0 ? initialArticles[0] : null);
+  
+  if (topArticle && topArticle.id === initialArticles[0]?.id) {
+    initialArticles.shift();
+  }
 
-  const topArticle = initialArticles.length > 0 ? initialArticles[0] : null;
 
   const renderErrorState = () => (
     <div className="text-center bg-card p-8 rounded-lg">

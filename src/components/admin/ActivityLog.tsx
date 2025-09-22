@@ -22,7 +22,7 @@ export default function ActivityLog() {
             {activities.map((activity, index) => (
                 <div key={index} className="flex items-start gap-4">
                     <Avatar className="h-9 w-9">
-                        <AvatarImage src={`https://picsum.photos/seed/${activity.avatarSeed}/40/40`} alt="Avatar" />
+                        <AvatarImage src={`https://picsum.photos/seed/${activity.avatarSeed}/40/40`} alt="Avatar" data-ai-hint="people" />
                         <AvatarFallback>{activity.user.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="grid gap-1">

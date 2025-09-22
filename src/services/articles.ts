@@ -91,7 +91,7 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 1000, startAfterDocId } = options || {}; // Fetch a large number to filter in-memory
+    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
 
     try {
         const constraints: QueryConstraint[] = [
@@ -110,6 +110,21 @@ export async function getArticles(options?: {
         const snapshot = await getDocs(q);
 
         let articles = await Promise.all(snapshot.docs.map(serializeArticle));
+
+        // Filter in-code to avoid index dependency
+        articles = articles.filter(article => article.status === 'published');
+        
+        if (categorySlug && categorySlug !== 'all') {
+            const categories = await getCategories();
+            const categoryId = categories.find(c => c.slug === categorySlug)?.id;
+            if (categoryId) {
+                articles = articles.filter(article => article.categoryIds.includes(categoryId));
+            }
+        }
+
+        if (districtId && districtId !== 'all') {
+            articles = articles.filter(article => article.districtId === districtId);
+        }
         
         const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
 
@@ -118,20 +133,7 @@ export async function getArticles(options?: {
             lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null,
         };
     } catch (error: any) {
-        console.error("Error fetching articles from Firestore:", error);
-         if (error.code === 'failed-precondition') {
-            console.error(`
-                **********************************************************************************
-                * FIRESTORE ERROR: A composite index is required for this query.
-                * Message: ${error.message}
-                * To fix this, create the index in your Firebase console. The link is usually
-                * provided in the error message in your browser's developer console.
-                * The app will not crash, but the query returned no results.
-                **********************************************************************************
-            `);
-        } else {
-            console.error("An unexpected error occurred in getArticles:", error);
-        }
+        console.error("An unexpected error occurred in getArticles:", error);
         return { articles: [], lastVisibleDocId: null };
     }
 }

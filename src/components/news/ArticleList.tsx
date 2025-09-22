@@ -59,11 +59,13 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
             if (change.type === 'added') {
                 const newArticle = { id: change.doc.id, ...change.doc.data() } as Article;
                 // Avoid adding duplicates if the article is already in the list
-                if (!articles.find(a => a.id === newArticle.id)) {
-                    // This is a simplified update. For a full real-time experience,
-                    // you might want to insert it at the top and handle state more carefully.
-                    console.log("New article detected:", newArticle.title);
-                }
+                setArticles(prev => {
+                    if (prev.find(a => a.id === newArticle.id)) {
+                        return prev;
+                    }
+                    console.log("New article detected, prepending to list:", newArticle.title);
+                    return [newArticle, ...prev];
+                });
             }
         });
     }, (error) => {
@@ -82,19 +84,11 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       const { articles: newArticles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
         pageSize: 10,
         startAfterDocId: lastVisibleDocId,
+        categorySlug,
+        districtId,
       });
-
-      // Manually filter the newly fetched articles since getArticles fetches a broad list
-      let filteredNewArticles = newArticles.filter(article => article.status === 'published');
-       const categoryId = allCategories.find(c => c.slug === categorySlug)?.id;
-      if (categoryId && categorySlug !== 'all') {
-        filteredNewArticles = filteredNewArticles.filter(article => article.categoryIds.includes(categoryId));
-      }
-      if (districtId && districtId !== 'all') {
-        filteredNewArticles = filteredNewArticles.filter(article => article.districtId === districtId);
-      }
       
-      setArticles(prev => [...prev, ...filteredNewArticles]);
+      setArticles(prev => [...prev, ...newArticles]);
       setLastVisibleDocId(newLastVisibleDocId);
       setHasMore(newArticles.length > 0 && newLastVisibleDocId !== null);
 
@@ -104,7 +98,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, lastVisibleDocId, toast, categorySlug, districtId, allCategories]);
+  }, [hasMore, loadingMore, lastVisibleDocId, toast, categorySlug, districtId]);
   
   if (articles.length === 0) {
     return (

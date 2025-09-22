@@ -51,6 +51,27 @@ export const placeholderCategories: Category[] = [
 
 export const placeholderArticles: Article[] = [
   {
+    id: 'karnataka-caste-census-2025',
+    title: 'Karnataka Kicks Off Social and Educational Survey for 2025',
+    content: `The Karnataka State Backward Classes Commission has officially launched its comprehensive Social and Educational Survey for 2025. Commonly referred to as the caste census, the massive data collection drive has begun with its initial house-listing phase across the state.\n\nEnumerators are visiting households to issue a Unique Household ID (UHID) by affixing a sticker, as seen in recent photos from Bengaluru. These stickers include the UHID, a survey ID, a QR code, and a dedicated helpline number (8050770004) for public queries. Residents are urged not to remove the stickers to ensure a smooth data collection process.\n\nThe survey aims to gather detailed data on the social and educational status of all communities in Karnataka. The findings of this census are expected to play a crucial role in shaping future reservation policies and welfare programs in the state.`,
+    imageUrl: 'https://static.langimg.com/vk/thumb/124031211/caste-census-begins-in-karnataka-decision-made-to-collect-data-in-3-ways-submission-of-these-2-documents-is-mandatory.jpg?height=900&imgsize=66932&resizemode=75&width=1600',
+    "data-ai-hint": 'census survey',
+    author: 'KNP Staff Reporter',
+    authorId: 'staff-1',
+    categoryIds: ['politics', 'society-community'],
+    status: 'published',
+    publishedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    seo: {
+      keywords: ['caste census', 'Karnataka', 'survey', 'Backward Classes Commission', '2025'],
+      metaDescription: 'The Karnataka State Backward Classes Commission has begun its 2025 Social and Educational Survey, with the house-listing phase now underway to collect data for future policies.',
+    },
+    views: 2840,
+    districtId: 'bengaluru-urban',
+    district: 'Bengaluru Urban',
+  },
+  {
     id: 'world-aids-day-rally-udupi',
     title: 'World AIDS Day: Awareness Rally Held in Udupi to Promote HIV Prevention',
     content: `On the occasion of World AIDS Day, an awareness rally was organized in Udupi by the District Health and Family Welfare Department in collaboration with various non-governmental organizations. The rally, which saw participation from healthcare workers, students, and the general public, was flagged off from the District Hospital premises.\n\nParticipants marched through the city, holding placards and banners with slogans emphasizing the importance of HIV testing, safe practices, and the elimination of stigma and discrimination against people living with HIV. The event aimed to reinforce the message that with advancements in treatment, HIV is a manageable health condition and that community support is crucial.\n\nSpeaking at the event, the District Health Officer highlighted the progress made in HIV prevention and care but stressed the need for continued vigilance. "Our goal is to create a future where new HIV infections are a thing of the past. Events like these are vital to keep the conversation alive and ensure everyone has access to the information and services they need," he said.`,
@@ -60,9 +81,9 @@ export const placeholderArticles: Article[] = [
     authorId: 'staff-1',
     categoryIds: ['health-lifestyle', 'society-community'],
     status: 'published',
-    publishedAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    publishedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     seo: {
       keywords: ['HIV', 'AIDS', 'World AIDS Day', 'Udupi', 'Health'],
       metaDescription: 'An awareness rally was held in Udupi on World AIDS Day to promote HIV prevention, testing, and community support, with healthcare workers and the public participating.',

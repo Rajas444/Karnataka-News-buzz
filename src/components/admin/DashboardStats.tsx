@@ -21,16 +21,16 @@ export default function DashboardStats() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const [articles, categories, users] = await Promise.all([
+        const [articlesData, categories, users] = await Promise.all([
           getArticles({ pageSize: 1000 }), // Fetch all to get a count
           getCategories(),
           getUsers(),
         ]);
         
-        const totalViews = articles.reduce((sum, article) => sum + (article.views || 0), 0);
+        const totalViews = articlesData.articles.reduce((sum, article) => sum + (article.views || 0), 0);
 
         setStats({
-          totalArticles: articles.length,
+          totalArticles: articlesData.articles.length,
           totalCategories: categories.length,
           totalUsers: users.length,
           totalViews: totalViews,

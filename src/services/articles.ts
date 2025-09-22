@@ -3,7 +3,7 @@
 'use server';
 
 import { db, storage } from '@/lib/firebase';
-import type { Article, ArticleFormValues, NewsdataArticle } from '@/lib/types';
+import type { Article, ArticleFormValues, NewsdataArticle, Category } from '@/lib/types';
 import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint, Timestamp, limit, startAfter, writeBatch, DocumentSnapshot } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
@@ -199,14 +199,28 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 export async function getArticles(options?: {
     pageSize?: number;
     startAfterDocId?: string;
-    category?: string;
-    district?: string;
+    category?: string; // slug
+    district?: string; // id
 }): Promise<{articles: Article[], lastVisibleDocId: string | null}> {
     const { pageSize = 10, startAfterDocId, category, district } = options || {};
+    let allCategories: Category[] = [];
 
     let constraints: QueryConstraint[] = [
+        where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
     ];
+
+    if (category && category !== 'all') {
+        if (allCategories.length === 0) allCategories = await getCategories();
+        const categoryId = allCategories.find(c => c.slug === category)?.id;
+        if (categoryId) {
+            constraints.push(where('categoryIds', 'array-contains', categoryId));
+        }
+    }
+
+    if (district && district !== 'all') {
+        constraints.push(where('districtId', '==', district));
+    }
     
     if (startAfterDocId) {
         const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
@@ -214,16 +228,14 @@ export async function getArticles(options?: {
              constraints.push(startAfter(startAfterDoc));
         }
     }
-
-    const fetchLimit = pageSize;
-    constraints.push(limit(fetchLimit));
+    
+    constraints.push(limit(pageSize));
     
     try {
         const q = query(collection(db, 'articles'), ...constraints);
         const snapshot = await getDocs(q);
         
-        const articles = (await Promise.all(snapshot.docs.map(serializeArticle)))
-            .filter(article => article.status === 'published');
+        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
         const lastVisibleDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
 
@@ -231,6 +243,8 @@ export async function getArticles(options?: {
 
     } catch (error: any) {
         console.error("An unexpected error occurred in getArticles:", error);
+        // This is where a missing index error would be caught.
+        // We re-throw it to let the caller (e.g., the page) handle it.
         throw error;
     }
 }

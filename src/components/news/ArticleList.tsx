@@ -37,6 +37,12 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   const [hasMore, setHasMore] = useState(initialArticles.length > 0 && initialLastVisibleDocId !== null);
   const [realtimeError, setRealtimeError] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  const categoryId = useMemo(() => {
+    return categorySlug && categorySlug !== 'all' 
+      ? allCategories.find(c => c.slug === categorySlug)?.id 
+      : null;
+  }, [categorySlug, allCategories]);
 
   useEffect(() => {
     setArticles(initialArticles);
@@ -62,26 +68,32 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     setRealtimeError(null);
 
-    // This is a simple, universal query that will not fail due to missing indexes.
-    // It fetches the most recent articles, and we filter them on the client.
-    const q = query(collection(db, "articles"), 
+    let constraints: QueryConstraint[] = [
+        where('status', '==', 'published'),
         orderBy("publishedAt", "desc"),
         limit(20) 
-    );
+    ];
+
+    if (categoryId) {
+        constraints.push(where('categoryIds', 'array-contains', categoryId));
+    }
+    if (districtId && districtId !== 'all') {
+        constraints.push(where('districtId', '==', districtId));
+    }
+
+    const q = query(collection(db, "articles"), ...constraints);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const updatedArticles: Article[] = [];
         snapshot.forEach(doc => {
             const data = doc.data();
-             if (data.status === 'published') {
-                updatedArticles.push({
-                    id: doc.id,
-                    ...data,
-                    publishedAt: data.publishedAt?.toDate().toISOString(),
-                    createdAt: data.createdAt?.toDate().toISOString(),
-                    updatedAt: data.updatedAt?.toDate().toISOString(),
-                } as Article);
-            }
+            updatedArticles.push({
+                id: doc.id,
+                ...data,
+                publishedAt: data.publishedAt?.toDate().toISOString(),
+                createdAt: data.createdAt?.toDate().toISOString(),
+                updatedAt: data.updatedAt?.toDate().toISOString(),
+            } as Article);
         });
 
         setArticles(prev => {
@@ -102,12 +114,12 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     }, (error: any) => {
         console.error("Real-time update failed:", error);
-        setRealtimeError("Could not get live news updates.");
+        setRealtimeError("A database index is required for this filter combination. Live updates may be incomplete.");
         if(loading) setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [loading]);
+  }, [loading, categoryId, districtId]);
 
 
   const handleLoadMore = useCallback(async () => {
@@ -118,6 +130,8 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       const { articles: newArticles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
         pageSize: 10,
         startAfterDocId: lastVisibleDocId,
+        category: categorySlug,
+        district: districtId,
       });
       
       setArticles(prev => [...prev, ...newArticles]);
@@ -130,22 +144,9 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, lastVisibleDocId, toast]);
+  }, [hasMore, loadingMore, lastVisibleDocId, toast, categorySlug, districtId]);
   
-
-  const filteredArticles = useMemo(() => {
-    const categoryId = categorySlug && categorySlug !== 'all' 
-      ? allCategories.find(c => c.slug === categorySlug)?.id 
-      : null;
-
-    return articles.filter(article => {
-      const categoryMatch = !categoryId || (article.categoryIds && article.categoryIds.includes(categoryId));
-      const districtMatch = !districtId || districtId === 'all' || article.districtId === districtId;
-      return categoryMatch && districtMatch;
-    });
-  }, [articles, categorySlug, districtId, allCategories]);
-
-  if (loading && filteredArticles.length === 0) {
+  if (loading && articles.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -153,7 +154,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     )
   }
 
-  if (!loading && filteredArticles.length === 0) {
+  if (!loading && articles.length === 0) {
     return (
       <div className="text-center py-12 bg-card rounded-lg">
         <h2 className="text-2xl font-bold mb-4 font-kannada">No Articles Found</h2>
@@ -173,11 +174,11 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {filteredArticles.map((article) => (
+        {articles.map((article) => (
           <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
         ))}
       </div>
-      {hasMore && filteredArticles.length > 0 && (
+      {hasMore && articles.length > 0 && (
         <div className="text-center mt-8">
           <Button onClick={handleLoadMore} disabled={loadingMore}>
             {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -188,5 +189,3 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     </div>
   );
 }
-
-    

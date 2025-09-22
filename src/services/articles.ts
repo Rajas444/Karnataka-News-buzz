@@ -42,7 +42,7 @@ async function serializeArticle(doc: DocumentSnapshot): Promise<Article> {
 
 
 // CREATE (from Article Form)
-export async function createArticle(data: ArticleFormValues & { categoryIds: string[] }): Promise<Article> {
+export async function createArticle(data: ArticleFormValues & { categoryIds: string[], districtId?: string }): Promise<Article> {
   let imageUrl = data.imageUrl || null;
   let imagePath = '';
 
@@ -91,11 +91,12 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
+    const { pageSize = 1000, startAfterDocId } = options || {}; // Fetch a large number to filter in-memory
 
     try {
         const constraints: QueryConstraint[] = [
              orderBy('publishedAt', 'desc'),
+             limit(pageSize),
         ];
         
         if (startAfterDocId) {
@@ -105,14 +106,10 @@ export async function getArticles(options?: {
             }
         }
         
-        constraints.push(limit(pageSize));
-
         const q = query(collection(db, 'articles'), ...constraints);
         const snapshot = await getDocs(q);
 
         let articles = await Promise.all(snapshot.docs.map(serializeArticle));
-        
-        articles = articles.filter(article => article.status === 'published');
         
         const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
 
@@ -122,6 +119,19 @@ export async function getArticles(options?: {
         };
     } catch (error: any) {
         console.error("Error fetching articles from Firestore:", error);
+         if (error.code === 'failed-precondition') {
+            console.error(`
+                **********************************************************************************
+                * FIRESTORE ERROR: A composite index is required for this query.
+                * Message: ${error.message}
+                * To fix this, create the index in your Firebase console. The link is usually
+                * provided in the error message in your browser's developer console.
+                * The app will not crash, but the query returned no results.
+                **********************************************************************************
+            `);
+        } else {
+            console.error("An unexpected error occurred in getArticles:", error);
+        }
         return { articles: [], lastVisibleDocId: null };
     }
 }
@@ -142,7 +152,7 @@ export async function getArticle(id: string): Promise<Article | null> {
 }
 
 // UPDATE
-export async function updateArticle(id: string, data: ArticleFormValues & { categoryIds: string[] }): Promise<Article> {
+export async function updateArticle(id: string, data: ArticleFormValues & { categoryIds: string[], districtId?: string }): Promise<Article> {
   const docRef = doc(db, 'articles', id);
   let imageUrl = data.imageUrl || null;
   let imagePath = data.imagePath || '';
@@ -227,8 +237,8 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
              // Fallback: Fetch by category only, sorting is lost but it won't crash
             const fallbackQuery = query(
                 articlesCollection,
-                where('status', '==', 'published'),
                 where('categoryIds', 'array-contains', categoryId),
+                 where('status', '==', 'published'),
                 limit(4)
             );
             const snapshot = await getDocs(fallbackQuery);

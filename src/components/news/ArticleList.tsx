@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
-import { Loader2, ShieldAlert } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import type { Article, Category } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getCategories } from '@/services/categories';
@@ -15,11 +15,6 @@ import {
   collection,
   orderBy,
   limit,
-  where,
-  QueryConstraint,
-  startAfter,
-  getDocs,
-  doc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -56,6 +51,27 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       }
     }
     fetchInitialData();
+
+    // Simplified Real-time listener for new articles
+    const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'), limit(1));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+                const newArticle = { id: change.doc.id, ...change.doc.data() } as Article;
+                // Avoid adding duplicates if the article is already in the list
+                if (!articles.find(a => a.id === newArticle.id)) {
+                    // This is a simplified update. For a full real-time experience,
+                    // you might want to insert it at the top and handle state more carefully.
+                    console.log("New article detected:", newArticle.title);
+                }
+            }
+        });
+    }, (error) => {
+        console.error("Real-time update failed:", error);
+    });
+
+    return () => unsubscribe();
+
   }, []);
 
   const handleLoadMore = useCallback(async () => {
@@ -66,25 +82,25 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       const { articles: newArticles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
         pageSize: 10,
         startAfterDocId: lastVisibleDocId,
-        categorySlug: categorySlug,
-        districtId: districtId,
       });
+
+      // Manually filter the newly fetched articles since getArticles fetches a broad list
+      let filteredNewArticles = newArticles.filter(article => article.status === 'published');
+       const categoryId = allCategories.find(c => c.slug === categorySlug)?.id;
+      if (categoryId && categorySlug !== 'all') {
+        filteredNewArticles = filteredNewArticles.filter(article => article.categoryIds.includes(categoryId));
+      }
+      if (districtId && districtId !== 'all') {
+        filteredNewArticles = filteredNewArticles.filter(article => article.districtId === districtId);
+      }
       
-      setArticles(prev => [...prev, ...newArticles]);
+      setArticles(prev => [...prev, ...filteredNewArticles]);
       setLastVisibleDocId(newLastVisibleDocId);
       setHasMore(newArticles.length > 0 && newLastVisibleDocId !== null);
 
     } catch (error: any) {
       console.error("Failed to load more articles", error);
-      if (error.code === 'failed-precondition' || error.message?.includes('index')) {
-          toast({ 
-              title: "Filter query requires a database index", 
-              description: "Live updates for this filter combination may be incomplete.",
-              variant: "destructive" 
-          });
-      } else {
-        toast({ title: "Failed to load more news", variant: "destructive" });
-      }
+      toast({ title: "Failed to load more news", variant: "destructive" });
     } finally {
       setLoadingMore(false);
     }

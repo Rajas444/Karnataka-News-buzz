@@ -91,7 +91,7 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 100, startAfterDocId, categorySlug, districtId } = options || {};
+    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
 
     try {
         const constraints: QueryConstraint[] = [
@@ -112,9 +112,8 @@ export async function getArticles(options?: {
 
         let articles = await Promise.all(snapshot.docs.map(serializeArticle));
         
-        // Post-fetch filtering
         articles = articles.filter(article => article.status === 'published');
-
+        
         const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
 
         return {
@@ -123,7 +122,7 @@ export async function getArticles(options?: {
         };
     } catch (error: any) {
         console.error("Error fetching articles from Firestore:", error);
-        throw error;
+        return { articles: [], lastVisibleDocId: null };
     }
 }
 

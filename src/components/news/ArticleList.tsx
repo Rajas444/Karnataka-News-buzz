@@ -16,8 +16,6 @@ import {
   collection,
   orderBy,
   limit,
-  where,
-  QueryConstraint
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -76,10 +74,10 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        const updatedArticles: Article[] = [];
+        const liveArticles: Article[] = [];
         snapshot.forEach(doc => {
             const data = doc.data();
-            updatedArticles.push({
+            liveArticles.push({
                 id: doc.id,
                 ...data,
                 publishedAt: data.publishedAt?.toDate().toISOString(),
@@ -87,16 +85,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
                 updatedAt: data.updatedAt?.toDate().toISOString(),
             } as Article);
         });
-        
-        // Apply filtering client-side
-        let liveArticles = updatedArticles.filter(a => a.status === 'published');
-        if (categoryId) {
-            liveArticles = liveArticles.filter(a => a.categoryIds?.includes(categoryId));
-        }
-        if (districtId && districtId !== 'all') {
-            liveArticles = liveArticles.filter(a => a.districtId === districtId);
-        }
-
 
         setArticles(prev => {
             const allArticlesMap = new Map();
@@ -108,8 +96,10 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
                     allArticlesMap.set(article.id, article);
                 }
             });
+
+            let finalArticles = Array.from(allArticlesMap.values()).filter(a => a.status === 'published');
+            
             // Re-apply filters to the merged list to ensure consistency
-            let finalArticles = Array.from(allArticlesMap.values());
             if (categoryId) {
                 finalArticles = finalArticles.filter(a => a.categoryIds?.includes(categoryId));
             }

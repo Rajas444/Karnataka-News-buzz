@@ -65,7 +65,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     // This is a simple, universal query that will not fail due to missing indexes.
     // It fetches the most recent articles, and we filter them on the client.
     const q = query(collection(db, "articles"), 
-        where('status', '==', 'published'),
         orderBy("publishedAt", "desc"),
         limit(20) 
     );
@@ -74,13 +73,15 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
         const updatedArticles: Article[] = [];
         snapshot.forEach(doc => {
             const data = doc.data();
-            updatedArticles.push({
-                id: doc.id,
-                ...data,
-                publishedAt: data.publishedAt?.toDate().toISOString(),
-                createdAt: data.createdAt?.toDate().toISOString(),
-                updatedAt: data.updatedAt?.toDate().toISOString(),
-            } as Article);
+             if (data.status === 'published') {
+                updatedArticles.push({
+                    id: doc.id,
+                    ...data,
+                    publishedAt: data.publishedAt?.toDate().toISOString(),
+                    createdAt: data.createdAt?.toDate().toISOString(),
+                    updatedAt: data.updatedAt?.toDate().toISOString(),
+                } as Article);
+            }
         });
 
         setArticles(prev => {
@@ -117,8 +118,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       const { articles: newArticles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
         pageSize: 10,
         startAfterDocId: lastVisibleDocId,
-        category: categorySlug,
-        district: districtId,
       });
       
       setArticles(prev => [...prev, ...newArticles]);
@@ -131,7 +130,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, lastVisibleDocId, categorySlug, districtId, toast]);
+  }, [hasMore, loadingMore, lastVisibleDocId, toast]);
   
 
   const filteredArticles = useMemo(() => {
@@ -178,7 +177,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
           <ArticleCard key={article.id || article.sourceUrl} article={article} allCategories={allCategories} />
         ))}
       </div>
-      {hasMore && (
+      {hasMore && filteredArticles.length > 0 && (
         <div className="text-center mt-8">
           <Button onClick={handleLoadMore} disabled={loadingMore}>
             {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

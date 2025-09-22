@@ -204,7 +204,6 @@ export async function getArticles(options?: {
 }): Promise<{articles: Article[], lastVisibleDocId: string | null}> {
     const { pageSize = 10, startAfterDocId, category, district } = options || {};
 
-    // Base query - sort by published date. Avoids index errors.
     let constraints: QueryConstraint[] = [
         orderBy('publishedAt', 'desc'),
     ];
@@ -216,32 +215,19 @@ export async function getArticles(options?: {
         }
     }
 
-    // Fetch a larger batch size to allow for in-memory filtering.
-    // This is a tradeoff to avoid index errors. We fetch more docs and filter them in the application.
-    const fetchLimit = (category && category !== 'all') || (district && district !== 'all') ? pageSize * 5 : pageSize;
+    const fetchLimit = pageSize;
     constraints.push(limit(fetchLimit));
     
     try {
         const q = query(collection(db, 'articles'), ...constraints);
         const snapshot = await getDocs(q);
-
-        const allFetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
         
-        // In-memory filtering
-        const allCategories = (category && category !== 'all') ? await getCategories() : [];
-        const categoryDocId = category && category !== 'all' ? allCategories.find(c => c.slug === category)?.id : null;
+        const articles = (await Promise.all(snapshot.docs.map(serializeArticle)))
+            .filter(article => article.status === 'published');
 
-        const filteredArticles = allFetchedArticles.filter(article => {
-            if (article.status !== 'published') return false;
-            const categoryMatch = !categoryDocId || article.categoryIds?.includes(categoryDocId);
-            const districtMatch = !district || district === 'all' || article.districtId === district;
-            return categoryMatch && districtMatch;
-        });
+        const lastVisibleDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
 
-        const articles = filteredArticles.slice(0, pageSize);
-        const lastVisibleDocId = articles.length > 0 && filteredArticles.length > pageSize ? articles[articles.length - 1].id : null;
-
-        return { articles, lastVisibleDocId: lastVisibleDocId };
+        return { articles, lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null };
 
     } catch (error: any) {
         console.error("An unexpected error occurred in getArticles:", error);
@@ -365,5 +351,3 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         }
     }
 }
-
-    

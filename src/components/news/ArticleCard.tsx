@@ -29,6 +29,17 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
     }
   };
 
+  const getPublishedDate = () => {
+    if (!article.publishedAt) return 'Just now';
+    
+    // Handle both ISO string from server and Firebase Timestamp from client-side updates
+    const date = typeof article.publishedAt === 'string' 
+        ? new Date(article.publishedAt)
+        : (article.publishedAt as any).toDate();
+        
+    return formatDistanceToNow(date, { addSuffix: true });
+  }
+
   const articleContent = (
      <Card 
       className="flex flex-col h-full overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer"
@@ -62,7 +73,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
          <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                <span>{article.publishedAt ? formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true }) : 'Just now'}</span>
+                <span>{getPublishedDate()}</span>
             </div>
             {article.district && (
                  <div className="flex items-center gap-1">

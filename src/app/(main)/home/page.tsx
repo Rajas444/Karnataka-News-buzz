@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
-import type { Article } from '@/lib/types';
+import type { Article, Category } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
 import FilterControls from '@/components/news/FilterControls';
 import { getCategories } from '@/services/categories';
@@ -23,9 +23,9 @@ type HomePageProps = {
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
-  let initialArticles: Article[] = [];
+  let allFetchedArticles: Article[] = [];
   let error: string | null = null;
-  let categories = [];
+  let categories: Category[] = [];
   let districts = [];
   let lastVisibleDocId: string | null = null;
 
@@ -33,13 +33,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const districtId = searchParams?.district;
 
   try {
-      categories = await getCategories();
-      districts = await getDistricts();
+    categories = await getCategories();
+    districts = await getDistricts();
   } catch (e) {
-      console.error("Failed to fetch filters data", e);
+    console.error("Failed to fetch filters data", e);
   }
 
   const districtName = districts.find(d => d.id === districtId)?.name;
+  const categoryId = categories.find(c => c.slug === categorySlug)?.id;
 
   try {
     // Attempt to fetch fresh news in the background. This won't block the page render.
@@ -50,20 +51,31 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   try {
-    // Fetch initial articles for server-side rendering
-    const { articles, lastVisibleDoc } = await getArticles({ category: categorySlug, district: districtId, pageSize: 10 });
-    initialArticles = articles;
-    
-    // We only pass the ID of the document, not the whole object, to avoid serialization errors.
-    if(lastVisibleDoc) {
-        lastVisibleDocId = lastVisibleDoc.id;
+    // Fetch a broad set of articles based on the primary filter
+    const { articles, lastVisibleDoc } = await getArticles({
+      category: categorySlug,
+      district: districtId,
+      pageSize: 100, // Fetch more to allow for in-code filtering
+    });
+    allFetchedArticles = articles;
+
+    if (lastVisibleDoc) {
+      lastVisibleDocId = lastVisibleDoc.id;
     }
 
   } catch (e: any) {
-     error = e.message || 'An unknown error occurred while fetching articles from the database.';
-     console.error("Error fetching initial articles:", error);
+    error = e.message || 'An unknown error occurred while fetching articles from the database.';
+    console.error("Error fetching initial articles:", error);
   }
-  
+
+  // Apply secondary filtering in code
+  const initialArticles = allFetchedArticles.filter(article => {
+    const hasCategory = !categoryId || categoryId === 'all' || (article.categoryIds && article.categoryIds.includes(categoryId));
+    const hasDistrict = !districtId || districtId === 'all' || article.districtId === districtId;
+    return hasCategory && hasDistrict;
+  }).slice(0, 10); // Take the first 10 for the initial page load
+
+
   const topArticle = initialArticles.length > 0 ? initialArticles[0] : null;
 
   const renderErrorState = () => (

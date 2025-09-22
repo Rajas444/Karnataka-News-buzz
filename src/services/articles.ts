@@ -197,63 +197,48 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 
 // READ (all with pagination and filters)
 export async function getArticles(options?: {
-    pageSize?: number;
-    startAfterDocId?: string;
-    category?: string; // slug
-    district?: string; // id
-}): Promise<{articles: Article[], lastVisibleDocId: string | null}> {
-    const { pageSize = 10, startAfterDocId, category, district } = options || {};
+  pageSize?: number;
+  startAfterDocId?: string;
+  category?: string; // slug
+  district?: string; // id
+}): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
+  const { pageSize = 100, startAfterDocId, category, district } = options || {};
 
-    let constraints: QueryConstraint[] = [
-        where('status', '==', 'published'),
-    ];
+  let constraints: QueryConstraint[] = [where('status', '==', 'published')];
 
-    try {
-        // This is the key change: We build a query that Firestore can handle without a custom index for simple cases.
-        // If BOTH category and district are specified, the query might require an index. The catch block will handle this.
-        
-        // Add filters if they are provided and not 'all'
-        if (category && category !== 'all') {
-            const allCategories = await getCategories();
-            const categoryId = allCategories.find(c => c.slug === category)?.id;
-            if (categoryId) {
-                constraints.push(where('categoryIds', 'array-contains', categoryId));
-            }
-        }
-
-        if (district && district !== 'all') {
-            constraints.push(where('districtId', '==', district));
-        }
-
-        // The orderBy must be the last field in the query constraints for startAfter to work correctly
-        constraints.push(orderBy('publishedAt', 'desc'));
-
-        if (startAfterDocId) {
-            const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
-            if (startAfterDoc.exists()) {
-                constraints.push(startAfter(startAfterDoc));
-            }
-        }
-        
-        constraints.push(limit(pageSize));
-    
-        const q = query(collection(db, 'articles'), ...constraints);
-        const snapshot = await getDocs(q);
-        
-        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
-        const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
-
-        return { articles, lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null };
-
-    } catch (error: any) {
-        if (error.code === 'failed-precondition') {
-             // This is a graceful failure. Log a clear message for the developer and return empty.
-             console.error(`[DEVELOPER INFO] A Firestore composite index is required for this query to work. The app will not crash, but no articles were returned. Please create the index using the link from the browser console, or by inspecting the full error object: ${error.message}`);
-             return { articles: [], lastVisibleDocId: null };
-        }
-        // For any other type of error, re-throw it so it can be debugged.
-        throw error;
+  // Prioritize the most specific filter to avoid composite index errors.
+  // We will apply the second filter in the application code.
+  if (district && district !== 'all') {
+    constraints.push(where('districtId', '==', district));
+  } else if (category && category !== 'all') {
+    const allCategories = await getCategories();
+    const categoryId = allCategories.find((c) => c.slug === category)?.id;
+    if (categoryId) {
+      constraints.push(where('categoryIds', 'array-contains', categoryId));
     }
+  }
+
+  constraints.push(orderBy('publishedAt', 'desc'));
+
+  if (startAfterDocId) {
+    const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
+    if (startAfterDoc.exists()) {
+      constraints.push(startAfter(startAfterDoc));
+    }
+  }
+
+  constraints.push(limit(pageSize));
+
+  const q = query(collection(db, 'articles'), ...constraints);
+  const snapshot = await getDocs(q);
+
+  const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+  const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+
+  return {
+    articles,
+    lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null,
+  };
 }
 
 

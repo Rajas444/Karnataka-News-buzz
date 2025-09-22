@@ -199,12 +199,11 @@ export async function storeCollectedArticle(apiArticle: NewsdataArticle, distric
 export async function getArticles(options?: {
   pageSize?: number;
   startAfterDocId?: string;
-  category?: string; // slug - kept for function signature, but filtering is moved
-  district?: string; // id - kept for function signature, but filtering is moved
+  category?: string;
+  district?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
   const { pageSize = 100, startAfterDocId } = options || {};
 
-  let q: Query;
   try {
     const constraints: QueryConstraint[] = [
         where('status', '==', 'published'),
@@ -219,7 +218,7 @@ export async function getArticles(options?: {
       }
     }
 
-    q = query(collection(db, 'articles'), ...constraints);
+    const q = query(collection(db, 'articles'), ...constraints);
     
     const snapshot = await getDocs(q);
 
@@ -232,10 +231,13 @@ export async function getArticles(options?: {
     };
 
   } catch (error: any) {
-    // This catch block is a failsafe. If a query *still* fails, we prevent a server crash.
-    console.error(`[DEVELOPER INFO] Firestore query failed: ${error.message}`);
-    // Return empty results to prevent the page from crashing.
-    return { articles: [], lastVisibleDocId: null };
+    if (error.code === 'failed-precondition') {
+        console.error(`[DEVELOPER INFO] Firestore query failed: ${error.message}`);
+        // Return empty results to prevent the page from crashing.
+        return { articles: [], lastVisibleDocId: null };
+    }
+    // Re-throw other errors
+    throw error;
   }
 }
 

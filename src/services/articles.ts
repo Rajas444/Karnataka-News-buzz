@@ -203,25 +203,11 @@ export async function getArticles(options?: {
     district?: string; // id
 }): Promise<{articles: Article[], lastVisibleDocId: string | null}> {
     const { pageSize = 10, startAfterDocId, category, district } = options || {};
-    let allCategories: Category[] = [];
 
     let constraints: QueryConstraint[] = [
-        where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
     ];
 
-    if (category && category !== 'all') {
-        if (allCategories.length === 0) allCategories = await getCategories();
-        const categoryId = allCategories.find(c => c.slug === category)?.id;
-        if (categoryId) {
-            constraints.push(where('categoryIds', 'array-contains', categoryId));
-        }
-    }
-
-    if (district && district !== 'all') {
-        constraints.push(where('districtId', '==', district));
-    }
-    
     if (startAfterDocId) {
         const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
         if (startAfterDoc.exists()) {
@@ -229,17 +215,35 @@ export async function getArticles(options?: {
         }
     }
     
-    constraints.push(limit(pageSize));
+    // Fetch a larger batch size to allow for in-memory filtering
+    const fetchLimit = (pageSize || 10) * 3;
+    constraints.push(limit(fetchLimit));
     
     try {
         const q = query(collection(db, 'articles'), ...constraints);
         const snapshot = await getDocs(q);
         
-        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        const allFetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
 
-        const lastVisibleDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
+        // In-memory filtering
+        let filteredArticles = allFetchedArticles.filter(article => article.status === 'published');
+        
+        if (category && category !== 'all') {
+            const allCategories = await getCategories();
+            const categoryId = allCategories.find(c => c.slug === category)?.id;
+            if (categoryId) {
+                filteredArticles = filteredArticles.filter(article => article.categoryIds?.includes(categoryId));
+            }
+        }
 
-        return { articles, lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null };
+        if (district && district !== 'all') {
+            filteredArticles = filteredArticles.filter(article => article.districtId === district);
+        }
+
+        const finalArticles = filteredArticles.slice(0, pageSize);
+        const lastVisibleDocInPage = finalArticles.length > 0 ? snapshot.docs.find(d => d.id === finalArticles[finalArticles.length - 1].id) : null;
+
+        return { articles: finalArticles, lastVisibleDocId: lastVisibleDocInPage ? lastVisibleDocInPage.id : null };
 
     } catch (error: any) {
         console.error("An unexpected error occurred in getArticles:", error);

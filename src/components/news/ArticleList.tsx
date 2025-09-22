@@ -68,20 +68,12 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     setRealtimeError(null);
 
-    let constraints: QueryConstraint[] = [
-        where('status', '==', 'published'),
+    // Basic query that will not fail due to missing indexes.
+    const q = query(
+        collection(db, "articles"), 
         orderBy("publishedAt", "desc"),
         limit(20) 
-    ];
-
-    if (categoryId) {
-        constraints.push(where('categoryIds', 'array-contains', categoryId));
-    }
-    if (districtId && districtId !== 'all') {
-        constraints.push(where('districtId', '==', districtId));
-    }
-
-    const q = query(collection(db, "articles"), ...constraints);
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const updatedArticles: Article[] = [];
@@ -95,18 +87,37 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
                 updatedAt: data.updatedAt?.toDate().toISOString(),
             } as Article);
         });
+        
+        // Apply filtering client-side
+        let liveArticles = updatedArticles.filter(a => a.status === 'published');
+        if (categoryId) {
+            liveArticles = liveArticles.filter(a => a.categoryIds?.includes(categoryId));
+        }
+        if (districtId && districtId !== 'all') {
+            liveArticles = liveArticles.filter(a => a.districtId === districtId);
+        }
+
 
         setArticles(prev => {
             const allArticlesMap = new Map();
             // Add new articles first to give them priority
-            updatedArticles.forEach(article => allArticlesMap.set(article.id, article));
+            liveArticles.forEach(article => allArticlesMap.set(article.id, article));
             // Then add previous articles, avoiding duplicates
             prev.forEach(article => {
                 if (!allArticlesMap.has(article.id)) {
                     allArticlesMap.set(article.id, article);
                 }
             });
-            return Array.from(allArticlesMap.values()).sort((a,b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+            // Re-apply filters to the merged list to ensure consistency
+            let finalArticles = Array.from(allArticlesMap.values());
+            if (categoryId) {
+                finalArticles = finalArticles.filter(a => a.categoryIds?.includes(categoryId));
+            }
+             if (districtId && districtId !== 'all') {
+                finalArticles = finalArticles.filter(a => a.districtId === districtId);
+            }
+
+            return finalArticles.sort((a,b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
         });
 
         if(loading) setLoading(false);
@@ -114,7 +125,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     }, (error: any) => {
         console.error("Real-time update failed:", error);
-        setRealtimeError("A database index is required for this filter combination. Live updates may be incomplete.");
+        setRealtimeError("Could not connect for live updates. You are viewing a static list.");
         if(loading) setLoading(false);
     });
 

@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { db, storage } from '@/lib/firebase';
@@ -92,27 +91,12 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
+    const { pageSize = 100, startAfterDocId, categorySlug, districtId } = options || {};
 
     try {
         const constraints: QueryConstraint[] = [
-            where('status', '==', 'published'),
+             orderBy('publishedAt', 'desc'),
         ];
-        
-        let categories: Category[] = [];
-        if (categorySlug && categorySlug !== 'all') {
-            categories = await getCategories();
-            const categoryId = categories.find(c => c.slug === categorySlug)?.id;
-            if (categoryId) {
-                constraints.push(where('categoryIds', 'array-contains', categoryId));
-            }
-        }
-
-        if (districtId && districtId !== 'all') {
-            constraints.push(where('districtId', '==', districtId));
-        }
-
-        constraints.push(orderBy('publishedAt', 'desc'));
         
         if (startAfterDocId) {
             const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
@@ -126,7 +110,11 @@ export async function getArticles(options?: {
         const q = query(collection(db, 'articles'), ...constraints);
         const snapshot = await getDocs(q);
 
-        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        let articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        
+        // Post-fetch filtering
+        articles = articles.filter(article => article.status === 'published');
+
         const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
 
         return {
@@ -134,14 +122,7 @@ export async function getArticles(options?: {
             lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null,
         };
     } catch (error: any) {
-        // This is the crucial part: catch the "missing index" error and fail gracefully.
-        if (error.code === 'failed-precondition') {
-            const devError = new Error(`[DEVELOPER INFO] A Firestore composite index is required for this query to work. The app will not crash, but no articles were returned. Please create the index using the link from the browser console, or by inspecting the full error object: ${error.message}`);
-            console.error(devError);
-            // Return empty results to prevent a crash
-            return { articles: [], lastVisibleDocId: null };
-        }
-        // For other unexpected errors, re-throw them so they can be debugged.
+        console.error("Error fetching articles from Firestore:", error);
         throw error;
     }
 }

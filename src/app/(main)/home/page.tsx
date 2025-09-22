@@ -40,20 +40,22 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   try {
     const { articles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
-      pageSize: 10,
-      categorySlug,
-      districtId,
+      pageSize: 100, // Fetch a larger batch for client-side filtering
     });
-    initialArticles = articles;
-    lastVisibleDocId = newLastVisibleDocId;
+    
+    let filteredArticles = articles;
 
-    // Apply secondary filtering in code
-    if (categorySlug && districtId && categorySlug !== 'all' && districtId !== 'all') {
-      const categoryId = categories.find(c => c.slug === categorySlug)?.id;
-      if (categoryId) {
-        initialArticles = initialArticles.filter(article => article.categoryIds.includes(categoryId));
-      }
+    // Apply filtering in code
+    const categoryId = categories.find(c => c.slug === categorySlug)?.id;
+    if (categoryId && categorySlug !== 'all') {
+      filteredArticles = filteredArticles.filter(article => article.categoryIds.includes(categoryId));
     }
+    if (districtId && districtId !== 'all') {
+      filteredArticles = filteredArticles.filter(article => article.districtId === districtId);
+    }
+
+    initialArticles = filteredArticles.slice(0, 10); // Take the first 10 for the initial page load
+    lastVisibleDocId = newLastVisibleDocId;
 
   } catch (e: any) {
     error = e.message || 'An unknown error occurred while fetching articles from the database.';

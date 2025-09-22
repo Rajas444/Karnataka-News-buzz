@@ -92,13 +92,27 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 100, startAfterDocId, categorySlug, districtId } = options || {};
+    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
 
     try {
         const constraints: QueryConstraint[] = [
             where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
         ];
+        
+        let categories: Category[] = [];
+        if (categorySlug && categorySlug !== 'all') {
+            categories = await getCategories();
+            const categoryId = categories.find(c => c.slug === categorySlug)?.id;
+            if (categoryId) {
+                constraints.push(where('categoryIds', 'array-contains', categoryId));
+            }
+        }
+
+        if (districtId && districtId !== 'all') {
+            constraints.push(where('districtId', '==', districtId));
+        }
+
+        constraints.push(orderBy('publishedAt', 'desc'));
         
         if (startAfterDocId) {
             const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
@@ -120,7 +134,14 @@ export async function getArticles(options?: {
             lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null,
         };
     } catch (error: any) {
-        console.error("An unexpected error occurred in getArticles:", error);
+        // This is the crucial part: catch the "missing index" error and fail gracefully.
+        if (error.code === 'failed-precondition') {
+            const devError = new Error(`[DEVELOPER INFO] A Firestore composite index is required for this query to work. The app will not crash, but no articles were returned. Please create the index using the link from the browser console, or by inspecting the full error object: ${error.message}`);
+            console.error(devError);
+            // Return empty results to prevent a crash
+            return { articles: [], lastVisibleDocId: null };
+        }
+        // For other unexpected errors, re-throw them so they can be debugged.
         throw error;
     }
 }

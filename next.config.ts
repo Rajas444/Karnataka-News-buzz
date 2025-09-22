@@ -17,13 +17,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config, { isServer }) => {
-    // Ignore AI-related files from the client-side bundle.
-    if (!isServer) {
-      config.resolve.alias['@/ai/'] = false;
-    }
-    return config;
-  },
 };
 
 export default nextConfig;

@@ -97,6 +97,19 @@ export async function getArticles(options?: {
         const constraints: QueryConstraint[] = [
              orderBy('publishedAt', 'desc'),
         ];
+
+        let categoryId: string | undefined;
+        if (categorySlug && categorySlug !== 'all') {
+            const categories = await getCategories();
+            categoryId = categories.find(c => c.slug === categorySlug)?.id;
+            if (categoryId) {
+                constraints.push(where('categoryIds', 'array-contains', categoryId));
+            }
+        }
+
+        if (districtId && districtId !== 'all') {
+            constraints.push(where('districtId', '==', districtId));
+        }
         
         if (startAfterDocId) {
             const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
@@ -122,6 +135,11 @@ export async function getArticles(options?: {
         };
     } catch (error: any) {
         console.error("Error fetching articles from Firestore:", error);
+        if (error.code === 'failed-precondition') {
+            console.warn(
+                `This query requires a Firestore index. Please create it in the Firebase console. The error was: ${error.message}`
+            );
+        }
         return { articles: [], lastVisibleDocId: null };
     }
 }

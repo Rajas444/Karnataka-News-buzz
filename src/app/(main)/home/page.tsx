@@ -40,21 +40,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   try {
     const { articles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
-      pageSize: 100, // Fetch a larger batch for client-side filtering
+      pageSize: 10,
+      categorySlug: categorySlug,
+      districtId: districtId,
     });
     
-    let filteredArticles = articles;
-
-    // Apply filtering in code
-    const categoryId = categories.find(c => c.slug === categorySlug)?.id;
-    if (categoryId && categorySlug !== 'all') {
-      filteredArticles = filteredArticles.filter(article => article.categoryIds.includes(categoryId));
-    }
-    if (districtId && districtId !== 'all') {
-      filteredArticles = filteredArticles.filter(article => article.districtId === districtId);
-    }
-
-    initialArticles = filteredArticles.slice(0, 10); // Take the first 10 for the initial page load
+    initialArticles = articles;
     lastVisibleDocId = newLastVisibleDocId;
 
   } catch (e: any) {

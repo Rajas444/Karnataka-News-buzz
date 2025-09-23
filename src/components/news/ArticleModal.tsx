@@ -62,9 +62,10 @@ export default function ArticleModal() {
       onClose();
   }
 
-  const articleCategories = article?.categoryIds?.map(catId => 
-      allCategories.find(c => c.id === catId)
-  ).filter((c): c is Category => !!c) || [];
+  const primaryCategoryId = article?.categoryIds?.[0];
+  const primaryCategory = primaryCategoryId 
+    ? allCategories.find(c => c.id === primaryCategoryId)
+    : null;
 
 
   return (
@@ -127,12 +128,10 @@ export default function ArticleModal() {
                     />
 
                     <div className="mt-8 space-y-4">
-                        {articleCategories.length > 0 && (
+                        {primaryCategory && (
                             <div className="flex flex-wrap items-center gap-2">
-                                <h4 className="text-sm font-semibold flex items-center gap-1.5"><Tag className="h-4 w-4"/> Categories:</h4>
-                                {articleCategories.map(cat => (
-                                    <Badge key={cat.id} variant="secondary">{cat.name}</Badge>
-                                ))}
+                                <h4 className="text-sm font-semibold flex items-center gap-1.5"><Tag className="h-4 w-4"/> Category:</h4>
+                                <Badge variant="secondary">{primaryCategory.name}</Badge>
                             </div>
                         )}
                     </div>

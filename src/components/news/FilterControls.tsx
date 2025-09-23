@@ -24,7 +24,7 @@ export default function FilterControls({ categories, districts }: FilterControls
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  const selectedCategorySlug = searchParams.get('category') || 'all';
+  const selectedCategorySlug = searchParams.get('category') || (categories[0]?.slug || '');
   const selectedDistrict = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
@@ -55,7 +55,6 @@ export default function FilterControls({ categories, districts }: FilterControls
 
 
   const allDistricts = [{ id: 'all', name: 'All Districts' }, ...districts];
-  const allCategories = [{ id: 'all', name: 'All Categories', slug: 'all' }, ...categories];
 
   return (
     <Card>
@@ -71,7 +70,7 @@ export default function FilterControls({ categories, districts }: FilterControls
                         <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent>
-                        {allCategories.map((category) => (
+                        {categories.map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
                                 {category.name}
                             </SelectItem>

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { Category, District } from '@/lib/types';
 import { Filter } from 'lucide-react';
 import {
@@ -23,7 +23,7 @@ export default function FilterControls({ categories, districts }: FilterControls
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const selectedCategorySlug = searchParams.get('category') || 'all';
+  const selectedCategorySlug = searchParams.get('category') || categories[0]?.slug || '';
   const selectedDistrictId = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
@@ -45,7 +45,6 @@ export default function FilterControls({ categories, districts }: FilterControls
     router.push(`/home?${newQueryString}`);
   };
 
-  const allCategories = [{ id: 'all', name: 'All Categories', slug: 'all' }, ...categories];
   const allDistricts = [{ id: 'all', name: 'All Districts' }, ...districts];
 
   return (
@@ -62,7 +61,7 @@ export default function FilterControls({ categories, districts }: FilterControls
                         <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent>
-                        {allCategories.map((category) => (
+                        {categories.map((category) => (
                             <SelectItem key={category.id} value={category.slug}>
                                 {category.name}
                             </SelectItem>

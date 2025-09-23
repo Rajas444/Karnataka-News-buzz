@@ -21,35 +21,27 @@ interface FilterControlsProps {
 
 export default function FilterControls({ categories, districts }: FilterControlsProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   
   const selectedCategorySlug = searchParams.get('category') || 'all';
-  const selectedDistrict = searchParams.get('district') || 'all';
+  const selectedDistrictId = searchParams.get('district') || 'all';
 
   const createQueryString = useCallback(
-    (paramsToUpdate: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString());
-      Object.entries(paramsToUpdate).forEach(([key, value]) => {
-        if (value && value !== 'all') {
-          params.set(key, value);
-        } else {
-          params.delete(key);
-        }
-      });
-      return params.toString();
+    (name: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (value && value !== 'all') {
+        params.set(name, value)
+      } else {
+        params.delete(name)
+      }
+ 
+      return params.toString()
     },
     [searchParams]
-  );
+  )
 
   const handleFilterChange = (type: 'category' | 'district', value: string) => {
-    let newQueryString;
-    if (type === 'category') {
-      newQueryString = createQueryString({ category: value, district: searchParams.get('district') });
-    } else { // district
-      newQueryString = createQueryString({ category: searchParams.get('category'), district: value });
-    }
-    
+    const newQueryString = createQueryString(type, value);
     router.push(`/home?${newQueryString}`);
   };
 
@@ -80,7 +72,7 @@ export default function FilterControls({ categories, districts }: FilterControls
             </div>
              <div>
                  <label className="text-sm font-medium mb-2 block">District</label>
-                <Select onValueChange={(value) => handleFilterChange('district', value)} value={selectedDistrict}>
+                <Select onValueChange={(value) => handleFilterChange('district', value)} value={selectedDistrictId}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select District" />
                     </SelectTrigger>

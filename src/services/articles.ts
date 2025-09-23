@@ -97,19 +97,6 @@ export async function getArticles(options?: {
         const constraints: QueryConstraint[] = [
              orderBy('publishedAt', 'desc'),
         ];
-
-        let categoryId: string | undefined;
-        if (categorySlug && categorySlug !== 'all') {
-            const categories = await getCategories();
-            categoryId = categories.find(c => c.slug === categorySlug)?.id;
-            if (categoryId) {
-                constraints.push(where('categoryIds', 'array-contains', categoryId));
-            }
-        }
-
-        if (districtId && districtId !== 'all') {
-            constraints.push(where('districtId', '==', districtId));
-        }
         
         if (startAfterDocId) {
             const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
@@ -118,28 +105,44 @@ export async function getArticles(options?: {
             }
         }
         
-        constraints.push(limit(pageSize));
+        // Fetch more than the page size to allow for in-code filtering
+        const fetchLimit = (categorySlug && categorySlug !== 'all') || (districtId && districtId !== 'all')
+            ? pageSize * 5 // Fetch more if we need to filter, to increase chance of filling a page
+            : pageSize;
+
+        constraints.push(limit(fetchLimit));
 
         const q = query(collection(db, 'articles'), ...constraints);
         const snapshot = await getDocs(q);
 
         let articles = await Promise.all(snapshot.docs.map(serializeArticle));
         
-        articles = articles.filter(article => article.status === 'published');
+        let filteredArticles = articles.filter(article => article.status === 'published');
         
-        const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+        let categoryId: string | undefined;
+        if (categorySlug && categorySlug !== 'all') {
+            const categories = await getCategories();
+            categoryId = categories.find(c => c.slug === categorySlug)?.id;
+            if (categoryId) {
+                filteredArticles = filteredArticles.filter(article => article.categoryIds.includes(categoryId!));
+            }
+        }
 
+        if (districtId && districtId !== 'all') {
+            filteredArticles = filteredArticles.filter(article => article.districtId === districtId);
+        }
+
+        const paginatedArticles = filteredArticles.slice(0, pageSize);
+        
+        const lastVisibleDocInPage = snapshot.docs.find(doc => doc.id === paginatedArticles[paginatedArticles.length -1]?.id)
+        
         return {
-            articles,
-            lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null,
+            articles: paginatedArticles,
+            lastVisibleDocId: lastVisibleDocInPage ? lastVisibleDocInPage.id : null,
         };
+
     } catch (error: any) {
         console.error("Error fetching articles from Firestore:", error);
-        if (error.code === 'failed-precondition') {
-            console.warn(
-                `This query requires a Firestore index. Please create it in the Firebase console. The error was: ${error.message}`
-            );
-        }
         return { articles: [], lastVisibleDocId: null };
     }
 }

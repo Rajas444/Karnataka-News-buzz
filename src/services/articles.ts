@@ -95,54 +95,60 @@ export async function getArticles(options?: {
 
     try {
         const constraints: QueryConstraint[] = [
-             orderBy('publishedAt', 'desc'),
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc'),
         ];
         
+        if (categorySlug && categorySlug !== 'all') {
+            const categories = await getCategories();
+            const categoryId = categories.find(c => c.slug === categorySlug)?.id;
+            if (categoryId) {
+                constraints.push(where('categoryIds', 'array-contains', categoryId));
+            } else {
+                 // If slug is invalid, return no articles
+                return { articles: [], lastVisibleDocId: null };
+            }
+        }
+        
+        if (districtId && districtId !== 'all') {
+            constraints.push(where('districtId', '==', districtId));
+        }
+
         if (startAfterDocId) {
             const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
             if (startAfterDoc.exists()) {
                 constraints.push(startAfter(startAfterDoc));
             }
         }
-        
-        // Fetch more than the page size to allow for in-code filtering
-        const fetchLimit = (categorySlug && categorySlug !== 'all') || (districtId && districtId !== 'all')
-            ? pageSize * 5 // Fetch more if we need to filter, to increase chance of filling a page
-            : pageSize;
 
-        constraints.push(limit(fetchLimit));
+        constraints.push(limit(pageSize));
 
         const q = query(collection(db, 'articles'), ...constraints);
         const snapshot = await getDocs(q);
 
-        let articles = await Promise.all(snapshot.docs.map(serializeArticle));
-        
-        let filteredArticles = articles.filter(article => article.status === 'published');
-        
-        let categoryId: string | undefined;
-        if (categorySlug && categorySlug !== 'all') {
-            const categories = await getCategories();
-            categoryId = categories.find(c => c.slug === categorySlug)?.id;
-            if (categoryId) {
-                filteredArticles = filteredArticles.filter(article => article.categoryIds.includes(categoryId!));
-            }
+        if (snapshot.empty) {
+            return { articles: [], lastVisibleDocId: null };
         }
-
-        if (districtId && districtId !== 'all') {
-            filteredArticles = filteredArticles.filter(article => article.districtId === districtId);
-        }
-
-        const paginatedArticles = filteredArticles.slice(0, pageSize);
         
-        const lastVisibleDocInPage = snapshot.docs.find(doc => doc.id === paginatedArticles[paginatedArticles.length -1]?.id)
-        
+        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+
         return {
-            articles: paginatedArticles,
-            lastVisibleDocId: lastVisibleDocInPage ? lastVisibleDocInPage.id : null,
+            articles: articles,
+            lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null,
         };
 
     } catch (error: any) {
         console.error("Error fetching articles from Firestore:", error);
+        // If a composite index is missing, Firestore throws a specific error.
+        // We can warn the developer here.
+        if (error.code === 'failed-precondition') {
+             console.warn(`
+                [KNP] Firestore Index Required: The query you just tried to run requires a composite index. 
+                Please create it in your Firebase console. The error message below contains a direct link to create it.
+             `);
+        }
+        // Return empty state on error to prevent crashing the page.
         return { articles: [], lastVisibleDocId: null };
     }
 }

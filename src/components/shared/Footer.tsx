@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Newspaper } from 'lucide-react';
 import { placeholderCategories } from '@/lib/placeholder-data';
@@ -17,10 +18,10 @@ export default function Footer() {
           <div>
             <h3 className="font-semibold text-foreground mb-4">Categories</h3>
             <ul className="space-y-2">
-              <li><Link href="/categories/politics" className="hover:text-primary transition-colors">Politics</Link></li>
-              <li><Link href="/categories/technology" className="hover:text-primary transition-colors">Technology</Link></li>
-              <li><Link href="/categories/sports" className="hover:text-primary transition-colors">Sports</Link></li>
-              <li><Link href="/categories/entertainment" className="hover:text-primary transition-colors">Entertainment</Link></li>
+              <li><Link href="/home?category=politics" className="hover:text-primary transition-colors">Politics</Link></li>
+              <li><Link href="/home?category=technology" className="hover:text-primary transition-colors">Technology</Link></li>
+              <li><Link href="/home?category=sports" className="hover:text-primary transition-colors">Sports</Link></li>
+              <li><Link href="/home?category=entertainment" className="hover:text-primary transition-colors">Entertainment</Link></li>
             </ul>
           </div>
           <div>

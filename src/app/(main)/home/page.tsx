@@ -22,7 +22,6 @@ type HomePageProps = {
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   let initialArticles: Article[] = [];
-  let error: string | null = null;
   let categories: Category[] = [];
   let districts = [];
   let lastVisibleDocId: string | null = null;
@@ -36,32 +35,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     console.error("Failed to fetch filters data", e);
   }
 
-  const districtName = districts.find(d => d.id === districtId)?.name;
-
-  try {
-    const { articles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
-      pageSize: 10,
-      categorySlug: categorySlug,
-      districtId: districtId,
-    });
-    
-    initialArticles = articles;
-    lastVisibleDocId = newLastVisibleDocId;
-
-  } catch (e: any) {
-    error = e.message || 'An unknown error occurred while fetching articles from the database.';
-    console.error("Error fetching initial articles:", error);
-  }
-
+  const { articles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
+    pageSize: 10,
+    categorySlug: categorySlug,
+    districtId: districtId,
+  });
+  
+  initialArticles = articles;
+  lastVisibleDocId = newLastVisibleDocId;
 
   const topArticle = initialArticles.length > 0 ? initialArticles[0] : null;
-
-  const renderErrorState = () => (
-    <div className="text-center bg-card p-8 rounded-lg">
-      <h1 className="text-2xl font-bold mb-4 font-kannada">ಸುದ್ದಿ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</h1>
-      <p className="text-muted-foreground font-kannada">{error}</p>
-    </div>
-  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -69,8 +52,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section className="mb-12">
           <FilterControls categories={categories} districts={districts} />
       </section>
-
-       {error && <div className="mb-8">{renderErrorState()}</div>}
 
       <div className="space-y-12">
         {topArticle && (

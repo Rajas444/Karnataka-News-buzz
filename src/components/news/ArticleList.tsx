@@ -3,25 +3,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
-import { Loader2, ShieldAlert } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import type { Article, Category } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getCategories } from '@/services/categories';
 import { getArticles } from '@/services/articles';
 import { Button } from '../ui/button';
-import {
-  onSnapshot,
-  query,
-  collection,
-  orderBy,
-  limit,
-  where,
-  QueryConstraint,
-  startAfter,
-  getDocs,
-  doc
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 interface ArticleListProps {
   initialArticles: Article[];
@@ -35,7 +22,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(initialLastVisibleDocId || null);
-  const [hasMore, setHasMore] = useState(initialArticles.length > 0 && initialLastVisibleDocId !== null);
+  const [hasMore, setHasMore] = useState(initialArticles.length > 0 && !!initialLastVisibleDocId);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -76,19 +63,11 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     } catch (error: any) {
       console.error("Failed to load more articles", error);
-      if (error.code === 'failed-precondition' || error.message?.includes('index')) {
-          toast({ 
-              title: "Filter query requires a database index", 
-              description: "Live updates for this filter combination may be incomplete.",
-              variant: "destructive" 
-          });
-      } else {
-        toast({ title: "Failed to load more news", variant: "destructive" });
-      }
+      toast({ title: "Failed to load more news", variant: "destructive" });
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, lastVisibleDocId, toast, categorySlug, districtId, allCategories]);
+  }, [hasMore, loadingMore, lastVisibleDocId, toast, categorySlug, districtId]);
   
   if (articles.length === 0) {
     return (

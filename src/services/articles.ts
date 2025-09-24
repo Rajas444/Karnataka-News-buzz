@@ -91,66 +91,68 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
+  const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
 
-    try {
-        const constraints: QueryConstraint[] = [
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
-        ];
-        
-        if (categorySlug && categorySlug !== 'all') {
-            const categories = await getCategories();
-            const categoryId = categories.find(c => c.slug === categorySlug)?.id;
-            if (categoryId) {
-                constraints.push(where('categoryIds', 'array-contains', categoryId));
-            } else {
-                 // If slug is invalid, return no articles
-                return { articles: [], lastVisibleDocId: null };
-            }
-        }
-        
-        if (districtId && districtId !== 'all') {
-            constraints.push(where('districtId', '==', districtId));
-        }
+  try {
+    const allCategories = await getCategories();
+    
+    let allPublishedArticlesQuery = query(
+      collection(db, 'articles'),
+      where('status', '==', 'published'),
+      orderBy('publishedAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(allPublishedArticlesQuery);
+    const allArticles = await Promise.all(querySnapshot.docs.map(serializeArticle));
 
-        if (startAfterDocId) {
-            const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
-            if (startAfterDoc.exists()) {
-                constraints.push(startAfter(startAfterDoc));
-            }
-        }
+    // In-code filtering
+    let filteredArticles = allArticles;
 
-        constraints.push(limit(pageSize));
-
-        const q = query(collection(db, 'articles'), ...constraints);
-        const snapshot = await getDocs(q);
-
-        if (snapshot.empty) {
-            return { articles: [], lastVisibleDocId: null };
-        }
-        
-        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
-        const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
-
-        return {
-            articles: articles,
-            lastVisibleDocId: lastVisibleDoc ? lastVisibleDoc.id : null,
-        };
-
-    } catch (error: any) {
-        console.error("Error fetching articles from Firestore:", error);
-        // If a composite index is missing, Firestore throws a specific error.
-        // We can warn the developer here.
-        if (error.code === 'failed-precondition') {
-             console.warn(`
-                [KNP] Firestore Index Required: The query you just tried to run requires a composite index. 
-                Please create it in your Firebase console. The error message below contains a direct link to create it.
-             `);
-        }
-        // Return empty state on error to prevent crashing the page.
-        return { articles: [], lastVisibleDocId: null };
+    if (categorySlug && categorySlug !== 'all') {
+      const categoryId = allCategories.find(c => c.slug === categorySlug)?.id;
+      if (categoryId) {
+        filteredArticles = filteredArticles.filter(a => a.categoryIds.includes(categoryId));
+      } else {
+        return { articles: [], lastVisibleDocId: null }; // Invalid category slug
+      }
     }
+
+    if (districtId && districtId !== 'all') {
+      filteredArticles = filteredArticles.filter(a => a.districtId === districtId);
+    }
+    
+    // In-code pagination
+    let pageStartIndex = 0;
+    if (startAfterDocId) {
+      const foundIndex = filteredArticles.findIndex(a => a.id === startAfterDocId);
+      if (foundIndex !== -1) {
+        pageStartIndex = foundIndex + 1;
+      }
+    }
+
+    const articlesOnPage = filteredArticles.slice(pageStartIndex, pageStartIndex + pageSize);
+    const lastVisibleArticle = articlesOnPage.length > 0 ? articlesOnPage[articlesOnPage.length - 1] : null;
+
+    // Check if there are more articles beyond the current page
+    const hasMore = pageStartIndex + pageSize < filteredArticles.length;
+
+    return {
+      articles: articlesOnPage,
+      lastVisibleDocId: hasMore && lastVisibleArticle ? lastVisibleArticle.id : null,
+    };
+
+  } catch (error: any) {
+    console.error("Error fetching articles:", error);
+    // Provide a clear warning if a composite index is needed for the base query
+    if (error.code === 'failed-precondition') {
+      console.warn(`
+        [KNP] Firestore Index Required: The base query to fetch published articles by date requires an index.
+        Please create the composite index in your Firebase console. The error message below contains a link to create it.
+      `);
+    }
+    // Return a safe empty state
+    return { articles: [], lastVisibleDocId: null };
+  }
 }
 
 

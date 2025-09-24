@@ -21,30 +21,25 @@ type HomePageProps = {
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
-  let initialArticles: Article[] = [];
-  let categories: Category[] = [];
-  let districts = [];
-  let lastVisibleDocId: string | null = null;
-
   const categorySlug = searchParams?.category;
   const districtId = searchParams?.district;
 
+  let categories: Category[] = [];
+  let districts = [];
+  
   try {
     [categories, districts] = await Promise.all([getCategories(), getDistricts()]);
   } catch (e) {
     console.error("Failed to fetch filters data", e);
   }
 
-  const { articles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
+  const { articles, lastVisibleDocId } = await getArticles({
     pageSize: 10,
     categorySlug: categorySlug,
     districtId: districtId,
   });
-  
-  initialArticles = articles;
-  lastVisibleDocId = newLastVisibleDocId;
 
-  const topArticle = initialArticles.length > 0 ? initialArticles[0] : null;
+  const topArticle = articles.length > 0 ? articles[0] : null;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -93,7 +88,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         </h2>
                     </div>
                     <ArticleList
-                        initialArticles={initialArticles}
+                        initialArticles={articles}
                         categorySlug={categorySlug}
                         districtId={districtId}
                         initialLastVisibleDocId={lastVisibleDocId}

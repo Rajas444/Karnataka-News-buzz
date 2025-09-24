@@ -91,66 +91,42 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-  const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
+  const { pageSize = 10, startAfterDocId } = options || {};
 
   try {
-    const allCategories = await getCategories();
-    
-    let allPublishedArticlesQuery = query(
-      collection(db, 'articles'),
-      where('status', '==', 'published'),
-      orderBy('publishedAt', 'desc')
+    let q: Query = query(
+      articlesCollection,
+      orderBy('publishedAt', 'desc'),
+      limit(pageSize)
     );
-    
-    const querySnapshot = await getDocs(allPublishedArticlesQuery);
-    const allArticles = await Promise.all(querySnapshot.docs.map(serializeArticle));
 
-    // In-code filtering
-    let filteredArticles = allArticles;
-
-    if (categorySlug && categorySlug !== 'all') {
-      const categoryId = allCategories.find(c => c.slug === categorySlug)?.id;
-      if (categoryId) {
-        filteredArticles = filteredArticles.filter(a => a.categoryIds.includes(categoryId));
-      } else {
-        return { articles: [], lastVisibleDocId: null }; // Invalid category slug
-      }
-    }
-
-    if (districtId && districtId !== 'all') {
-      filteredArticles = filteredArticles.filter(a => a.districtId === districtId);
-    }
-    
-    // In-code pagination
-    let pageStartIndex = 0;
     if (startAfterDocId) {
-      const foundIndex = filteredArticles.findIndex(a => a.id === startAfterDocId);
-      if (foundIndex !== -1) {
-        pageStartIndex = foundIndex + 1;
+      const startAfterDoc = await getDoc(doc(articlesCollection, startAfterDocId));
+      if (startAfterDoc.exists()) {
+        q = query(
+            articlesCollection,
+            orderBy('publishedAt', 'desc'),
+            startAfter(startAfterDoc),
+            limit(pageSize)
+        );
       }
     }
+    
+    const querySnapshot = await getDocs(q);
+    const articles = await Promise.all(
+        querySnapshot.docs.map(doc => serializeArticle(doc))
+    );
 
-    const articlesOnPage = filteredArticles.slice(pageStartIndex, pageStartIndex + pageSize);
-    const lastVisibleArticle = articlesOnPage.length > 0 ? articlesOnPage[articlesOnPage.length - 1] : null;
-
-    // Check if there are more articles beyond the current page
-    const hasMore = pageStartIndex + pageSize < filteredArticles.length;
-
+    const lastVisibleDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+    const newLastVisibleDocId = lastVisibleDoc ? lastVisibleDoc.id : null;
+    
     return {
-      articles: articlesOnPage,
-      lastVisibleDocId: hasMore && lastVisibleArticle ? lastVisibleArticle.id : null,
+      articles,
+      lastVisibleDocId: newLastVisibleDocId,
     };
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching articles:", error);
-    // Provide a clear warning if a composite index is needed for the base query
-    if (error.code === 'failed-precondition') {
-      console.warn(`
-        [KNP] Firestore Index Required: The base query to fetch published articles by date requires an index.
-        Please create the composite index in your Firebase console. The error message below contains a link to create it.
-      `);
-    }
-    // Return a safe empty state
     return { articles: [], lastVisibleDocId: null };
   }
 }

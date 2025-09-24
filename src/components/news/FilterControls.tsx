@@ -57,7 +57,7 @@ export default function FilterControls({ categories, districts }: FilterControls
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div>
                 <label className="text-sm font-medium mb-2 block">Category</label>
-                <Select onValueChange={(value) => handleFilterChange('category', value)} value={selectedCategorySlug}>
+                <Select onValueChange={(value) => handleFilterChange('category', value)} value={selectedCategorySlug} disabled>
                     <SelectTrigger>
                         <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
@@ -72,7 +72,7 @@ export default function FilterControls({ categories, districts }: FilterControls
             </div>
              <div>
                  <label className="text-sm font-medium mb-2 block">District</label>
-                <Select onValueChange={(value) => handleFilterChange('district', value)} value={selectedDistrictId}>
+                <Select onValueChange={(value) => handleFilterChange('district', value)} value={selectedDistrictId} disabled>
                     <SelectTrigger>
                         <SelectValue placeholder="Select District" />
                     </SelectTrigger>

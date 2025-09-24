@@ -85,50 +85,60 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
 }
 
 // READ (all with pagination and filters)
-export async function getArticles(options?: {
-  pageSize?: number;
-  startAfterDocId?: string | null;
-  categorySlug?: string;
-  districtId?: string;
-}): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-  const { pageSize = 10, startAfterDocId } = options || {};
+export async function getArticles(options: {
+    pageSize?: number;
+    startAfterDocId?: string | null;
+    categorySlug?: string;
+    districtId?: string;
+} = {}): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
+    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options;
 
-  try {
-    let q: Query = query(
-      articlesCollection,
-      orderBy('publishedAt', 'desc'),
-      limit(pageSize)
-    );
+    try {
+        let allArticles: Article[] = [];
+        
+        // Fetch all published articles sorted by date. This is the most reliable base query.
+        const baseQuery = query(articlesCollection, orderBy('publishedAt', 'desc'));
+        const querySnapshot = await getDocs(baseQuery);
+        const serializedArticles = await Promise.all(querySnapshot.docs.map(doc => serializeArticle(doc)));
 
-    if (startAfterDocId) {
-      const startAfterDoc = await getDoc(doc(articlesCollection, startAfterDocId));
-      if (startAfterDoc.exists()) {
-        q = query(
-            articlesCollection,
-            orderBy('publishedAt', 'desc'),
-            startAfter(startAfterDoc),
-            limit(pageSize)
-        );
-      }
+        // Filter in-code for status, category, and district
+        allArticles = serializedArticles.filter(article => {
+            const statusMatch = article.status === 'published';
+            if (!statusMatch) return false;
+
+            const categoryMatch = !categorySlug || article.categoryIds.includes(categorySlug);
+            const districtMatch = !districtId || article.districtId === districtId;
+            return categoryMatch && districtMatch;
+        });
+
+        // Handle pagination in-code
+        let pageArticles: Article[] = [];
+        let newLastVisibleDocId: string | null = null;
+        
+        const startIndex = startAfterDocId ? allArticles.findIndex(a => a.id === startAfterDocId) + 1 : 0;
+
+        if (startIndex !== -1) {
+            const endIndex = startIndex + pageSize;
+            pageArticles = allArticles.slice(startIndex, endIndex);
+            if (endIndex < allArticles.length) {
+                newLastVisibleDocId = pageArticles[pageArticles.length - 1]?.id || null;
+            }
+        }
+        
+        return {
+            articles: pageArticles,
+            lastVisibleDocId: newLastVisibleDocId
+        };
+    } catch (error) {
+        console.error("Error fetching articles:", error);
+        // In case of a query error, return an empty set.
+        // This is a fallback to prevent the page from crashing.
+        if (options.pageSize) { // Check if it's the paginated call
+             return { articles: [], lastVisibleDocId: null };
+        }
+        // For the non-paginated call (like admin page), return empty array
+        return { articles: [], lastVisibleDocId: null };
     }
-    
-    const querySnapshot = await getDocs(q);
-    const articles = await Promise.all(
-        querySnapshot.docs.map(doc => serializeArticle(doc))
-    );
-
-    const lastVisibleDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
-    const newLastVisibleDocId = lastVisibleDoc ? lastVisibleDoc.id : null;
-    
-    return {
-      articles,
-      lastVisibleDocId: newLastVisibleDocId,
-    };
-
-  } catch (error) {
-    console.error("Error fetching articles:", error);
-    return { articles: [], lastVisibleDocId: null };
-  }
 }
 
 

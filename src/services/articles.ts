@@ -97,70 +97,48 @@ export async function getArticles(options: {
 } = {}): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
     const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options;
 
-    let paginatedArticles: Article[] = [];
-    let lastDoc: DocumentSnapshot | null = null;
-    let hasMore = true;
-
-    if (startAfterDocId) {
-        lastDoc = await getDoc(doc(db, 'articles', startAfterDocId));
-        if (!lastDoc.exists()) {
-             console.warn("startAfterDocId document not found");
-             return { articles: [], lastVisibleDocId: null };
-        }
-    }
-
     try {
-        while (paginatedArticles.length < pageSize && hasMore) {
-            const constraints: QueryConstraint[] = [
-                orderBy('publishedAt', 'desc'),
-                limit(pageSize * 2), // Fetch more to allow for filtering
-            ];
+        // 1. Fetch ALL published articles, sorted by date. This is the simple, reliable query.
+        const q = query(
+            articlesCollection, 
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc')
+        );
+        const querySnapshot = await getDocs(q);
+        const allPublishedArticles = await Promise.all(querySnapshot.docs.map(serializeArticle));
 
-            if (lastDoc) {
-                constraints.push(startAfter(lastDoc));
-            }
-            
-            const q = query(articlesCollection, ...constraints);
-            const querySnapshot = await getDocs(q);
+        // 2. Filter in code.
+        const filteredArticles = allPublishedArticles.filter(article => {
+            const categoryMatch = !categorySlug || (article.categoryIds && article.categoryIds.includes(categorySlug));
+            const districtMatch = !districtId || article.districtId === districtId;
+            return categoryMatch && districtMatch;
+        });
 
-            if (querySnapshot.empty || querySnapshot.docs.length < 1) {
-                hasMore = false;
-                break;
-            }
-
-            lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
-
-            const fetchedArticles = await Promise.all(
-                querySnapshot.docs.map(doc => serializeArticle(doc))
-            );
-
-            const filteredArticles = fetchedArticles.filter(article => {
-                if (article.status !== 'published') return false;
-                // Category filter logic for 'array-contains' behavior
-                if (categorySlug && !article.categoryIds?.includes(categorySlug)) return false;
-                if (districtId && article.districtId !== districtId) return false;
-                return true;
-            });
-
-            paginatedArticles.push(...filteredArticles);
-            
-            // If the number of docs returned is less than the batch size, we've reached the end
-            if (querySnapshot.docs.length < (pageSize * 2)) {
-                hasMore = false;
+        // 3. Paginate in code.
+        let startIndex = 0;
+        if (startAfterDocId) {
+            const foundIndex = filteredArticles.findIndex(article => article.id === startAfterDocId);
+            if (foundIndex !== -1) {
+                startIndex = foundIndex + 1;
             }
         }
+
+        const endIndex = startIndex + pageSize;
+        const articlesToReturn = filteredArticles.slice(startIndex, endIndex);
         
-        const articlesToReturn = paginatedArticles.slice(0, pageSize);
-        const moreResultsExist = paginatedArticles.length > pageSize || hasMore;
+        const lastVisibleArticle = articlesToReturn.length > 0 ? articlesToReturn[articlesToReturn.length - 1] : null;
+        
+        // Determine if there are more articles beyond the current page
+        const hasMore = endIndex < filteredArticles.length;
 
         return {
             articles: articlesToReturn,
-            lastVisibleDocId: moreResultsExist && lastDoc ? lastDoc.id : null,
+            lastVisibleDocId: hasMore && lastVisibleArticle ? lastVisibleArticle.id : null,
         };
 
     } catch (error) {
         console.error("Error fetching articles:", error);
-        // If any error occurs, return an empty set to prevent crashing the page.
+        // If the base query fails, it's a fundamental issue, but we still return a clean state.
         return { articles: [], lastVisibleDocId: null };
     }
 }

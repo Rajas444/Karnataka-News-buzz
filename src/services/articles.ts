@@ -111,11 +111,6 @@ export async function getArticles(options: {
     if (districtId && districtId !== 'all') {
         constraints.push(where('districtId', '==', districtId));
     }
-
-    // Only order by publishedAt if no filters are applied, to avoid composite index errors.
-    if (!categorySlug && !districtId) {
-      constraints.push(orderBy('publishedAt', 'desc'));
-    }
     
     if (startAfterDocId) {
         const startDoc = await getDoc(doc(db, 'articles', startAfterDocId));

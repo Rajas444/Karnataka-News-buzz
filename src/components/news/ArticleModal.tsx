@@ -59,9 +59,9 @@ export default function ArticleModal() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <DialogTitle className="text-xl md:text-2xl font-headline font-bold leading-tight mb-2 font-kannada">
-                  {article?.title}
+                  {loading ? 'Loading...' : article?.title}
                 </DialogTitle>
-                {article && (
+                {article && !loading && (
                   <DialogDescription asChild>
                     <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 items-center">
                       {article.publishedAt && <span>{format(new Date(article.publishedAt), 'PPP')}</span>}
@@ -115,9 +115,9 @@ export default function ArticleModal() {
                       </div>
                     )}
                     
-                    <p className="whitespace-pre-wrap font-kannada text-base leading-relaxed text-foreground">
+                    <div className="whitespace-pre-wrap font-kannada text-base leading-relaxed text-foreground">
                       {article.content}
-                    </p>
+                    </div>
                 </div>
               </ScrollArea>
             )}

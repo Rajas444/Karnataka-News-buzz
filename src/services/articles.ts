@@ -106,68 +106,73 @@ export async function getArticles(options: {
         }
     }
 
-    const executeQuery = async (q: any, isFallback = false) => {
+    const executeAndFilterQuery = async (q: any): Promise<{ articles: Article[], lastVisibleDocId: string | null }> => {
         const querySnapshot = await getDocs(q);
         const articles = await Promise.all(querySnapshot.docs.map(serializeArticle));
-
-        // Apply district filter in code if not a fallback scenario or if districtId is present
-        const filteredByDistrict = (districtId && !isFallback)
-            ? articles.filter(article => article.districtId === districtId)
-            : articles;
         
-        const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+        let filteredArticles = articles;
+
+        // Apply district filter in code after fetching
+        if (districtId) {
+            filteredArticles = filteredArticles.filter(article => article.districtId === districtId);
+        }
+        
+        const lastVisible = querySnapshot.docs.length > 0 ? querySnapshot.docs[querySnapshot.docs.length - 1] : null;
+
         return {
-            articles: filteredByDistrict,
-            lastVisibleDocId: lastVisible ? lastVisible.id : null
+            articles: filteredArticles,
+            lastVisibleDocId: lastVisible ? lastVisible.id : null,
         };
     };
 
-    const constraints: QueryConstraint[] = [
+    const baseConstraints: QueryConstraint[] = [
         where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
     ];
 
+    const finalConstraints = [...baseConstraints];
+
     if (categorySlug) {
-        constraints.unshift(where('categoryIds', 'array-contains', categorySlug));
+        finalConstraints.unshift(where('categoryIds', 'array-contains', categorySlug));
     }
     
     if (startAfterDoc) {
-        constraints.push(startAfter(startAfterDoc));
+        finalConstraints.push(startAfter(startAfterDoc));
     }
 
-    constraints.push(limit(pageSize));
+    finalConstraints.push(limit(pageSize));
 
-    const finalQuery = query(articlesCollection, ...constraints);
+    const finalQuery = query(articlesCollection, ...finalConstraints);
 
     try {
-        return await executeQuery(finalQuery);
+        // Attempt the ideal, efficient query first.
+        return await executeAndFilterQuery(finalQuery);
     } catch (error: any) {
+        // This is the critical fallback logic.
         if (error.code === 'failed-precondition') {
             console.warn(
                 `A Firestore index is required for this query, but it is missing.
-                Error: ${error.message}
-                Falling back to a simpler query without category filtering.
-                To enable category filtering, please create the composite index in your Firebase console.`
+                This is not a crash. The app is gracefully falling back to a simpler query.
+                To enable more efficient filtering, please create the composite index in your Firebase console.
+                Error: ${error.message}`
             );
             
-            // Fallback query without category filter
-            const fallbackConstraints = [
-                where('status', '==', 'published'),
-                orderBy('publishedAt', 'desc'),
-                limit(pageSize),
-            ];
-             if (startAfterDoc) {
+            // Fallback query: Remove the category filter that requires the index.
+            const fallbackConstraints = [...baseConstraints];
+            if (startAfterDoc) {
                 fallbackConstraints.push(startAfter(startAfterDoc));
             }
+            fallbackConstraints.push(limit(pageSize));
             const fallbackQuery = query(articlesCollection, ...fallbackConstraints);
             
-            // Re-run filters in code on the fallback data
-            const fallbackResult = await executeQuery(fallbackQuery, true);
+            // Execute fallback and then filter in code.
+            const fallbackResult = await executeAndFilterQuery(fallbackQuery);
             let finalArticles = fallbackResult.articles;
 
             if (categorySlug) {
                 finalArticles = finalArticles.filter(a => a.categoryIds?.includes(categorySlug));
             }
+            // District is already filtered in executeAndFilterQuery, but we do it again to be safe.
             if (districtId) {
                 finalArticles = finalArticles.filter(a => a.districtId === districtId);
             }
@@ -177,8 +182,9 @@ export async function getArticles(options: {
                 lastVisibleDocId: fallbackResult.lastVisibleDocId
             };
         }
-        console.error("Error fetching articles:", error);
-        return { articles: [], lastVisibleDocId: null };
+        // For any other errors, re-throw them.
+        console.error("An unexpected error occurred while fetching articles:", error);
+        throw error;
     }
 }
 

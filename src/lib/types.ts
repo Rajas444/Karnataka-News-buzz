@@ -38,6 +38,7 @@ const articleSchema = z.object({
   publishedAt: z.any(), // Can be Date or Firebase Timestamp
   createdAt: z.any(),
   updatedAt: z.any(),
+  source: z.string().optional().nullable(),
   sourceUrl: z.string().url().optional().nullable(),
   seo: z.object({
     keywords: z.array(z.string()),
@@ -56,6 +57,8 @@ export const articleFormSchema = z.object({
   content: z.string().min(50, 'Content must be at least 50 characters long.'),
   status: z.enum(['draft', 'published', 'scheduled']),
   categoryId: z.string().nonempty('Please select a category.'),
+  districtId: z.string().optional(),
+  source: z.string().optional(),
   publishedAt: z.date().optional(),
   imageUrl: z.string().nullable().optional(),
   imagePath: z.string().optional(),

@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useArticleModal } from '@/components/providers/article-modal-provider';
 import { getArticle } from '@/services/articles';
 import type { Article } from '@/lib/types';
-import { Loader2, MapPin, X, User } from 'lucide-react';
+import { Loader2, MapPin, X, User, Newspaper as NewspaperIcon } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
@@ -68,6 +68,11 @@ export default function ArticleModal() {
                       {article.district && (
                         <span className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" /> {article.district}
+                        </span>
+                      )}
+                       {article.source && (
+                        <span className="flex items-center gap-1">
+                          <NewspaperIcon className="h-3 w-3" /> {article.source}
                         </span>
                       )}
                       {article.author && (

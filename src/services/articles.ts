@@ -71,7 +71,7 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
     imageUrl,
     imagePath,
     status: data.status || 'draft',
-    publishedAt: data.publishedAt ? Timestamp.fromDate(new Date(data.publishedAt)) : serverTimestamp(),
+    publishedAt: data.status === 'published' ? serverTimestamp() : (data.publishedAt ? Timestamp.fromDate(new Date(data.publishedAt)) : null),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     views: 0,
@@ -95,87 +95,61 @@ export async function getArticles(options: {
     districtId?: string;
 } = {}): Promise<{ articles: Article[], lastVisibleDocId: string | null }> {
     const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options;
-
-    const BATCH_SIZE = 50; // How many articles to fetch from DB at a time.
-    const MAX_CYCLES = 10; // Max number of loops to prevent infinite loops on sparse data.
-
-    let matchingArticles: Article[] = [];
-    let lastFetchedDoc: DocumentSnapshot | null = null;
-    let cycles = 0;
     
-    let currentStartAfterDocId = startAfterDocId;
+    const constraints: QueryConstraint[] = [
+        where('status', '==', 'published'),
+    ];
 
-    while (matchingArticles.length < pageSize && cycles < MAX_CYCLES) {
-        cycles++;
-        
-        const constraints: QueryConstraint[] = [
-            orderBy('publishedAt', 'desc'),
-        ];
-        
-        if (currentStartAfterDocId) {
-            const startDoc = await getDoc(doc(db, 'articles', currentStartAfterDocId));
-            if (startDoc.exists()) {
-                constraints.push(startAfter(startDoc));
-            }
-        }
-        
-        constraints.push(limit(BATCH_SIZE));
+    if (categorySlug && categorySlug !== 'all') {
+        constraints.push(where('categoryIds', 'array-contains', categorySlug));
+    }
 
-        try {
-            const q = query(articlesCollection, ...constraints);
-            const snapshot = await getDocs(q);
+    if (districtId && districtId !== 'all') {
+        constraints.push(where('districtId', '==', districtId));
+    }
 
-            if (snapshot.empty) {
-                break; // No more documents in the database
-            }
-            
-            const fetchedDocs = snapshot.docs;
-            lastFetchedDoc = fetchedDocs[fetchedDocs.length - 1];
-            currentStartAfterDocId = lastFetchedDoc.id;
+    constraints.push(orderBy('publishedAt', 'desc'));
 
-            const serialized = await Promise.all(fetchedDocs.map(serializeArticle));
-
-            const filteredBatch = serialized.filter(article => {
-                if (article.status !== 'published') return false;
-
-                let categoryMatch = !categorySlug || categorySlug === 'all';
-                if (categorySlug && categorySlug !== 'all') {
-                    // Check if any of the article's category IDs match the slug.
-                    // This assumes that for a given category name "Politics", the slug is "politics" and is stored as an ID.
-                    // This logic might need to be adjusted if slugs and IDs are different.
-                    categoryMatch = article.categoryIds?.includes(categorySlug);
-                }
-                
-                const districtMatch = !districtId || districtId === 'all' || article.districtId === districtId;
-                
-                return categoryMatch && districtMatch;
-            });
-            
-            for (const article of filteredBatch) {
-                if (matchingArticles.length < pageSize) {
-                    matchingArticles.push(article);
-                }
-            }
-            
-        } catch (error: any) {
-            console.error(`Error fetching articles (cycle ${cycles}):`, error.message);
-            // This can happen if the query requires an index. We break to avoid infinite loops.
-            if (error.code === 'failed-precondition') {
-                console.error("Firestore query failed. This is likely due to a missing composite index. Please create the required index in your Firebase console.");
-            }
-            break; 
+    if (startAfterDocId) {
+        const startDoc = await getDoc(doc(db, 'articles', startAfterDocId));
+        if (startDoc.exists()) {
+            constraints.push(startAfter(startDoc));
         }
     }
-    
-    // Determine the new `lastVisibleDocId` for the "Load More" button.
-    // If we filled the page and there might be more articles, we use the ID of the last article *fetched*,
-    // not the last article *displayed*.
-    const newLastVisibleDocId = (lastFetchedDoc && matchingArticles.length === pageSize) ? lastFetchedDoc.id : null;
 
-    return {
-        articles: matchingArticles,
-        lastVisibleDocId: newLastVisibleDocId,
-    };
+    constraints.push(limit(pageSize));
+
+    try {
+        const q = query(articlesCollection, ...constraints);
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            return { articles: [], lastVisibleDocId: null };
+        }
+        
+        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+
+        // To determine if there are more articles, we fetch one more than needed
+        const nextQueryConstraints = [...constraints];
+        nextQueryConstraints.pop(); // remove limit
+        nextQueryConstraints.push(startAfter(lastVisibleDoc), limit(1));
+        const nextQuery = query(articlesCollection, ...nextQueryConstraints);
+        const nextSnapshot = await getDocs(nextQuery);
+
+        return {
+            articles,
+            lastVisibleDocId: nextSnapshot.empty ? null : lastVisibleDoc.id,
+        };
+        
+    } catch (error: any) {
+        console.error(`Error fetching articles:`, error.message);
+        if (error.code === 'failed-precondition') {
+            console.error("Firestore query failed. This is likely due to a missing composite index. Please create the required index in your Firebase console based on the error message in the server logs.");
+        }
+        // Return empty on error to prevent app crash
+        return { articles: [], lastVisibleDocId: null };
+    }
 }
 
 

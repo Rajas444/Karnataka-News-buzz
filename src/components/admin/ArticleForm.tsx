@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -42,12 +41,16 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createArticle, updateArticle } from '@/services/articles';
 import { getCategories } from '@/services/categories';
+import { getDistricts } from '@/services/districts';
+import type { District } from '@/lib/types';
 
 const formSchema = z.object({
   title: z.string().min(10, 'Title must be at least 10 characters long.'),
   content: z.string().min(50, 'Content must be at least 50 characters long.'),
   status: z.enum(['draft', 'published', 'scheduled']),
   categoryId: z.string().nonempty('Please select a category.'),
+  districtId: z.string().optional(),
+  source: z.string().optional(),
   publishedAt: z.date().optional(),
   imageUrl: z.string().nullable().optional(),
   imagePath: z.string().optional(),
@@ -66,16 +69,21 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
     const [isGenerating, setIsGenerating] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(initialData?.imageUrl || null);
     const [categories, setCategories] = useState<Category[]>([]);
+    const [districts, setDistricts] = useState<District[]>([]);
     const { toast } = useToast();
     const router = useRouter();
 
     useEffect(() => {
         async function fetchData() {
             try {
-                const cats = await getCategories();
+                const [cats, dists] = await Promise.all([
+                    getCategories(),
+                    getDistricts()
+                ]);
                 setCategories(cats);
+                setDistricts(dists);
             } catch (error) {
-                toast({ title: "Failed to load categories", variant: "destructive" });
+                toast({ title: "Failed to load categories or districts", variant: "destructive" });
             }
         }
         fetchData();
@@ -88,6 +96,8 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
       content: initialData?.content || '',
       status: initialData?.status || 'draft',
       categoryId: initialData?.categoryIds?.[0] || '',
+      districtId: initialData?.districtId || '',
+      source: initialData?.source || '',
       publishedAt: initialData?.publishedAt ? new Date(initialData.publishedAt) : undefined,
       imageUrl: initialData?.imageUrl || null,
       imagePath: initialData?.imagePath || '',
@@ -365,6 +375,42 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="districtId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>District</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a district" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {districts.map((dist) => (
+                          <SelectItem key={dist.id} value={dist.id}>{dist.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="source"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Source</FormLabel>
+                    <FormControl>
+                        <Input placeholder="e.g., Prajavani, The Hindu" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
         </div>
@@ -372,4 +418,3 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
     </Form>
   );
 }
-

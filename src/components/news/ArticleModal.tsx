@@ -5,31 +5,18 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useArticleModal } from '@/components/providers/article-modal-provider';
 import { getArticle } from '@/services/articles';
-import type { Article, Category } from '@/lib/types';
+import type { Article } from '@/lib/types';
 import { Loader2, MapPin, X, User } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import ShareButtons from '@/components/shared/ShareButtons';
-import { getCategories } from '@/services/categories';
+import { ScrollArea } from '../ui/scroll-area';
 
 export default function ArticleModal() {
   const { isOpen, onClose, articleId } = useArticleModal();
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(false);
-  const [allCategories, setAllCategories] = useState<Category[]>([]);
-
-  useEffect(() => {
-    async function fetchCategories() {
-        try {
-            const fetchedCategories = await getCategories();
-            setAllCategories(fetchedCategories);
-        } catch (e) {
-            console.error("Failed to fetch categories for modal", e);
-        }
-    }
-    fetchCategories();
-  }, []);
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -41,7 +28,6 @@ export default function ArticleModal() {
           setArticle(fetchedArticle);
         } catch (error) {
           console.error("Failed to fetch article:", error);
-          // Optionally show a toast error
           onClose(); // Close modal on error
         } finally {
           setLoading(false);
@@ -50,8 +36,15 @@ export default function ArticleModal() {
     };
 
     if (isOpen) {
+      document.body.style.overflow = 'hidden';
       fetchArticle();
+    } else {
+      document.body.style.overflow = '';
     }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [articleId, isOpen, onClose]);
   
   const handleClose = () => {
@@ -61,64 +54,74 @@ export default function ArticleModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0">
-          <DialogHeader className="p-6 pb-2 relative flex-shrink-0">
-            <DialogTitle className="text-2xl md:text-3xl font-headline font-bold leading-tight mb-2 font-kannada">
-              {article?.title || <>&nbsp;</>}
-            </DialogTitle>
-            {article && (
-              <DialogDescription asChild>
-                <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4 gap-y-2 items-center">
-                  <span>{article.publishedAt ? format(new Date(article.publishedAt), 'PPP') : ''}</span>
-                  {article.district && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" /> {article.district}
-                    </span>
-                  )}
-                  {article.author && (
-                    <span className="flex items-center gap-1">
-                        <User className="h-3 w-3" /> {article.author}
-                    </span>
-                  )}
-                </div>
-              </DialogDescription>
-            )}
-            <Button variant="ghost" size="icon" className="absolute top-4 right-4" onClick={handleClose}>
-              <X className="h-5 w-5"/>
-              <span className="sr-only">Close</span>
-            </Button>
+      <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="p-4 border-b">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <DialogTitle className="text-xl md:text-2xl font-headline font-bold leading-tight mb-2 font-kannada">
+                  {article?.title}
+                </DialogTitle>
+                {article && (
+                  <DialogDescription asChild>
+                    <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 items-center">
+                      {article.publishedAt && <span>{format(new Date(article.publishedAt), 'PPP')}</span>}
+                      {article.district && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" /> {article.district}
+                        </span>
+                      )}
+                      {article.author && (
+                        <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" /> {article.author}
+                        </span>
+                      )}
+                    </div>
+                  </DialogDescription>
+                )}
+              </div>
+              <DialogClose asChild>
+                  <Button variant="ghost" size="icon">
+                      <X className="h-4 w-4"/>
+                      <span className="sr-only">Close</span>
+                  </Button>
+              </DialogClose>
+             </div>
           </DialogHeader>
           
-          {loading && (
-              <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              </div>
-          )}
+          <div className="flex-1 overflow-hidden">
+            {loading && (
+                <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                </div>
+            )}
 
-          {article && !loading && (
-            <>
-                 <div className="overflow-y-auto px-6 pb-6 flex-grow">
-                     {article.imageUrl && (
-                        <div className="relative h-64 md:h-96 rounded-lg overflow-hidden my-4">
-                            <Image
-                                src={article.imageUrl}
-                                alt={article.title}
-                                fill
-                                className="object-cover"
-                                sizes="(max-width: 768px) 100vw, 50vw"
-                            />
-                        </div>
+            {article && !loading && (
+              <ScrollArea className="h-full">
+                <div className="p-4 sm:p-6 space-y-4">
+                    {article.imageUrl && (
+                      <div className="relative aspect-video w-full rounded-lg overflow-hidden">
+                          <Image
+                              src={article.imageUrl}
+                              alt={article.title}
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 768px) 100vw, 50vw"
+                          />
+                      </div>
                     )}
                     
-                    <p className="whitespace-pre-wrap font-kannada text-base leading-relaxed">
+                    <p className="whitespace-pre-wrap font-kannada text-base leading-relaxed text-foreground">
                       {article.content}
                     </p>
-
                 </div>
-                <div className="border-t p-4 flex-shrink-0 flex justify-between items-center bg-muted/50">
-                    <ShareButtons url={typeof window !== 'undefined' ? `${window.location.origin}/article/${article.id}` : ''} title={article.title} />
-                </div>
-            </>
+              </ScrollArea>
+            )}
+          </div>
+        
+          {article && !loading && (
+            <div className="border-t p-3 flex justify-between items-center bg-muted/50">
+                <ShareButtons url={typeof window !== 'undefined' ? `${window.location.origin}/article/${article.id}` : ''} title={article.title} />
+            </div>
           )}
       </DialogContent>
     </Dialog>

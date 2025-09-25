@@ -19,7 +19,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
   
   const categories = article.categoryIds?.map(catId => {
       return allCategories.find(c => c.id === catId)?.name || catId;
-  }) || [];
+  }).filter(name => name !== 'General' && name !== 'Gaming & Esports') || [];
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (article.id) {

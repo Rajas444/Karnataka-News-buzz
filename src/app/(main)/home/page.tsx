@@ -11,6 +11,7 @@ import CommunityHighlights from '@/components/posts/CommunityHighlights';
 import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
+import PaidArticles from '@/components/news/PaidArticles';
 
 type HomePageProps = {
   searchParams?: {
@@ -79,7 +80,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-12">
                 <section>
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="font-headline text-3xl font-bold">
@@ -92,6 +93,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         districtId={districtId}
                         initialLastVisibleDocId={lastVisibleDocId}
                     />
+                </section>
+                 <section>
+                    <PaidArticles />
                 </section>
             </div>
             <div className="lg:col-span-1 space-y-12">

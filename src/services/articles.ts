@@ -94,49 +94,42 @@ export async function getArticles(options: {
     const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options;
 
     try {
-        let allArticles: Article[] = [];
+        const constraints: QueryConstraint[] = [
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc'),
+        ];
         
-        // Fetch all published articles sorted by date. This is the most reliable base query.
-        const baseQuery = query(articlesCollection, orderBy('publishedAt', 'desc'));
-        const querySnapshot = await getDocs(baseQuery);
-        const serializedArticles = await Promise.all(querySnapshot.docs.map(doc => serializeArticle(doc)));
-
-        // Filter in-code for status, category, and district
-        allArticles = serializedArticles.filter(article => {
-            const statusMatch = article.status === 'published';
-            if (!statusMatch) return false;
-
-            const categoryMatch = !categorySlug || article.categoryIds.includes(categorySlug);
-            const districtMatch = !districtId || article.districtId === districtId;
-            return categoryMatch && districtMatch;
-        });
-
-        // Handle pagination in-code
-        let pageArticles: Article[] = [];
-        let newLastVisibleDocId: string | null = null;
-        
-        const startIndex = startAfterDocId ? allArticles.findIndex(a => a.id === startAfterDocId) + 1 : 0;
-
-        if (startIndex !== -1) {
-            const endIndex = startIndex + pageSize;
-            pageArticles = allArticles.slice(startIndex, endIndex);
-            if (endIndex < allArticles.length) {
-                newLastVisibleDocId = pageArticles[pageArticles.length - 1]?.id || null;
+        let startAfterDoc: DocumentSnapshot | undefined;
+        if (startAfterDocId) {
+            startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
+            if (startAfterDoc.exists()) {
+                constraints.push(startAfter(startAfterDoc));
             }
         }
+        constraints.push(limit(pageSize * 2)); // Fetch more to allow for in-code filtering
+
+        const q = query(articlesCollection, ...constraints);
+
+        const querySnapshot = await getDocs(q);
+        let articles = await Promise.all(querySnapshot.docs.map(doc => serializeArticle(doc)));
+
+        // In-code filtering for category and district
+        if (categorySlug) {
+            articles = articles.filter(article => article.categoryIds?.includes(categorySlug));
+        }
+        if (districtId) {
+            articles = articles.filter(article => article.districtId === districtId);
+        }
+
+        const paginatedArticles = articles.slice(0, pageSize);
+        const newLastVisibleDocId = paginatedArticles.length > 0 && articles.length > pageSize ? paginatedArticles[paginatedArticles.length - 1].id : null;
         
         return {
-            articles: pageArticles,
+            articles: paginatedArticles,
             lastVisibleDocId: newLastVisibleDocId
         };
     } catch (error) {
         console.error("Error fetching articles:", error);
-        // In case of a query error, return an empty set.
-        // This is a fallback to prevent the page from crashing.
-        if (options.pageSize) { // Check if it's the paginated call
-             return { articles: [], lastVisibleDocId: null };
-        }
-        // For the non-paginated call (like admin page), return empty array
         return { articles: [], lastVisibleDocId: null };
     }
 }

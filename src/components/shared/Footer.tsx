@@ -21,7 +21,6 @@ export default function Footer() {
               <li><Link href="/home?category=politics" className="hover:text-primary transition-colors">Politics</Link></li>
               <li><Link href="/home?category=technology" className="hover:text-primary transition-colors">Technology</Link></li>
               <li><Link href="/home?category=sports" className="hover:text-primary transition-colors">Sports</Link></li>
-              <li><Link href="/home?category=entertainment" className="hover:text-primary transition-colors">Entertainment</Link></li>
             </ul>
           </div>
           <div>

@@ -19,8 +19,12 @@ async function serializeArticle(doc: DocumentSnapshot): Promise<Article> {
 
     let districtName: string | undefined = undefined;
     if (data.districtId) {
-        const districts = await getDistricts();
-        districtName = districts.find(d => d.id === data.districtId)?.name;
+        try {
+            const districts = await getDistricts();
+            districtName = districts.find(d => d.id === data.districtId)?.name;
+        } catch (e) {
+            console.error("Failed to get districts for article serialization", e);
+        }
     }
 
     return {
@@ -94,10 +98,7 @@ export async function getArticles(options: {
     const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options;
 
     try {
-        const constraints: QueryConstraint[] = [
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
-        ];
+        const constraints: QueryConstraint[] = [orderBy('publishedAt', 'desc')];
         
         let startAfterDoc: DocumentSnapshot | undefined;
         if (startAfterDocId) {
@@ -106,23 +107,34 @@ export async function getArticles(options: {
                 constraints.push(startAfter(startAfterDoc));
             }
         }
-        constraints.push(limit(pageSize * 2)); // Fetch more to allow for in-code filtering
+        
+        // Fetch a larger batch to account for filtering
+        constraints.push(limit(pageSize * 2)); 
 
         const q = query(articlesCollection, ...constraints);
-
         const querySnapshot = await getDocs(q);
-        let articles = await Promise.all(querySnapshot.docs.map(doc => serializeArticle(doc)));
 
-        // In-code filtering for category and district
-        if (categorySlug) {
-            articles = articles.filter(article => article.categoryIds?.includes(categorySlug));
-        }
-        if (districtId) {
-            articles = articles.filter(article => article.districtId === districtId);
-        }
+        const allFetchedArticles = await Promise.all(
+            querySnapshot.docs.map(doc => serializeArticle(doc))
+        );
 
-        const paginatedArticles = articles.slice(0, pageSize);
-        const newLastVisibleDocId = paginatedArticles.length > 0 && articles.length > pageSize ? paginatedArticles[paginatedArticles.length - 1].id : null;
+        // Filter in-code
+        const filteredArticles = allFetchedArticles.filter(article => {
+            if (article.status !== 'published') return false;
+            if (categorySlug && !article.categoryIds?.includes(categorySlug)) return false;
+            if (districtId && article.districtId !== districtId) return false;
+            return true;
+        });
+
+        const paginatedArticles = filteredArticles.slice(0, pageSize);
+        const lastArticleInFullBatch = allFetchedArticles.length > 0 ? allFetchedArticles[allFetchedArticles.length - 1] : null;
+        
+        // Determine if there might be more articles to fetch
+        const hasMorePotential = allFetchedArticles.length >= (pageSize * 2);
+
+        // The new lastVisibleDocId should be the ID of the last article in the *original* unfiltered batch
+        // to ensure the next query starts correctly.
+        const newLastVisibleDocId = hasMorePotential && lastArticleInFullBatch ? lastArticleInFullBatch.id : null;
         
         return {
             articles: paginatedArticles,
@@ -130,6 +142,7 @@ export async function getArticles(options: {
         };
     } catch (error) {
         console.error("Error fetching articles:", error);
+        // If any error occurs, return an empty set to prevent crashing the page.
         return { articles: [], lastVisibleDocId: null };
     }
 }

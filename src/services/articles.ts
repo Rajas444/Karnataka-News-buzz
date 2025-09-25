@@ -100,6 +100,8 @@ export async function getArticles(options: {
         where('status', '==', 'published'),
     ];
 
+    const isFiltered = (categorySlug && categorySlug !== 'all') || (districtId && districtId !== 'all');
+
     if (categorySlug && categorySlug !== 'all') {
         constraints.push(where('categoryIds', 'array-contains', categorySlug));
     }
@@ -108,7 +110,11 @@ export async function getArticles(options: {
         constraints.push(where('districtId', '==', districtId));
     }
 
-    constraints.push(orderBy('publishedAt', 'desc'));
+    // Firestore requires a composite index for combining `where` with `orderBy` on a different field.
+    // To avoid crashes without the index, we only apply sorting when no filters are active.
+    if (!isFiltered) {
+        constraints.push(orderBy('publishedAt', 'desc'));
+    }
 
     if (startAfterDocId) {
         const startDoc = await getDoc(doc(db, 'articles', startAfterDocId));

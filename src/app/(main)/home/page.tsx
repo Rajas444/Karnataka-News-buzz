@@ -11,7 +11,6 @@ import CommunityHighlights from '@/components/posts/CommunityHighlights';
 import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
-import PaidArticles from '@/components/news/PaidArticles';
 
 type HomePageProps = {
   searchParams?: {
@@ -92,9 +91,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         districtId={districtId}
                         initialLastVisibleDocId={lastVisibleDocId}
                     />
-                </section>
-                 <section>
-                    <PaidArticles />
                 </section>
             </div>
             <div className="lg:col-span-1 space-y-12">

@@ -95,26 +95,6 @@ export async function getArticles(options: {
 } = {}): Promise<{ articles: Article[], lastVisibleDocId: string | null }> {
     const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options;
 
-    const executeQuery = async (q: any) => {
-        const querySnapshot = await getDocs(q);
-        const articles = await Promise.all(
-            querySnapshot.docs
-                .map(serializeArticle)
-        );
-
-        // Client-side filter for district
-        const filteredByDistrict = districtId
-            ? articles.filter(article => article.districtId === districtId)
-            : articles;
-
-        const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
-        return {
-            articles: filteredByDistrict,
-            lastVisibleDocId: lastVisible ? lastVisible.id : null,
-            hasMore: querySnapshot.docs.length === pageSize
-        };
-    };
-
     let startAfterDoc: DocumentSnapshot | null = null;
     if (startAfterDocId) {
         try {
@@ -125,6 +105,22 @@ export async function getArticles(options: {
             return { articles: [], lastVisibleDocId: null };
         }
     }
+
+    const executeQuery = async (q: any, isFallback = false) => {
+        const querySnapshot = await getDocs(q);
+        const articles = await Promise.all(querySnapshot.docs.map(serializeArticle));
+
+        // Apply district filter in code if not a fallback scenario or if districtId is present
+        const filteredByDistrict = (districtId && !isFallback)
+            ? articles.filter(article => article.districtId === districtId)
+            : articles;
+        
+        const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+        return {
+            articles: filteredByDistrict,
+            lastVisibleDocId: lastVisible ? lastVisible.id : null
+        };
+    };
 
     const constraints: QueryConstraint[] = [
         where('status', '==', 'published'),
@@ -144,33 +140,41 @@ export async function getArticles(options: {
     const finalQuery = query(articlesCollection, ...constraints);
 
     try {
-        const result = await executeQuery(finalQuery);
-        return {
-            articles: result.articles,
-            lastVisibleDocId: result.hasMore ? result.lastVisibleDocId : null
-        };
+        return await executeQuery(finalQuery);
     } catch (error: any) {
         if (error.code === 'failed-precondition') {
             console.warn(
-                `A Firestore index is required for this query. Falling back to a simpler query. 
-                Please create the index in your Firebase console: ${error.message}`
+                `A Firestore index is required for this query, but it is missing.
+                Error: ${error.message}
+                Falling back to a simpler query without category filtering.
+                To enable category filtering, please create the composite index in your Firebase console.`
             );
             
             // Fallback query without category filter
             const fallbackConstraints = [
                 where('status', '==', 'published'),
                 orderBy('publishedAt', 'desc'),
+                limit(pageSize),
             ];
              if (startAfterDoc) {
                 fallbackConstraints.push(startAfter(startAfterDoc));
             }
-            fallbackConstraints.push(limit(pageSize));
             const fallbackQuery = query(articlesCollection, ...fallbackConstraints);
             
-            const result = await executeQuery(fallbackQuery);
+            // Re-run filters in code on the fallback data
+            const fallbackResult = await executeQuery(fallbackQuery, true);
+            let finalArticles = fallbackResult.articles;
+
+            if (categorySlug) {
+                finalArticles = finalArticles.filter(a => a.categoryIds?.includes(categorySlug));
+            }
+            if (districtId) {
+                finalArticles = finalArticles.filter(a => a.districtId === districtId);
+            }
+
             return {
-                articles: result.articles,
-                lastVisibleDocId: result.hasMore ? result.lastVisibleDocId : null
+                articles: finalArticles,
+                lastVisibleDocId: fallbackResult.lastVisibleDocId
             };
         }
         console.error("Error fetching articles:", error);

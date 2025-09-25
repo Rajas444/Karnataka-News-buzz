@@ -95,46 +95,73 @@ export async function getArticles(options: {
 } = {}): Promise<{ articles: Article[], lastVisibleDocId: string | null }> {
     const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options;
 
-    let allArticles: Article[] = [];
-    
-    try {
-        const q = query(articlesCollection, orderBy('publishedAt', 'desc'));
-        const snapshot = await getDocs(q);
-        allArticles = await Promise.all(snapshot.docs.map(serializeArticle));
-    } catch (e) {
-        console.error("Critical error fetching all articles:", e);
-        return { articles: [], lastVisibleDocId: null };
-    }
+    const BATCH_SIZE = 50; // How many articles to fetch from DB at a time.
+    const MAX_CYCLES = 10; // Max number of loops to prevent infinite loops on sparse data.
 
-    // Apply filters in code
-    const filteredArticles = allArticles.filter(article => {
-        const isPublished = article.status === 'published';
-        const hasCategory = categorySlug ? article.categoryIds?.includes(categorySlug) : true;
-        const hasDistrict = districtId ? article.districtId === districtId : true;
-        return isPublished && hasCategory && hasDistrict;
-    });
-
-    let pageArticles: Article[] = [];
-    let lastVisibleDocId: string | null = null;
+    let matchingArticles: Article[] = [];
+    let lastFetchedDoc: DocumentSnapshot | null = null;
+    let cycles = 0;
     
-    // Manual pagination
-    let startIndex = 0;
-    if (startAfterDocId) {
-        const docIndex = filteredArticles.findIndex(a => a.id === startAfterDocId);
-        if (docIndex !== -1) {
-            startIndex = docIndex + 1;
+    let currentStartAfterDocId = startAfterDocId;
+
+    while (matchingArticles.length < pageSize && cycles < MAX_CYCLES) {
+        cycles++;
+        
+        const constraints: QueryConstraint[] = [
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc'),
+        ];
+        
+        if (currentStartAfterDocId) {
+            const startDoc = await getDoc(doc(db, 'articles', currentStartAfterDocId));
+            if (startDoc.exists()) {
+                constraints.push(startAfter(startDoc));
+            }
+        }
+        
+        constraints.push(limit(BATCH_SIZE));
+
+        try {
+            const q = query(articlesCollection, ...constraints);
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) {
+                break; // No more documents in the database
+            }
+            
+            const fetchedDocs = snapshot.docs;
+            const serialized = await Promise.all(fetchedDocs.map(serializeArticle));
+
+            const filteredBatch = serialized.filter(article => {
+                const categoryMatch = !categorySlug || categorySlug === 'all' || article.categoryIds?.includes(categorySlug);
+                const districtMatch = !districtId || districtId === 'all' || article.districtId === districtId;
+                return categoryMatch && districtMatch;
+            });
+
+            matchingArticles.push(...filteredBatch);
+
+            lastFetchedDoc = fetchedDocs[fetchedDocs.length - 1];
+            currentStartAfterDocId = lastFetchedDoc.id;
+
+        } catch (error: any) {
+            console.error(`Error fetching articles (cycle ${cycles}):`, error.message);
+            // This can happen if the query requires an index. We break to avoid infinite loops.
+            if (error.code === 'failed-precondition') {
+                console.error("Firestore query failed. This is likely due to a missing composite index. Please create the required index in your Firebase console.");
+            }
+            break; 
         }
     }
     
-    pageArticles = filteredArticles.slice(startIndex, startIndex + pageSize);
-    
-    if (pageArticles.length > 0 && startIndex + pageSize < filteredArticles.length) {
-        lastVisibleDocId = pageArticles[pageArticles.length - 1].id;
-    }
+    const articlesForPage = matchingArticles.slice(0, pageSize);
+    const newLastVisibleDocId = articlesForPage.length > 0 && matchingArticles.length > pageSize
+      ? articlesForPage[articlesForPage.length - 1].id
+      : (matchingArticles.length > articlesForPage.length || (lastFetchedDoc && matchingArticles.length > pageSize)) ? lastFetchedDoc?.id ?? null : null;
+
 
     return {
-        articles: pageArticles,
-        lastVisibleDocId: lastVisibleDocId
+        articles: articlesForPage,
+        lastVisibleDocId: newLastVisibleDocId,
     };
 }
 
@@ -252,4 +279,5 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
             return [];
         }
     }
-}
+
+    

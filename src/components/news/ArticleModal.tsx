@@ -121,10 +121,9 @@ export default function ArticleModal() {
                         </div>
                     )}
                     
-                    <div 
-                        className="prose dark:prose-invert max-w-none font-kannada"
-                        dangerouslySetInnerHTML={{ __html: article.content.replace(/\n/g, '<p>') }} 
-                    />
+                    <p className="whitespace-pre-wrap font-kannada text-base leading-relaxed">
+                      {article.content}
+                    </p>
 
                     <div className="mt-8 space-y-4">
                         {primaryCategory && (

@@ -103,7 +103,11 @@ export async function getArticles(options: {
     const isFiltered = (categorySlug && categorySlug !== 'all') || (districtId && districtId !== 'all');
 
     if (categorySlug && categorySlug !== 'all') {
-        constraints.push(where('categoryIds', 'array-contains', categorySlug));
+        const categories = await getCategories();
+        const category = categories.find(c => c.slug === categorySlug);
+        if (category) {
+            constraints.push(where('categoryIds', 'array-contains', category.id));
+        }
     }
 
     if (districtId && districtId !== 'all') {

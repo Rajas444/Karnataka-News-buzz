@@ -44,7 +44,6 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
                 fill
                 className="object-cover"
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                data-ai-hint={article['data-ai-hint']}
                 />
             </div>
         </CardHeader>
@@ -57,9 +56,6 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
             <CardTitle className="mb-2 text-xl leading-tight font-headline font-kannada">
                 {article.title}
             </CardTitle>
-            <p className="text-muted-foreground text-sm font-kannada">
-            {(article.seo?.metaDescription || article.content || '').substring(0, 100)}...
-            </p>
         </CardContent>
         <CardFooter className="p-4 bg-muted/50 text-xs text-muted-foreground flex justify-between items-center flex-wrap gap-y-2">
             <div className="flex items-center gap-2">

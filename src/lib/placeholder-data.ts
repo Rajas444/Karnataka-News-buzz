@@ -39,7 +39,6 @@ export const placeholderCategories: Category[] = [
     { id: 'sports', name: 'Sports', slug: 'sports' },
     { id: 'technology', name: 'Technology', slug: 'technology' },
     { id: 'health-lifestyle', name: 'Health & Lifestyle', slug: 'health-lifestyle' },
-    { id: 'agriculture-farming', name: 'Agriculture & Farming', slug: 'agriculture-farming' },
     { id: 'gaming-esports', name: 'Gaming & Esports', slug: 'gaming-esports' },
     { id: 'politics', name: 'Politics', slug: 'politics' },
     { id: 'business-startups', name: 'Business & Startups', slug: 'business-startups' },

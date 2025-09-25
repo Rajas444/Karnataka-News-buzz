@@ -2,12 +2,10 @@
 'use server';
 
 import { db, storage } from '@/lib/firebase';
-import type { Article, ArticleFormValues, Category } from '@/lib/types';
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint, Timestamp, limit, startAfter, writeBatch, DocumentSnapshot, Query, getDocFromCache } from 'firebase/firestore';
+import type { Article, ArticleFormValues } from '@/lib/types';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, QueryConstraint, Timestamp, limit, startAfter, DocumentSnapshot } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
-import { getCategories } from './categories';
-import { extractArticleContent } from '@/ai/flows/extract-article-content';
 import { getDistricts } from './districts';
 
 const articlesCollection = collection(db, 'articles');
@@ -94,13 +92,28 @@ export async function getArticles(options: {
     startAfterDocId?: string | null;
     categorySlug?: string;
     districtId?: string;
-} = {}): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
+} = {}): Promise<{ articles: Article[], lastVisibleDocId: string | null }> {
     const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options;
 
-    const constraints: QueryConstraint[] = [
-        where('status', '==', 'published'),
-        orderBy('publishedAt', 'desc')
-    ];
+    const executeQuery = async (q: any) => {
+        const querySnapshot = await getDocs(q);
+        const articles = await Promise.all(
+            querySnapshot.docs
+                .map(serializeArticle)
+        );
+
+        // Client-side filter for district
+        const filteredByDistrict = districtId
+            ? articles.filter(article => article.districtId === districtId)
+            : articles;
+
+        const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+        return {
+            articles: filteredByDistrict,
+            lastVisibleDocId: lastVisible ? lastVisible.id : null,
+            hasMore: querySnapshot.docs.length === pageSize
+        };
+    };
 
     let startAfterDoc: DocumentSnapshot | null = null;
     if (startAfterDocId) {
@@ -113,63 +126,58 @@ export async function getArticles(options: {
         }
     }
 
-    const foundArticles: Article[] = [];
-    let lastDoc: DocumentSnapshot | null = startAfterDoc;
-    let hasMore = true;
+    const constraints: QueryConstraint[] = [
+        where('status', '==', 'published'),
+        orderBy('publishedAt', 'desc'),
+    ];
+
+    if (categorySlug) {
+        constraints.unshift(where('categoryIds', 'array-contains', categorySlug));
+    }
+    
+    if (startAfterDoc) {
+        constraints.push(startAfter(startAfterDoc));
+    }
+
+    constraints.push(limit(pageSize));
+
+    const finalQuery = query(articlesCollection, ...constraints);
 
     try {
-        while (foundArticles.length < pageSize && hasMore) {
-            const currentConstraints = [...constraints];
-            if (lastDoc) {
-                currentConstraints.push(startAfter(lastDoc));
-            }
-            // Fetch a larger batch size to increase chances of finding filtered items
-            currentConstraints.push(limit(pageSize * 2)); 
-
-            const q = query(articlesCollection, ...currentConstraints);
-            const querySnapshot = await getDocs(q);
-
-            if (querySnapshot.empty || querySnapshot.docs.length < 1) {
-                hasMore = false;
-                break;
-            }
-            
-            lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
-
-            const serializedBatch = await Promise.all(querySnapshot.docs.map(serializeArticle));
-
-            const filteredBatch = serializedBatch.filter(article => {
-                const categoryMatch = !categorySlug || (article.categoryIds && article.categoryIds.includes(categorySlug));
-                const districtMatch = !districtId || article.districtId === districtId;
-                return categoryMatch && districtMatch;
-            });
-
-            for (const article of filteredBatch) {
-                if (foundArticles.length < pageSize) {
-                    foundArticles.push(article);
-                } else {
-                    break;
-                }
-            }
-
-            // If we fetched fewer docs than our batch limit, there are no more pages
-            if (querySnapshot.docs.length < pageSize * 2) {
-                hasMore = false;
-            }
-        }
-        
-        // Determine the ID of the last document that should be used for the *next* page
-        const nextLastVisibleDocId = foundArticles.length > 0 && hasMore ? foundArticles[foundArticles.length - 1].id : null;
-
+        const result = await executeQuery(finalQuery);
         return {
-            articles: foundArticles,
-            lastVisibleDocId: nextLastVisibleDocId
+            articles: result.articles,
+            lastVisibleDocId: result.hasMore ? result.lastVisibleDocId : null
         };
-    } catch (error) {
+    } catch (error: any) {
+        if (error.code === 'failed-precondition') {
+            console.warn(
+                `A Firestore index is required for this query. Falling back to a simpler query. 
+                Please create the index in your Firebase console: ${error.message}`
+            );
+            
+            // Fallback query without category filter
+            const fallbackConstraints = [
+                where('status', '==', 'published'),
+                orderBy('publishedAt', 'desc'),
+            ];
+             if (startAfterDoc) {
+                fallbackConstraints.push(startAfter(startAfterDoc));
+            }
+            fallbackConstraints.push(limit(pageSize));
+            const fallbackQuery = query(articlesCollection, ...fallbackConstraints);
+            
+            const result = await executeQuery(fallbackQuery);
+            return {
+                articles: result.articles,
+                lastVisibleDocId: result.hasMore ? result.lastVisibleDocId : null
+            };
+        }
         console.error("Error fetching articles:", error);
         return { articles: [], lastVisibleDocId: null };
     }
 }
+
 
 // READ (one)
 export async function getArticle(id: string): Promise<Article | null> {

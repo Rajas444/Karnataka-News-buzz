@@ -24,11 +24,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const categorySlug = searchParams?.category;
   const districtId = searchParams?.district;
 
-  let categories: Category[] = [];
   let districts = [];
   
   try {
-    [categories, districts] = await Promise.all([getCategories(), getDistricts()]);
+    districts = await getDistricts();
   } catch (e) {
     console.error("Failed to fetch filters data", e);
   }
@@ -45,7 +44,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     <div className="container mx-auto px-4 py-8">
       
       <section className="mb-12">
-          <FilterControls categories={categories} districts={districts} />
+          <FilterControls districts={districts} />
       </section>
 
       <div className="space-y-12">

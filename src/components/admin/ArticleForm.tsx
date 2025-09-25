@@ -3,7 +3,6 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -36,29 +35,13 @@ import { format } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { generateHeadline } from '@/ai/flows/ai-headline-generator';
 import { useToast } from '@/hooks/use-toast';
-import type { Article, Category } from '@/lib/types';
+import type { Article, Category, District, ArticleFormValues } from '@/lib/types';
+import { articleFormSchema } from '@/lib/types';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createArticle, updateArticle } from '@/services/articles';
 import { getCategories } from '@/services/categories';
 import { getDistricts } from '@/services/districts';
-import type { District } from '@/lib/types';
-
-const formSchema = z.object({
-  title: z.string().min(10, 'Title must be at least 10 characters long.'),
-  content: z.string().min(50, 'Content must be at least 50 characters long.'),
-  status: z.enum(['draft', 'published', 'scheduled']),
-  categoryId: z.string().nonempty('Please select a category.'),
-  districtId: z.string().optional(),
-  source: z.string().optional(),
-  publishedAt: z.date().optional(),
-  imageUrl: z.string().nullable().optional(),
-  imagePath: z.string().optional(),
-  seoMetaDescription: z.string().max(160).optional(),
-  seoKeywords: z.string().optional(),
-});
-
-type ArticleFormValues = z.infer<typeof formSchema>;
 
 interface ArticleFormProps {
   initialData?: Article;
@@ -90,7 +73,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
     }, [toast]);
 
   const form = useForm<ArticleFormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(articleFormSchema),
     defaultValues: {
       title: initialData?.title || '',
       content: initialData?.content || '',
@@ -98,6 +81,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
       categoryId: initialData?.categoryIds?.[0] || '',
       districtId: initialData?.districtId || '',
       source: initialData?.source || '',
+      sourceUrl: initialData?.sourceUrl || '',
       publishedAt: initialData?.publishedAt ? new Date(initialData.publishedAt) : undefined,
       imageUrl: initialData?.imageUrl || null,
       imagePath: initialData?.imagePath || '',
@@ -407,6 +391,22 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                     <FormControl>
                         <Input placeholder="e.g., Prajavani, The Hindu" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="sourceUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Source URL</FormLabel>
+                    <FormControl>
+                        <Input placeholder="https://www.prajavani.net/..." {...field} />
+                    </FormControl>
+                     <FormDescription>
+                      The URL to the original news article.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

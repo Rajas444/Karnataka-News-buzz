@@ -59,6 +59,7 @@ export const articleFormSchema = z.object({
   categoryId: z.string().nonempty('Please select a category.'),
   districtId: z.string().optional(),
   source: z.string().optional(),
+  sourceUrl: z.string().url().optional().or(z.literal('')),
   publishedAt: z.date().optional(),
   imageUrl: z.string().nullable().optional(),
   imagePath: z.string().optional(),

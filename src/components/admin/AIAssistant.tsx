@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Mic, Send, Square, Bot, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { aiPoweredChat } from '@/ai/flows/ai-powered-chat-interface';
+import { generateHeadline } from '@/ai/flows/ai-headline-generator';
 import { cn } from '@/lib/utils';
 
 // Check for SpeechRecognition API
@@ -22,7 +22,6 @@ export default function AiAssistant() {
   const [aiResponse, setAiResponse] = useState('');
   
   const recognition = useRef<SpeechRecognition | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (!SpeechRecognition) {
@@ -84,20 +83,10 @@ export default function AiAssistant() {
 
     setIsLoading(true);
     setAiResponse('');
-    if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
-    }
 
     try {
-      const result = await aiPoweredChat({ query: userInput });
-      setAiResponse(result.response);
-      
-      if (result.audio) {
-        audioRef.current = new Audio(result.audio);
-        audioRef.current.play().catch(e => console.error("Audio playback failed:", e));
-      }
-
+      const result = await generateHeadline({ articleContent: userInput });
+      setAiResponse(result.headline);
     } catch (error) {
       console.error(error);
       toast({

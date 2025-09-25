@@ -18,12 +18,12 @@ const AIChatInputSchema = z.object({
 export type AIChatInput = z.infer<typeof AIChatInputSchema>;
 
 const RelatedArticleSchema = z.object({
-    title: z.string().describe('The title of the related article.'),
+    title: z.string().describe('The title of the related article, in Kannada.'),
     url: z.string().url().describe('The URL of the related article.'),
 });
 
 const AIChatOutputSchema = z.object({
-  summary: z.string().describe('A summary of the information requested.'),
+  summary: z.string().describe('A summary of the information requested, in Kannada.'),
   relatedArticles: z.array(RelatedArticleSchema).describe('A list of related articles with their titles and URLs.'),
 });
 export type AIChatOutput = z.infer<typeof AIChatOutputSchema>;
@@ -36,13 +36,15 @@ const prompt = ai.definePrompt({
   name: 'aiChatPrompt',
   input: {schema: AIChatInputSchema},
   output: {schema: z.object({ summary: z.string(), relatedArticles: z.array(RelatedArticleSchema).optional() })},
-  prompt: `You are a helpful AI news assistant for the Karnataka News Pulse website.
+  prompt: `You are a helpful AI news assistant for the Karnataka News Pulse website. Your audience is primarily Kannada speaking.
 
 Your goal is to answer user questions about news, current events, or any other general queries they may have.
 
-If the user asks a question about a news topic, provide a helpful summary. You may also suggest up to 3 related articles, providing both their title and their direct URL.
-If the user asks a general question, provide a helpful response.
-If a query is unclear or outside your scope as a news assistant, you can politely say so.
+**ALL of your responses, including summaries and article titles, MUST be in the Kannada language.**
+
+If the user asks a question about a news topic, provide a helpful summary in Kannada. You may also suggest up to 3 related articles, providing both their title (in Kannada) and their direct URL.
+If the user asks a general question, provide a helpful response in Kannada.
+If a query is unclear or outside your scope as a news assistant, you can politely say so in Kannada.
 
 User Query: {{{query}}}
 `,

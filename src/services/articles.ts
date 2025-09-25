@@ -3,7 +3,7 @@
 
 import { db, storage } from '@/lib/firebase';
 import type { Article, ArticleFormValues, Category } from '@/lib/types';
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint, Timestamp, limit, startAfter, writeBatch, DocumentSnapshot, Query } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, FieldPath, QueryConstraint, Timestamp, limit, startAfter, writeBatch, DocumentSnapshot, Query, getDocFromCache } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 import { getCategories } from './categories';
@@ -97,52 +97,79 @@ export async function getArticles(options: {
 } = {}): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
     const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options;
 
+    const constraints: QueryConstraint[] = [
+        where('status', '==', 'published'),
+        orderBy('publishedAt', 'desc')
+    ];
+
+    let startAfterDoc: DocumentSnapshot | null = null;
+    if (startAfterDocId) {
+        try {
+            const docRef = doc(db, 'articles', startAfterDocId);
+            startAfterDoc = await getDoc(docRef);
+        } catch (e) {
+            console.error("Error fetching startAfter document:", e);
+            return { articles: [], lastVisibleDocId: null };
+        }
+    }
+
+    const foundArticles: Article[] = [];
+    let lastDoc: DocumentSnapshot | null = startAfterDoc;
+    let hasMore = true;
+
     try {
-        // 1. Fetch ALL published articles, sorted by date. This is the simple, reliable query.
-        const q = query(
-            articlesCollection, 
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc')
-        );
-        const querySnapshot = await getDocs(q);
-        const allPublishedArticles = await Promise.all(querySnapshot.docs.map(serializeArticle));
+        while (foundArticles.length < pageSize && hasMore) {
+            const currentConstraints = [...constraints];
+            if (lastDoc) {
+                currentConstraints.push(startAfter(lastDoc));
+            }
+            // Fetch a larger batch size to increase chances of finding filtered items
+            currentConstraints.push(limit(pageSize * 2)); 
 
-        // 2. Filter in code.
-        const filteredArticles = allPublishedArticles.filter(article => {
-            const categoryMatch = !categorySlug || (article.categoryIds && article.categoryIds.includes(categorySlug));
-            const districtMatch = !districtId || article.districtId === districtId;
-            return categoryMatch && districtMatch;
-        });
+            const q = query(articlesCollection, ...currentConstraints);
+            const querySnapshot = await getDocs(q);
 
-        // 3. Paginate in code.
-        let startIndex = 0;
-        if (startAfterDocId) {
-            const foundIndex = filteredArticles.findIndex(article => article.id === startAfterDocId);
-            if (foundIndex !== -1) {
-                startIndex = foundIndex + 1;
+            if (querySnapshot.empty || querySnapshot.docs.length < 1) {
+                hasMore = false;
+                break;
+            }
+            
+            lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+            const serializedBatch = await Promise.all(querySnapshot.docs.map(serializeArticle));
+
+            const filteredBatch = serializedBatch.filter(article => {
+                const categoryMatch = !categorySlug || (article.categoryIds && article.categoryIds.includes(categorySlug));
+                const districtMatch = !districtId || article.districtId === districtId;
+                return categoryMatch && districtMatch;
+            });
+
+            for (const article of filteredBatch) {
+                if (foundArticles.length < pageSize) {
+                    foundArticles.push(article);
+                } else {
+                    break;
+                }
+            }
+
+            // If we fetched fewer docs than our batch limit, there are no more pages
+            if (querySnapshot.docs.length < pageSize * 2) {
+                hasMore = false;
             }
         }
-
-        const endIndex = startIndex + pageSize;
-        const articlesToReturn = filteredArticles.slice(startIndex, endIndex);
         
-        const lastVisibleArticle = articlesToReturn.length > 0 ? articlesToReturn[articlesToReturn.length - 1] : null;
-        
-        // Determine if there are more articles beyond the current page
-        const hasMore = endIndex < filteredArticles.length;
+        // Determine the ID of the last document that should be used for the *next* page
+        const nextLastVisibleDocId = foundArticles.length > 0 && hasMore ? foundArticles[foundArticles.length - 1].id : null;
 
         return {
-            articles: articlesToReturn,
-            lastVisibleDocId: hasMore && lastVisibleArticle ? lastVisibleArticle.id : null,
+            articles: foundArticles,
+            lastVisibleDocId: nextLastVisibleDocId
         };
-
     } catch (error) {
         console.error("Error fetching articles:", error);
-        // If the base query fails, it's a fundamental issue, but we still return a clean state.
         return { articles: [], lastVisibleDocId: null };
     }
 }
-
 
 // READ (one)
 export async function getArticle(id: string): Promise<Article | null> {

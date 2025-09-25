@@ -14,7 +14,6 @@ import { Button } from '../ui/button';
 import ShareButtons from '@/components/shared/ShareButtons';
 import RelatedArticles from './RelatedArticles';
 import { getCategories } from '@/services/categories';
-import Link from 'next/link';
 
 export default function ArticleModal() {
   const { isOpen, onClose, articleId } = useArticleModal();

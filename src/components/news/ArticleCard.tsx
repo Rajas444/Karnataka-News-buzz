@@ -8,7 +8,6 @@ import type { Article, Category } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { Calendar, ArrowRight, MapPin } from 'lucide-react';
 import { useArticleModal } from '@/components/providers/article-modal-provider';
-import Link from 'next/link';
 
 interface ArticleCardProps {
   article: Article;
@@ -27,6 +26,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
        e.preventDefault();
        onOpen(article.id);
     } else if (article.sourceUrl) {
+       // For articles from external sources without an ID, open in a new tab.
        window.open(article.sourceUrl, '_blank');
     }
   };

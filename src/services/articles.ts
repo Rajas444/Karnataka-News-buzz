@@ -7,8 +7,7 @@ import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverT
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 import { getDistricts } from './districts';
-
-const articlesCollection = collection(db, 'articles');
+import { getCategories } from './categories';
 
 // Helper function to serialize article data, converting Timestamps to ISO strings
 async function serializeArticle(doc: DocumentSnapshot): Promise<Article> {
@@ -108,7 +107,6 @@ export async function getArticles(options: {
         cycles++;
         
         const constraints: QueryConstraint[] = [
-            where('status', '==', 'published'),
             orderBy('publishedAt', 'desc'),
         ];
         
@@ -130,19 +128,26 @@ export async function getArticles(options: {
             }
             
             const fetchedDocs = snapshot.docs;
-            const serialized = await Promise.all(fetchedDocs.map(serializeArticle));
-
-            const filteredBatch = serialized.filter(article => {
-                const categoryMatch = !categorySlug || categorySlug === 'all' || article.categoryIds?.includes(categorySlug);
-                const districtMatch = !districtId || districtId === 'all' || article.districtId === districtId;
-                return categoryMatch && districtMatch;
-            });
-
-            matchingArticles.push(...filteredBatch);
-
             lastFetchedDoc = fetchedDocs[fetchedDocs.length - 1];
             currentStartAfterDocId = lastFetchedDoc.id;
 
+            const serialized = await Promise.all(fetchedDocs.map(serializeArticle));
+
+            const filteredBatch = serialized.filter(article => {
+                if (article.status !== 'published') return false;
+
+                const categoryMatch = !categorySlug || categorySlug === 'all' || article.categoryIds?.includes(categorySlug);
+                const districtMatch = !districtId || districtId === 'all' || article.districtId === districtId;
+                
+                return categoryMatch && districtMatch;
+            });
+            
+            for (const article of filteredBatch) {
+                if (matchingArticles.length < pageSize) {
+                    matchingArticles.push(article);
+                }
+            }
+            
         } catch (error: any) {
             console.error(`Error fetching articles (cycle ${cycles}):`, error.message);
             // This can happen if the query requires an index. We break to avoid infinite loops.
@@ -153,14 +158,13 @@ export async function getArticles(options: {
         }
     }
     
-    const articlesForPage = matchingArticles.slice(0, pageSize);
-    const newLastVisibleDocId = articlesForPage.length > 0 && matchingArticles.length > pageSize
-      ? articlesForPage[articlesForPage.length - 1].id
-      : (matchingArticles.length > articlesForPage.length || (lastFetchedDoc && matchingArticles.length > pageSize)) ? lastFetchedDoc?.id ?? null : null;
-
+    // Determine the new `lastVisibleDocId` for the "Load More" button.
+    // If we filled the page and there might be more articles, we use the ID of the last article *fetched*,
+    // not the last article *displayed*.
+    const newLastVisibleDocId = (lastFetchedDoc && matchingArticles.length === pageSize) ? lastFetchedDoc.id : null;
 
     return {
-        articles: articlesForPage,
+        articles: matchingArticles,
         lastVisibleDocId: newLastVisibleDocId,
     };
 }
@@ -240,26 +244,24 @@ export async function deleteArticle(id: string): Promise<void> {
 // READ (related articles)
 export async function getRelatedArticles(categoryId: string, currentArticleId: string): Promise<Article[]> {
     if (!categoryId) return [];
+
+    let articles: Article[] = [];
     try {
-        const q = query(
-            articlesCollection,
+        const constraints: QueryConstraint[] = [
             where('status', '==', 'published'),
             where('categoryIds', 'array-contains', categoryId),
             orderBy('publishedAt', 'desc'),
             limit(4) // Fetch 4 to have a replacement if the current article is in the results
-        );
-
+        ];
+        
+        const q = query(articlesCollection, ...constraints);
         const snapshot = await getDocs(q);
-        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
-
-        // Filter out the current article and take the top 3
-        return articles.filter(article => article.id !== currentArticleId).slice(0, 3);
+        articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
     } catch (error: any) {
         // This can happen if the composite index (categoryIds, publishedAt) doesn't exist
         console.warn(
-            `Query for related articles failed. This likely requires a Firestore index. 
-            Falling back to a simpler query. Error: ${error.message}`
+            `[getRelatedArticles] Query failed. This likely requires a Firestore index. Falling back to a simpler query. Error: ${error.message}`
         );
 
         try {
@@ -271,13 +273,13 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
                 limit(4)
             );
             const snapshot = await getDocs(fallbackQuery);
-            const articles = await Promise.all(snapshot.docs.map(serializeArticle));
-            return articles.filter(article => article.id !== currentArticleId).slice(0,3);
-
+            articles = await Promise.all(snapshot.docs.map(serializeArticle));
         } catch (fallbackError) {
             console.error("Fallback query for related articles also failed:", fallbackError);
             return [];
         }
     }
-
     
+    // Filter out the current article and take the top 3
+    return articles.filter(article => article.id !== currentArticleId).slice(0, 3);
+}

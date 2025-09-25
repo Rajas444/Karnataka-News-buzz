@@ -107,8 +107,10 @@ export default function ArticleModal() {
                                 className="object-cover"
                                 sizes="(max-width: 768px) 100vw, 50vw"
                             />
-                             <div className="absolute top-2 right-2 bg-black/50 text-white text-xs font-bold px-2 py-1 rounded-md">
-                                Karnataka News Pulse
+                             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                                <h3 className="text-white text-lg font-bold font-headline leading-tight shadow-lg font-kannada">
+                                    {article.title}
+                                </h3>
                             </div>
                         </div>
                     )}

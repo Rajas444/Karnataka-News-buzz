@@ -9,6 +9,8 @@ import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 import { getDistricts } from './districts';
 import { getCategories } from './categories';
 
+const articlesCollection = collection(db, 'articles');
+
 // Helper function to serialize article data, converting Timestamps to ISO strings
 async function serializeArticle(doc: DocumentSnapshot): Promise<Article> {
     const data = doc.data();
@@ -136,7 +138,14 @@ export async function getArticles(options: {
             const filteredBatch = serialized.filter(article => {
                 if (article.status !== 'published') return false;
 
-                const categoryMatch = !categorySlug || categorySlug === 'all' || article.categoryIds?.includes(categorySlug);
+                let categoryMatch = !categorySlug || categorySlug === 'all';
+                if (categorySlug && categorySlug !== 'all') {
+                    // Check if any of the article's category IDs match the slug.
+                    // This assumes that for a given category name "Politics", the slug is "politics" and is stored as an ID.
+                    // This logic might need to be adjusted if slugs and IDs are different.
+                    categoryMatch = article.categoryIds?.includes(categorySlug);
+                }
+                
                 const districtMatch = !districtId || districtId === 'all' || article.districtId === districtId;
                 
                 return categoryMatch && districtMatch;

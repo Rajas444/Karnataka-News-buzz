@@ -61,12 +61,6 @@ export default function ArticleModal() {
       onClose();
   }
 
-  const primaryCategoryId = article?.categoryIds?.[0];
-  const primaryCategory = primaryCategoryId 
-    ? allCategories.find(c => c.id === primaryCategoryId)
-    : null;
-
-
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0">
@@ -124,15 +118,6 @@ export default function ArticleModal() {
                     <p className="whitespace-pre-wrap font-kannada text-base leading-relaxed">
                       {article.content}
                     </p>
-
-                    <div className="mt-8 space-y-4">
-                        {primaryCategory && (
-                            <div className="flex flex-wrap items-center gap-2">
-                                <h4 className="text-sm font-semibold flex items-center gap-1.5"><Tag className="h-4 w-4"/> Category:</h4>
-                                <Badge variant="secondary">{primaryCategory.name}</Badge>
-                            </div>
-                        )}
-                    </div>
 
                     {article.categoryIds?.[0] && (
                         <RelatedArticles

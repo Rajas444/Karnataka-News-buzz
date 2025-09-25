@@ -18,13 +18,12 @@ const AIChatInputSchema = z.object({
 export type AIChatInput = z.infer<typeof AIChatInputSchema>;
 
 const RelatedArticleSchema = z.object({
-    title: z.string().describe('The title of the related article, in Kannada.'),
-    url: z.string().url().describe('The URL of the related article.'),
+    title: z.string().describe('The title of a related article, in Kannada.'),
 });
 
 const AIChatOutputSchema = z.object({
   summary: z.string().describe('A summary of the information requested, in Kannada.'),
-  relatedArticles: z.array(RelatedArticleSchema).describe('A list of related articles with their titles and URLs.'),
+  relatedArticles: z.array(RelatedArticleSchema).describe('A list of related articles with their titles.'),
 });
 export type AIChatOutput = z.infer<typeof AIChatOutputSchema>;
 
@@ -42,7 +41,7 @@ Your goal is to answer user questions about news, current events, or any other g
 
 **ALL of your responses, including summaries and article titles, MUST be in the Kannada language.**
 
-If the user asks a question about a news topic, provide a helpful summary in Kannada. You may also suggest up to 3 related articles, providing both their title (in Kannada) and their direct URL.
+If the user asks a question about a news topic, provide a helpful summary in Kannada. You may also suggest up to 3 related article titles.
 If the user asks a general question, provide a helpful response in Kannada.
 If a query is unclear or outside your scope as a news assistant, you can politely say so in Kannada.
 

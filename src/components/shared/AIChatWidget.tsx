@@ -86,13 +86,11 @@ export default function AIChatWidget() {
                                             <p>{message.text}</p>
                                             {message.relatedArticles && message.relatedArticles.length > 0 && (
                                                  <div className="mt-2 border-t pt-2">
-                                                     <h4 className="font-semibold text-xs mb-1">Related Articles:</h4>
+                                                     <h4 className="font-semibold text-xs mb-1">Related Topics:</h4>
                                                      <ul className="list-disc list-inside space-y-1">
                                                          {message.relatedArticles.map((article, i) => (
                                                             <li key={i}>
-                                                                <Link href={article.url} target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">
-                                                                    {article.title}
-                                                                </Link>
+                                                                {article.title}
                                                             </li>
                                                          ))}
                                                      </ul>

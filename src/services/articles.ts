@@ -50,13 +50,17 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
   let imagePath = '';
 
   if (data.imageUrl && data.imageUrl.startsWith('data:')) {
-
-    const watermarkedImageResult = await watermarkImage({
-      imageDataUri: data.imageUrl,
-      watermarkText: 'Karnataka News Pulse',
-    });
-    
-    const watermarkedImageDataUri = watermarkedImageResult.imageDataUri;
+    let watermarkedImageDataUri = data.imageUrl;
+    try {
+        const watermarkedImageResult = await watermarkImage({
+            imageDataUri: data.imageUrl,
+            watermarkText: 'Karnataka News Pulse',
+        });
+        watermarkedImageDataUri = watermarkedImageResult.imageDataUri;
+    } catch (error: any) {
+        // If watermarking fails (e.g., rate limit), log it but proceed with the original image.
+        console.warn(`Watermarking failed during article creation. Proceeding with original image. Error: ${error.message}`);
+    }
 
     const storageRef = ref(storage, `articles/${Date.now()}_${Math.random().toString(36).substring(2)}`);
     const snapshot = await uploadString(storageRef, watermarkedImageDataUri, 'data_url');
@@ -100,12 +104,6 @@ export async function getArticles(options: {
         where('status', '==', 'published'),
     ];
 
-    const isFiltered = (categorySlug && categorySlug !== 'all') || (districtId && districtId !== 'all');
-
-    if (!isFiltered) {
-        constraints.push(orderBy('publishedAt', 'desc'));
-    }
-
     if (categorySlug && categorySlug !== 'all') {
         const categories = await getCategories();
         const category = categories.find(c => c.slug === categorySlug);
@@ -117,6 +115,11 @@ export async function getArticles(options: {
     if (districtId && districtId !== 'all') {
         constraints.push(where('districtId', '==', districtId));
     }
+    
+    // Always order by publishedAt if no specific filters are applied that would break it.
+    // The previous implementation was too restrictive. A simple order by should not require an index
+    // unless combined with multiple range/inequality filters, which we are not doing.
+    constraints.push(orderBy('publishedAt', 'desc'));
     
     if (startAfterDocId) {
         const startDoc = await getDoc(doc(db, 'articles', startAfterDocId));
@@ -151,7 +154,7 @@ export async function getArticles(options: {
         };
         
     } catch (error: any) {
-        console.error(`Error fetching articles:`, error.message);
+        console.error(`Error fetching articles: "${error.message}"`);
         if (error.code === 'failed-precondition') {
             console.error("Firestore query failed. This is likely due to a missing composite index. Please create the required index in your Firebase console based on the error message in the server logs.");
         }
@@ -182,12 +185,16 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
   let imagePath = data.imagePath || '';
 
   if (data.imageUrl && data.imageUrl.startsWith('data:')) {
-    
-    const watermarkedImageResult = await watermarkImage({
-      imageDataUri: data.imageUrl,
-      watermarkText: 'Karnataka News Pulse',
-    });
-    const watermarkedImageDataUri = watermarkedImageResult.imageDataUri;
+    let watermarkedImageDataUri = data.imageUrl;
+    try {
+        const watermarkedImageResult = await watermarkImage({
+          imageDataUri: data.imageUrl,
+          watermarkText: 'Karnataka News Pulse',
+        });
+        watermarkedImageDataUri = watermarkedImageResult.imageDataUri;
+    } catch (error: any) {
+        console.warn(`Watermarking failed during article update. Proceeding with original image. Error: ${error.message}`);
+    }
     
     if (imagePath) {
       const oldImageRef = ref(storage, imagePath);

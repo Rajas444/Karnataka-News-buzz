@@ -100,6 +100,12 @@ export async function getArticles(options: {
         where('status', '==', 'published'),
     ];
 
+    const isFiltered = (categorySlug && categorySlug !== 'all') || (districtId && districtId !== 'all');
+
+    if (!isFiltered) {
+        constraints.push(orderBy('publishedAt', 'desc'));
+    }
+
     if (categorySlug && categorySlug !== 'all') {
         const categories = await getCategories();
         const category = categories.find(c => c.slug === categorySlug);
@@ -133,7 +139,7 @@ export async function getArticles(options: {
         const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
 
         // To determine if there are more articles, we fetch one more than needed
-        const nextQueryConstraints = [...constraints];
+        const nextQueryConstraints: QueryConstraint[] = [...constraints];
         nextQueryConstraints.pop(); // remove limit
         nextQueryConstraints.push(startAfter(lastVisibleDoc), limit(1));
         const nextQuery = query(articlesCollection, ...nextQueryConstraints);

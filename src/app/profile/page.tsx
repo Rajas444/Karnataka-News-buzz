@@ -16,6 +16,17 @@ import { useToast } from '@/hooks/use-toast';
 import { updateUserProfile } from '@/services/users';
 import { useRouter } from 'next/navigation';
 
+// This is a helper function to be used on the client-side for updateUserProfile
+// because File objects can't be passed from client to server components directly.
+const convertFileToDataUri = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+    });
+};
+
+
 export default function ProfilePage() {
   const { user, userProfile, loading } = useAuth();
   const router = useRouter();
@@ -74,14 +85,17 @@ export default function ProfilePage() {
   const handleUpdateProfile = async () => {
     if (!user) return;
     setIsSubmitting(true);
+    
+    let imageAsDataUri: string | null = null;
+    if (imageFile) {
+        imageAsDataUri = await convertFileToDataUri(imageFile);
+    }
+
     try {
-        // Because File objects can't be passed to Server Actions,
-        // we handle the client-side logic here.
-        // `updateUserProfile` on the server will receive the File.
         await updateUserProfile(user.uid, {
             displayName,
             phoneNumber,
-            newImage: imageFile
+            newImageDataUri: imageAsDataUri
         });
 
         toast({

@@ -1,30 +1,21 @@
 
 'use server';
 
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import type { Post, PostFormValues } from '@/lib/types';
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, limit as firestoreLimit } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
-import { auth } from '@/lib/firebase';
+import { collection, addDoc, getDocs, doc, getDoc, serverTimestamp, query, orderBy, limit as firestoreLimit } from 'firebase/firestore';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 const postsCollection = collection(db, 'posts');
 
-// NOTE: If you are seeing "Firebase storage/unknown" errors when uploading images,
-// it is likely due to missing CORS configuration on your Firebase Storage bucket.
-// Please see the instructions in `storage.cors.json` at the root of the project
-// or run the following gcloud command:
-// gcloud storage buckets update gs://<your-storage-bucket-url> --cors-file=storage.cors.json
-
-// CREATE
 export async function createPost(data: PostFormValues, author: { uid: string, displayName: string | null, photoURL: string | null }): Promise<Post> {
   let imageUrl = data.imageUrl || null;
-  let imagePath = '';
+  let imagePath = ''; // This will store the Cloudinary public_id
 
   if (data.imageUrl && data.imageUrl.startsWith('data:')) {
-    const storageRef = ref(storage, `posts/${Date.now()}_${author.uid}`);
-    const snapshot = await uploadString(storageRef, data.imageUrl, 'data_url');
-    imageUrl = await getDownloadURL(snapshot.ref);
-    imagePath = snapshot.ref.fullPath;
+    const { secure_url, public_id } = await uploadToCloudinary(data.imageUrl, 'posts');
+    imageUrl = secure_url;
+    imagePath = public_id;
   }
 
   const newPost = {
@@ -50,7 +41,6 @@ export async function createPost(data: PostFormValues, author: { uid: string, di
    } as Post;
 }
 
-// READ (all)
 export async function getPosts(): Promise<Post[]> {
     const q = query(postsCollection, orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
@@ -65,7 +55,6 @@ export async function getPosts(): Promise<Post[]> {
     });
 }
 
-// READ (recent)
 export async function getRecentPosts(count: number): Promise<Post[]> {
     const q = query(postsCollection, orderBy('createdAt', 'desc'), firestoreLimit(count));
     const snapshot = await getDocs(q);

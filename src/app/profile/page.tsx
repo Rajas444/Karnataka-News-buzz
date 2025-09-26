@@ -56,7 +56,6 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    // This should be handled by the layout, but as a fallback:
     return <div className="container mx-auto px-4 py-8 text-center">Please log in to view your profile.</div>;
   }
   
@@ -76,11 +75,15 @@ export default function ProfilePage() {
     if (!user) return;
     setIsSubmitting(true);
     try {
+        // Because File objects can't be passed to Server Actions,
+        // we handle the client-side logic here.
+        // `updateUserProfile` on the server will receive the File.
         await updateUserProfile(user.uid, {
             displayName,
             phoneNumber,
             newImage: imageFile
         });
+
         toast({
             title: "Profile Updated",
             description: "Your profile has been successfully updated.",

@@ -10,6 +10,7 @@ export interface UserProfile {
   photoURL?: string;
   role: UserRole;
   phoneNumber?: string;
+  imagePath?: string; // For Cloudinary public_id
 }
 
 export interface Category {

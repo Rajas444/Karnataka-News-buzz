@@ -1,10 +1,10 @@
 
 'use server';
 
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
 import { collection, getDocs, query, orderBy, doc, updateDoc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
 
 const usersCollection = collection(db, 'users');
 
@@ -28,28 +28,34 @@ export async function updateUserProfile(uid: string, data: { displayName: string
         const userDoc = await getDoc(userDocRef);
         const currentUserData = userDoc.data() as UserProfile;
 
-        // If there's an old photoURL, construct the ref and try to delete it.
-        if (currentUserData.photoURL) {
-            try {
-                // Firebase Storage URLs have a specific format. We extract the path from it.
-                const oldImageRef = ref(storage, currentUserData.photoURL);
-                await deleteObject(oldImageRef);
-            } catch (error: any) {
-                // It's okay if deletion fails (e.g., file doesn't exist); we can still upload the new one.
-                if (error.code !== 'storage/object-not-found') {
-                    console.warn("Could not delete old profile picture:", error);
-                }
-            }
+        // If there's an old public_id, delete it from Cloudinary
+        if (currentUserData.imagePath) {
+            await deleteFromCloudinary(currentUserData.imagePath);
         }
 
-        // Upload the new image
-        const filePath = `profile-pictures/${uid}/${data.newImage.name}`;
-        const newImageRef = ref(storage, filePath);
-        await uploadBytes(newImageRef, data.newImage);
+        // Convert file to data URI to upload
+        const reader = new FileReader();
+        const fileAsDataUri = await new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(data.newImage!);
+        });
+
+        // Upload the new image to Cloudinary
+        const { secure_url, public_id } = await uploadToCloudinary(fileAsDataUri, 'profile-pictures');
         
-        // Get the new URL and add it to the update data
-        updateData.photoURL = await getDownloadURL(newImageRef);
+        updateData.photoURL = secure_url;
+        updateData.imagePath = public_id; // Store the public_id for future deletions
     }
     
     await updateDoc(userDocRef, updateData);
 }
+
+// This is a helper function to be used on the client-side for updateUserProfile
+// because File objects can't be passed from client to server components directly.
+export const convertFileToDataUri = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+    });
+};

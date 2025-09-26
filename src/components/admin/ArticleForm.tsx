@@ -365,14 +365,13 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>District</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || ''}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a district" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
                         {districts.map((dist) => (
                           <SelectItem key={dist.id} value={dist.id}>{dist.name}</SelectItem>
                         ))}

@@ -146,12 +146,16 @@ export default function ArticleModal() {
             )}
           </div>
         
-          {article && !loading && !isExternalArticle && (
+          {article && !loading && (
             <div className="border-t p-3 flex justify-between items-center bg-muted/50">
                 <ShareButtons url={typeof window !== 'undefined' ? `${window.location.origin}/article/${article.id}` : ''} title={article.title} />
-                 <Button variant="outline" size="sm" asChild>
-                    <a href={article.sourceUrl || '#'} target="_blank" rel="noopener noreferrer">Read Full Story</a>
-                </Button>
+                 {article.sourceUrl && !isExternalArticle && (
+                    <Button variant="outline" size="sm" asChild>
+                        <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                            Read Full Story <ExternalLink className="h-4 w-4" />
+                        </a>
+                    </Button>
+                )}
             </div>
           )}
       </DialogContent>

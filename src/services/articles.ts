@@ -112,12 +112,9 @@ export async function getArticles(options: {
         constraints.push(where('districtId', '==', districtId));
     }
     
-    // The orderBy must be on the field in the inequality filter, if any.
-    // To avoid complex index requirements, we will sort by date only when no other filters are applied.
-    const isFiltered = (categorySlug && categorySlug !== 'all') || (districtId && districtId !== 'all');
-    if (!isFiltered) {
-        constraints.push(orderBy('publishedAt', 'desc'));
-    }
+    // Always order by publishedAt descending to get the latest news first.
+    // This requires a composite index if other filters are applied.
+    constraints.push(orderBy('publishedAt', 'desc'));
     
     if (startAfterDocId) {
         const startDoc = await getDoc(doc(db, 'articles', startAfterDocId));
@@ -139,20 +136,9 @@ export async function getArticles(options: {
         const articles = await Promise.all(snapshot.docs.map(serializeArticle));
         const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
 
-        // If we filtered, we need to sort the results manually in code.
-        if (isFiltered) {
-            articles.sort((a, b) => {
-                const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-                const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-                return dateB - dateA;
-            });
-        }
-
         // Check if there are more documents for pagination
         const nextQueryConstraints = [...constraints]; // copy existing constraints
-        // Remove the old limit
-        nextQueryConstraints.pop(); 
-        // Add startAfter and a new limit
+        nextQueryConstraints.pop(); // Remove the old limit
         nextQueryConstraints.push(startAfter(lastVisibleDoc), limit(1));
 
         const nextQuery = query(articlesCollection, ...nextQueryConstraints);
@@ -166,9 +152,30 @@ export async function getArticles(options: {
     } catch (error: any) {
         console.error(`Error fetching articles: "${error.message}"`);
         if (error.code === 'failed-precondition') {
-            console.error("Firestore query failed. This is likely due to a missing composite index. Please create the required index in your Firebase console based on the error message in the server logs.");
+             // This is the fallback logic. If the indexed query fails,
+             // try again without sorting to at least get some data.
+            console.warn("Firestore query failed due to missing index. Retrying without sorting.");
+            
+            const fallbackConstraints = constraints.filter(c => c.type !== 'orderBy');
+            const fallbackQuery = query(articlesCollection, ...fallbackConstraints);
+            const fallbackSnapshot = await getDocs(fallbackQuery);
+
+            if (fallbackSnapshot.empty) {
+                return { articles: [], lastVisibleDocId: null };
+            }
+
+            const articles = await Promise.all(fallbackSnapshot.docs.map(serializeArticle));
+            // Manual sort as a fallback
+            articles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
+            const lastVisibleDoc = fallbackSnapshot.docs[fallbackSnapshot.docs.length - 1];
+
+            return {
+                articles: articles.slice(0, pageSize), // Manually apply page size
+                lastVisibleDocId: fallbackSnapshot.size > pageSize ? lastVisibleDoc.id : null
+            };
         }
-        // Return empty on error to prevent crashing the page
+        // For other errors, return empty to prevent crashing
         return { articles: [], lastVisibleDocId: null };
     }
 }

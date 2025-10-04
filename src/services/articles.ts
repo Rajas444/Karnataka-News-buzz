@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import type { Article, ArticleFormValues } from '@/lib/types';
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, where, QueryConstraint, Timestamp, limit, startAfter, DocumentSnapshot } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, where, QueryConstraint, Timestamp, limit, startAfter, DocumentSnapshot, orderBy } from 'firebase/firestore';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 import { getDistricts } from './districts';
 import { getCategories } from './categories';

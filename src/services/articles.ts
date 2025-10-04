@@ -156,7 +156,7 @@ export async function getArticles(options: {
              // try again without sorting to at least get some data.
             console.warn("Firestore query failed due to missing index. Retrying without sorting.");
             
-            const fallbackConstraints = constraints.filter(c => c.type !== 'orderBy');
+            const fallbackConstraints = constraints.filter(c => 'type' in c && c.type !== 'orderBy');
             const fallbackQuery = query(articlesCollection, ...fallbackConstraints);
             const fallbackSnapshot = await getDocs(fallbackQuery);
 
@@ -166,7 +166,11 @@ export async function getArticles(options: {
 
             const articles = await Promise.all(fallbackSnapshot.docs.map(serializeArticle));
             // Manual sort as a fallback
-            articles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+            articles.sort((a, b) => {
+                const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+                const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+                return dateB - dateA;
+            });
 
             const lastVisibleDoc = fallbackSnapshot.docs[fallbackSnapshot.docs.length - 1];
 
@@ -288,5 +292,7 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
     
     return articles.filter(article => article.id !== currentArticleId).slice(0, 3);
 }
+
+    
 
     

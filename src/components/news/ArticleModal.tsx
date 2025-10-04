@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import ShareButtons from '@/components/shared/ShareButtons';
 import { ScrollArea } from '../ui/scroll-area';
+import RelatedArticles from './RelatedArticles';
 
 export default function ArticleModal() {
   const { isOpen, onClose, articleId } = useArticleModal();
@@ -122,9 +123,14 @@ export default function ArticleModal() {
                       </div>
                     )}
                     
-                    <div className="whitespace-pre-wrap font-kannada text-base leading-relaxed text-foreground">
-                      <p>ONLY AVAILABLE IN PAID PLANS</p>
+                    <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap font-kannada text-base leading-relaxed text-foreground">
+                      {article.content}
                     </div>
+
+                    <RelatedArticles 
+                      categoryId={article.categoryIds[0]} 
+                      currentArticleId={article.id} 
+                    />
                 </div>
               </ScrollArea>
             )}
@@ -133,6 +139,9 @@ export default function ArticleModal() {
           {article && !loading && (
             <div className="border-t p-3 flex justify-between items-center bg-muted/50">
                 <ShareButtons url={typeof window !== 'undefined' ? `${window.location.origin}/article/${article.id}` : ''} title={article.title} />
+                 <Button variant="outline" size="sm" asChild>
+                    <a href={article.sourceUrl || '#'} target="_blank" rel="noopener noreferrer">Read Full Story</a>
+                </Button>
             </div>
           )}
       </DialogContent>

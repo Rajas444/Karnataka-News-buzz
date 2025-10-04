@@ -104,9 +104,6 @@ export async function getArticles(options: {
         constraints.push(where('districtId', '==', districtId));
     }
     
-    // This was causing the crash. Removing it simplifies the query.
-    // constraints.push(orderBy('createdAt', 'desc'));
-    
     if (startAfterDocId) {
         const startDoc = await getDoc(doc(db, 'articles', startAfterDocId));
         if (startDoc.exists()) {

@@ -12,7 +12,6 @@ import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import ShareButtons from '@/components/shared/ShareButtons';
 import { ScrollArea } from '../ui/scroll-area';
-import RelatedArticles from './RelatedArticles';
 
 export default function ArticleModal() {
   const { isOpen, onClose, articleId } = useArticleModal();
@@ -127,10 +126,6 @@ export default function ArticleModal() {
                       {article.content}
                     </div>
 
-                    <RelatedArticles 
-                      categoryId={article.categoryIds[0]} 
-                      currentArticleId={article.id} 
-                    />
                 </div>
               </ScrollArea>
             )}

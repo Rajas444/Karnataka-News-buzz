@@ -114,16 +114,16 @@ export async function getArticles(options: {
         constraints.push(where('districtId', '==', districtId));
     }
     
+    // Only add orderBy if there are no filters to prevent index errors.
+    if (!isFiltered) {
+        constraints.push(orderBy('publishedAt', 'desc'));
+    }
+    
     if (startAfterDocId) {
         const startDoc = await getDoc(doc(db, 'articles', startAfterDocId));
         if (startDoc.exists()) {
             constraints.push(startAfter(startDoc));
         }
-    }
-
-    // Only add orderBy if there are no filters to prevent index errors.
-    if (!isFiltered) {
-        constraints.push(orderBy('publishedAt', 'desc'));
     }
 
     constraints.push(limit(pageSize));
@@ -140,13 +140,23 @@ export async function getArticles(options: {
         const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
 
         // Check if there are more documents
-        const nextQueryConstraints = [...constraints];
-        nextQueryConstraints.pop(); // remove previous limit
-        if (startAfterDocId) { 
-            const index = nextQueryConstraints.findIndex(c => c.type === 'startAfter');
-            if (index > -1) nextQueryConstraints.splice(index, 1);
+        const nextQueryConstraints: QueryConstraint[] = [where('status', '==', 'published')];
+        if (categorySlug && categorySlug !== 'all') {
+            const categories = await getCategories();
+            const category = categories.find(c => c.slug === categorySlug);
+            if (category) {
+                nextQueryConstraints.push(where('categoryIds', 'array-contains', category.id));
+            }
         }
+        if (districtId && districtId !== 'all') {
+            nextQueryConstraints.push(where('districtId', '==', districtId));
+        }
+        if (!isFiltered) {
+           nextQueryConstraints.push(orderBy('publishedAt', 'desc'));
+        }
+
         nextQueryConstraints.push(startAfter(lastVisibleDoc), limit(1));
+
         const nextQuery = query(articlesCollection, ...nextQueryConstraints);
         const nextSnapshot = await getDocs(nextQuery);
 
@@ -269,3 +279,5 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
     
     return articles.filter(article => article.id !== currentArticleId).slice(0, 3);
 }
+
+    

@@ -8,6 +8,7 @@ import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 import { getDistricts } from './districts';
 import { getCategories } from './categories';
 import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
+import { getExternalNews } from './newsapi';
 
 const articlesCollection = collection(db, 'articles');
 
@@ -118,6 +119,7 @@ export async function getArticles(options: {
         }
     }
 
+    constraints.push(orderBy('createdAt', 'desc'));
     constraints.push(limit(pageSize));
 
     try {
@@ -134,10 +136,11 @@ export async function getArticles(options: {
         // Check if there are more documents
         const nextQueryConstraints = [...constraints];
         nextQueryConstraints.pop(); // remove previous limit
-        if (startAfterDocId) { // We need to manage the constraints array carefully
-            nextQueryConstraints.pop(); // remove previous startAfter
+        nextQueryConstraints.pop(); // remove previous orderBy
+        if (startAfterDocId) { 
+            nextQueryConstraints.pop();
         }
-        nextQueryConstraints.push(startAfter(lastVisibleDoc), limit(1));
+        nextQueryConstraints.push(orderBy('createdAt', 'desc'), startAfter(lastVisibleDoc), limit(1));
         const nextQuery = query(articlesCollection, ...nextQueryConstraints);
         const nextSnapshot = await getDocs(nextQuery);
 
@@ -155,17 +158,30 @@ export async function getArticles(options: {
     }
 }
 
-export async function getArticle(id: string): Promise<Article | null> {
-  const docRef = doc(db, 'articles', id);
-  const docSnap = await getDoc(docRef);
 
-  if (docSnap.exists()) {
-    updateDoc(docRef, { views: (docSnap.data().views || 0) + 1 });
-    return serializeArticle(docSnap);
-  } else {
+export async function getArticle(id: string): Promise<Article | null> {
+    // First, try to get the article from our local Firestore DB
+    const docRef = doc(db, 'articles', id);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+        // Increment view count for local articles
+        await updateDoc(docRef, { views: (docSnap.data().views || 0) + 1 });
+        return serializeArticle(docSnap);
+    }
+    
+    // If not found locally, try fetching from the external NewsAPI
+    // We use the URL as the ID for external articles
+    const externalNews = await getExternalNews();
+    const externalArticle = externalNews.find(article => article.id === id);
+
+    if (externalArticle) {
+        return externalArticle;
+    }
+
     return null;
-  }
 }
+
 
 export async function updateArticle(id: string, data: ArticleFormValues & { categoryIds: string[] }): Promise<Article> {
   const docRef = doc(db, 'articles', id);

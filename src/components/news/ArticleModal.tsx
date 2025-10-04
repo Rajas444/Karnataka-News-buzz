@@ -24,6 +24,7 @@ export default function ArticleModal() {
         setLoading(true);
         setArticle(null); // Clear previous article
         try {
+          // The getArticle function now handles both internal and external articles
           const fetchedArticle = await getArticle(articleId);
           setArticle(fetchedArticle);
         } catch (error) {
@@ -51,6 +52,8 @@ export default function ArticleModal() {
       setArticle(null);
       onClose();
   }
+
+  const isExternalArticle = article?.id.startsWith('http');
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -125,13 +128,25 @@ export default function ArticleModal() {
                     <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap font-kannada text-base leading-relaxed text-foreground">
                       {article.content}
                     </div>
-
+                    
+                    {isExternalArticle && (
+                      <div className="pt-4 text-center">
+                        <Button asChild>
+                          <a href={article.sourceUrl || '#'} target="_blank" rel="noopener noreferrer">
+                            Read Full Story on {article.source} <ExternalLink className="ml-2 h-4 w-4" />
+                          </a>
+                        </Button>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          This is an external article. Click above to read the full content.
+                        </p>
+                      </div>
+                    )}
                 </div>
               </ScrollArea>
             )}
           </div>
         
-          {article && !loading && (
+          {article && !loading && !isExternalArticle && (
             <div className="border-t p-3 flex justify-between items-center bg-muted/50">
                 <ShareButtons url={typeof window !== 'undefined' ? `${window.location.origin}/article/${article.id}` : ''} title={article.title} />
                  <Button variant="outline" size="sm" asChild>

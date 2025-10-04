@@ -6,6 +6,7 @@ import ActivityLog from "@/components/admin/ActivityLog";
 import AiAssistant from "@/components/admin/AIAssistant";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import ExternalNewsFeed from "@/components/admin/ExternalNewsFeed";
 
 const features = [
   {
@@ -83,10 +84,17 @@ export default function AdminDashboardPage() {
         </CardContent>
       </Card>
       
-      <div className="grid gap-8 lg:grid-cols-2">
-        <AiAssistant />
-        <ActivityLog />
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+            <ExternalNewsFeed />
+        </div>
+        <div className="lg:col-span-1">
+            <ActivityLog />
+        </div>
       </div>
+       <div className="grid gap-8 lg:grid-cols-1">
+          <AiAssistant />
+       </div>
 
     </div>
   );

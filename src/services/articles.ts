@@ -112,10 +112,6 @@ export async function getArticles(options: {
         constraints.push(where('districtId', '==', districtId));
     }
     
-    // Always order by publishedAt descending to get the latest news first.
-    // This requires a composite index if other filters are applied.
-    constraints.push(orderBy('publishedAt', 'desc'));
-    
     if (startAfterDocId) {
         const startDoc = await getDoc(doc(db, 'articles', startAfterDocId));
         if (startDoc.exists()) {
@@ -133,53 +129,24 @@ export async function getArticles(options: {
             return { articles: [], lastVisibleDocId: null };
         }
         
-        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        let articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        
+        // Always sort by publishedAt descending after fetching
+        articles.sort((a, b) => {
+            const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+            const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+            return dateB - dateA;
+        });
+        
         const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
-
-        // Check if there are more documents for pagination
-        const nextQueryConstraints = [...constraints]; // copy existing constraints
-        nextQueryConstraints.pop(); // Remove the old limit
-        nextQueryConstraints.push(startAfter(lastVisibleDoc), limit(1));
-
-        const nextQuery = query(articlesCollection, ...nextQueryConstraints);
-        const nextSnapshot = await getDocs(nextQuery);
-
+        
         return {
             articles,
-            lastVisibleDocId: nextSnapshot.empty ? null : lastVisibleDoc.id,
+            lastVisibleDocId: snapshot.size === pageSize ? lastVisibleDoc.id : null,
         };
         
     } catch (error: any) {
         console.error(`Error fetching articles: "${error.message}"`);
-        if (error.code === 'failed-precondition') {
-             // This is the fallback logic. If the indexed query fails,
-             // try again without sorting to at least get some data.
-            console.warn("Firestore query failed due to missing index. Retrying without sorting.");
-            
-            const fallbackConstraints = constraints.filter(c => 'type' in c && c.type !== 'orderBy');
-            const fallbackQuery = query(articlesCollection, ...fallbackConstraints);
-            const fallbackSnapshot = await getDocs(fallbackQuery);
-
-            if (fallbackSnapshot.empty) {
-                return { articles: [], lastVisibleDocId: null };
-            }
-
-            const articles = await Promise.all(fallbackSnapshot.docs.map(serializeArticle));
-            // Manual sort as a fallback
-            articles.sort((a, b) => {
-                const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-                const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-                return dateB - dateA;
-            });
-
-            const lastVisibleDoc = fallbackSnapshot.docs[fallbackSnapshot.docs.length - 1];
-
-            return {
-                articles: articles.slice(0, pageSize), // Manually apply page size
-                lastVisibleDocId: fallbackSnapshot.size > pageSize ? lastVisibleDoc.id : null
-            };
-        }
-        // For other errors, return empty to prevent crashing
         return { articles: [], lastVisibleDocId: null };
     }
 }

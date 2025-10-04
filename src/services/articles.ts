@@ -100,8 +100,6 @@ export async function getArticles(options: {
         where('status', '==', 'published'),
     ];
 
-    const isFiltered = (categorySlug && categorySlug !== 'all') || (districtId && districtId !== 'all');
-
     if (categorySlug && categorySlug !== 'all') {
         const categories = await getCategories();
         const category = categories.find(c => c.slug === categorySlug);
@@ -114,7 +112,9 @@ export async function getArticles(options: {
         constraints.push(where('districtId', '==', districtId));
     }
     
-    // Only add orderBy if there are no filters to prevent index errors.
+    // The orderBy must be on the field in the inequality filter, if any.
+    // To avoid complex index requirements, we will sort by date only when no other filters are applied.
+    const isFiltered = (categorySlug && categorySlug !== 'all') || (districtId && districtId !== 'all');
     if (!isFiltered) {
         constraints.push(orderBy('publishedAt', 'desc'));
     }
@@ -139,22 +139,20 @@ export async function getArticles(options: {
         const articles = await Promise.all(snapshot.docs.map(serializeArticle));
         const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
 
-        // Check if there are more documents
-        const nextQueryConstraints: QueryConstraint[] = [where('status', '==', 'published')];
-        if (categorySlug && categorySlug !== 'all') {
-            const categories = await getCategories();
-            const category = categories.find(c => c.slug === categorySlug);
-            if (category) {
-                nextQueryConstraints.push(where('categoryIds', 'array-contains', category.id));
-            }
-        }
-        if (districtId && districtId !== 'all') {
-            nextQueryConstraints.push(where('districtId', '==', districtId));
-        }
-        if (!isFiltered) {
-           nextQueryConstraints.push(orderBy('publishedAt', 'desc'));
+        // If we filtered, we need to sort the results manually in code.
+        if (isFiltered) {
+            articles.sort((a, b) => {
+                const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+                const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+                return dateB - dateA;
+            });
         }
 
+        // Check if there are more documents for pagination
+        const nextQueryConstraints = [...constraints]; // copy existing constraints
+        // Remove the old limit
+        nextQueryConstraints.pop(); 
+        // Add startAfter and a new limit
         nextQueryConstraints.push(startAfter(lastVisibleDoc), limit(1));
 
         const nextQuery = query(articlesCollection, ...nextQueryConstraints);
@@ -170,6 +168,7 @@ export async function getArticles(options: {
         if (error.code === 'failed-precondition') {
             console.error("Firestore query failed. This is likely due to a missing composite index. Please create the required index in your Firebase console based on the error message in the server logs.");
         }
+        // Return empty on error to prevent crashing the page
         return { articles: [], lastVisibleDocId: null };
     }
 }
@@ -182,7 +181,10 @@ export async function getArticle(id: string): Promise<Article | null> {
 
     if (docSnap.exists()) {
         // Increment view count for local articles
-        await updateDoc(docRef, { views: (docSnap.data().views || 0) + 1 });
+        const currentViews = docSnap.data().views || 0;
+        await updateDoc(docRef, { views: currentViews + 1 });
+        // It's better to fetch the document again to get the updated view count if needed,
+        // but for this purpose we can just return the serialized data.
         return serializeArticle(docSnap);
     }
     

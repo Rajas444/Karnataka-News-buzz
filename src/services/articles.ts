@@ -49,11 +49,18 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
         imageUrl = secure_url;
         imagePath = public_id;
     } catch (error: any) {
-        console.warn(`Watermarking failed, proceeding with original image. Error: ${error.message}`);
-        // If watermarking fails, upload the original image
-        const { secure_url, public_id } = await uploadToCloudinary(data.imageUrl, 'articles');
-        imageUrl = secure_url;
-        imagePath = public_id;
+        console.warn(`Watermarking or upload failed, proceeding with original image. Error: ${error.message}`);
+        // If watermarking or the first upload attempt fails, just upload the original.
+        try {
+            const { secure_url, public_id } = await uploadToCloudinary(data.imageUrl, 'articles');
+            imageUrl = secure_url;
+            imagePath = public_id;
+        } catch (uploadError: any) {
+            console.error(`Fallback image upload also failed: ${uploadError.message}`);
+            // If the fallback also fails, we proceed without an image.
+            imageUrl = null;
+            imagePath = '';
+        }
     }
   }
 
@@ -124,8 +131,12 @@ export async function getArticles(options: {
         const articles = await Promise.all(snapshot.docs.map(serializeArticle));
         const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
 
-        const nextQueryConstraints: QueryConstraint[] = [...constraints];
-        nextQueryConstraints.pop(); // remove limit
+        // Check if there are more documents
+        const nextQueryConstraints = [...constraints];
+        nextQueryConstraints.pop(); // remove previous limit
+        if (startAfterDocId) { // We need to manage the constraints array carefully
+            nextQueryConstraints.pop(); // remove previous startAfter
+        }
         nextQueryConstraints.push(startAfter(lastVisibleDoc), limit(1));
         const nextQuery = query(articlesCollection, ...nextQueryConstraints);
         const nextSnapshot = await getDocs(nextQuery);
@@ -174,10 +185,14 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
         imageUrl = secure_url;
         imagePath = public_id;
     } catch (error: any) {
-        console.warn(`Watermarking failed, proceeding with original image. Error: ${error.message}`);
-        const { secure_url, public_id } = await uploadToCloudinary(data.imageUrl, 'articles');
-        imageUrl = secure_url;
-        imagePath = public_id;
+        console.warn(`Watermarking or upload failed, proceeding with original image. Error: ${error.message}`);
+        try {
+            const { secure_url, public_id } = await uploadToCloudinary(data.imageUrl, 'articles');
+            imageUrl = secure_url;
+            imagePath = public_id;
+        } catch (uploadError: any) {
+            console.error(`Fallback image upload also failed: ${uploadError.message}`);
+        }
     }
   }
 
@@ -218,7 +233,6 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         const constraints: QueryConstraint[] = [
             where('status', '==', 'published'),
             where('categoryIds', 'array-contains', categoryId),
-            orderBy('publishedAt', 'desc'),
             limit(4) 
         ];
         
@@ -227,23 +241,8 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
     } catch (error: any) {
-        console.warn(
-            `[getRelatedArticles] Query failed. This likely requires a Firestore index. Falling back to a simpler query. Error: ${error.message}`
-        );
-
-        try {
-            const fallbackQuery = query(
-                articlesCollection,
-                where('status', '==', 'published'),
-                where('categoryIds', 'array-contains', categoryId),
-                limit(4)
-            );
-            const snapshot = await getDocs(fallbackQuery);
-            articles = await Promise.all(snapshot.docs.map(serializeArticle));
-        } catch (fallbackError) {
-            console.error("Fallback query for related articles also failed:", fallbackError);
-            return [];
-        }
+        console.error("Query for related articles failed:", error);
+        return [];
     }
     
     return articles.filter(article => article.id !== currentArticleId).slice(0, 3);

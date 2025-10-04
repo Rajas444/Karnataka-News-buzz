@@ -100,6 +100,8 @@ export async function getArticles(options: {
         where('status', '==', 'published'),
     ];
 
+    const isFiltered = (categorySlug && categorySlug !== 'all') || (districtId && districtId !== 'all');
+
     if (categorySlug && categorySlug !== 'all') {
         const categories = await getCategories();
         const category = categories.find(c => c.slug === categorySlug);
@@ -119,8 +121,11 @@ export async function getArticles(options: {
         }
     }
 
-    // This was causing crashes with filters. Removing it ensures the query will succeed.
-    // constraints.push(orderBy('createdAt', 'desc'));
+    // Only add orderBy if there are no filters to prevent index errors.
+    if (!isFiltered) {
+        constraints.push(orderBy('publishedAt', 'desc'));
+    }
+
     constraints.push(limit(pageSize));
 
     try {
@@ -138,7 +143,8 @@ export async function getArticles(options: {
         const nextQueryConstraints = [...constraints];
         nextQueryConstraints.pop(); // remove previous limit
         if (startAfterDocId) { 
-            nextQueryConstraints.pop();
+            const index = nextQueryConstraints.findIndex(c => c.type === 'startAfter');
+            if (index > -1) nextQueryConstraints.splice(index, 1);
         }
         nextQueryConstraints.push(startAfter(lastVisibleDoc), limit(1));
         const nextQuery = query(articlesCollection, ...nextQueryConstraints);

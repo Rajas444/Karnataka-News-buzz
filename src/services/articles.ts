@@ -40,20 +40,21 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
   let imagePath = ''; // Using imagePath to store the Cloudinary public_id
 
   if (data.imageUrl && data.imageUrl.startsWith('data:')) {
-    let watermarkedImageDataUri = data.imageUrl;
     try {
         const watermarkedImageResult = await watermarkImage({
             imageDataUri: data.imageUrl,
             watermarkText: 'Karnataka News Pulse',
         });
-        watermarkedImageDataUri = watermarkedImageResult.imageDataUri;
+        const { secure_url, public_id } = await uploadToCloudinary(watermarkedImageResult.imageDataUri, 'articles');
+        imageUrl = secure_url;
+        imagePath = public_id;
     } catch (error: any) {
-        console.warn(`Watermarking failed during article creation. Proceeding with original image. Error: ${error.message}`);
+        console.warn(`Watermarking failed, proceeding with original image. Error: ${error.message}`);
+        // If watermarking fails, upload the original image
+        const { secure_url, public_id } = await uploadToCloudinary(data.imageUrl, 'articles');
+        imageUrl = secure_url;
+        imagePath = public_id;
     }
-
-    const { secure_url, public_id } = await uploadToCloudinary(watermarkedImageDataUri, 'articles');
-    imageUrl = secure_url;
-    imagePath = public_id;
   }
 
   const { categoryId, ...restOfData } = data;
@@ -164,24 +165,23 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
   let imagePath = data.imagePath || ''; // imagePath is the Cloudinary public_id
 
   if (data.imageUrl && data.imageUrl.startsWith('data:')) {
-    let watermarkedImageDataUri = data.imageUrl;
+    if (imagePath) {
+      await deleteFromCloudinary(imagePath);
+    }
     try {
         const watermarkedImageResult = await watermarkImage({
           imageDataUri: data.imageUrl,
           watermarkText: 'Karnataka News Pulse',
         });
-        watermarkedImageDataUri = watermarkedImageResult.imageDataUri;
+        const { secure_url, public_id } = await uploadToCloudinary(watermarkedImageResult.imageDataUri, 'articles');
+        imageUrl = secure_url;
+        imagePath = public_id;
     } catch (error: any) {
-        console.warn(`Watermarking failed during article update. Proceeding with original image. Error: ${error.message}`);
+        console.warn(`Watermarking failed, proceeding with original image. Error: ${error.message}`);
+        const { secure_url, public_id } = await uploadToCloudinary(data.imageUrl, 'articles');
+        imageUrl = secure_url;
+        imagePath = public_id;
     }
-    
-    if (imagePath) {
-      await deleteFromCloudinary(imagePath);
-    }
-    
-    const { secure_url, public_id } = await uploadToCloudinary(watermarkedImageDataUri, 'articles');
-    imageUrl = secure_url;
-    imagePath = public_id;
   }
 
   const { categoryId, ...restOfData } = data;

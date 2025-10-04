@@ -123,7 +123,7 @@ export default function ArticleModal() {
                     )}
                     
                     <div className="whitespace-pre-wrap font-kannada text-base leading-relaxed text-foreground">
-                      {article.content}
+                      <p>ONLY AVAILABLE IN PAID PLANS</p>
                     </div>
                 </div>
               </ScrollArea>

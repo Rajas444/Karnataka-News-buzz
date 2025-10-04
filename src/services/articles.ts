@@ -119,7 +119,8 @@ export async function getArticles(options: {
         }
     }
 
-    constraints.push(orderBy('createdAt', 'desc'));
+    // This was causing crashes with filters. Removing it ensures the query will succeed.
+    // constraints.push(orderBy('createdAt', 'desc'));
     constraints.push(limit(pageSize));
 
     try {
@@ -136,11 +137,10 @@ export async function getArticles(options: {
         // Check if there are more documents
         const nextQueryConstraints = [...constraints];
         nextQueryConstraints.pop(); // remove previous limit
-        nextQueryConstraints.pop(); // remove previous orderBy
         if (startAfterDocId) { 
             nextQueryConstraints.pop();
         }
-        nextQueryConstraints.push(orderBy('createdAt', 'desc'), startAfter(lastVisibleDoc), limit(1));
+        nextQueryConstraints.push(startAfter(lastVisibleDoc), limit(1));
         const nextQuery = query(articlesCollection, ...nextQueryConstraints);
         const nextSnapshot = await getDocs(nextQuery);
 

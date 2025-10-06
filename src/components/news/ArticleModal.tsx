@@ -14,6 +14,7 @@ import ShareButtons from '@/components/shared/ShareButtons';
 import { ScrollArea } from '../ui/scroll-area';
 import { extractArticleContentFromUrl } from '@/ai/flows/extract-article-content-from-url';
 import { useToast } from '@/hooks/use-toast';
+import RelatedArticles from './RelatedArticles';
 
 export default function ArticleModal() {
   const { isOpen, onClose, articleId } = useArticleModal();
@@ -144,9 +145,9 @@ export default function ArticleModal() {
 
             {article && !loading && (
               <ScrollArea className="h-full">
-                <div className="p-4 sm:p-6 space-y-4">
+                <div className="p-4 sm:p-6">
                     {article.imageUrl && (
-                      <div className="relative aspect-video w-full rounded-lg overflow-hidden">
+                      <div className="relative aspect-video w-full rounded-lg overflow-hidden mb-6">
                           <Image
                               src={article.imageUrl}
                               alt={article.title}
@@ -172,6 +173,11 @@ export default function ArticleModal() {
                         </p>
                       </div>
                     )}
+
+                    <RelatedArticles 
+                      categoryId={article.categoryIds?.[0]} 
+                      currentArticleId={article.id}
+                    />
                 </div>
               </ScrollArea>
             )}

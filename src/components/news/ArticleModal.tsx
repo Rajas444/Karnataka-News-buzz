@@ -54,6 +54,7 @@ export default function ArticleModal() {
   }
 
   const isExternalArticle = article?.id.startsWith('http');
+  const showReadFullStory = (isExternalArticle || article?.sourceUrl) && (!article.content || article.content.length < 150);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -129,7 +130,7 @@ export default function ArticleModal() {
                       {article.content}
                     </div>
                     
-                    {isExternalArticle && (
+                    {showReadFullStory && (
                       <div className="pt-4 text-center">
                         <Button asChild>
                           <a href={article.sourceUrl || '#'} target="_blank" rel="noopener noreferrer">
@@ -137,7 +138,7 @@ export default function ArticleModal() {
                           </a>
                         </Button>
                         <p className="text-xs text-muted-foreground mt-2">
-                          This is an external article. Click above to read the full content.
+                          This is a summary. Click above to read the full content on the original site.
                         </p>
                       </div>
                     )}
@@ -149,10 +150,10 @@ export default function ArticleModal() {
           {article && !loading && (
             <div className="border-t p-3 flex justify-between items-center bg-muted/50">
                 <ShareButtons url={typeof window !== 'undefined' ? `${window.location.origin}/article/${article.id}` : ''} title={article.title} />
-                 {article.sourceUrl && !isExternalArticle && (
+                 {article.sourceUrl && !showReadFullStory && (
                     <Button variant="outline" size="sm" asChild>
                         <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                            Read Full Story <ExternalLink className="h-4 w-4" />
+                            View Original Source <ExternalLink className="h-4 w-4" />
                         </a>
                     </Button>
                 )}

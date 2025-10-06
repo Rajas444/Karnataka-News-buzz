@@ -10,6 +10,7 @@ import '@/ai/flows/watermark-image-flow.ts';
 import '@/ai/flows/extract-article-content.ts';
 import '@/ai/flows/generate-user-report-flow.ts';
 import '@/ai/flows/generate-placeholder-report-flow.ts';
+import '@/ai/flows/extract-article-content-from-url.ts';
 
 
 

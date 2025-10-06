@@ -9,6 +9,7 @@ import { getDistricts } from './districts';
 import { getCategories } from './categories';
 import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
 import { getExternalNews } from './newsapi';
+import { extractArticleContentFromUrl } from '@/ai/flows/extract-article-content-from-url';
 
 const articlesCollection = collection(db, 'articles');
 
@@ -153,29 +154,40 @@ export async function getArticles(options: {
 
 
 export async function getArticle(id: string): Promise<Article | null> {
-    // First, try to get the article from our local Firestore DB
-    const docRef = doc(db, 'articles', id);
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-        // Increment view count for local articles
-        const currentViews = docSnap.data().views || 0;
-        await updateDoc(docRef, { views: currentViews + 1 });
-        // It's better to fetch the document again to get the updated view count if needed,
-        // but for this purpose we can just return the serialized data.
-        return serializeArticle(docSnap);
-    }
+    const isExternalId = id.startsWith('http');
     
-    // If not found locally, try fetching from the external NewsAPI
-    // We use the URL as the ID for external articles
-    const externalNews = await getExternalNews();
-    const externalArticle = externalNews.find(article => article.id === id);
+    let article: Article | null = null;
 
-    if (externalArticle) {
-        return externalArticle;
+    if (!isExternalId) {
+        // Fetch from local Firestore DB
+        const docRef = doc(db, 'articles', id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            article = await serializeArticle(docSnap);
+            // Increment view count for local articles
+            const currentViews = docSnap.data().views || 0;
+            await updateDoc(docRef, { views: currentViews + 1 });
+        }
+    } else {
+        // If not found locally, try fetching from the external NewsAPI
+        // We use the URL as the ID for external articles
+        const externalNews = await getExternalNews();
+        article = externalNews.find(a => a.id === id) || null;
     }
 
-    return null;
+    if (article && (!article.content || article.content.length < 100) && article.sourceUrl) {
+      try {
+        console.log(`Content for article "${article.title}" is short. Fetching full content from ${article.sourceUrl}`);
+        const { content } = await extractArticleContentFromUrl({ url: article.sourceUrl });
+        article.content = content;
+      } catch (e: any) {
+        console.error(`Failed to extract content from URL ${article.sourceUrl}: ${e.message}`);
+        // If extraction fails, we just proceed with the short content. 
+        // A user-facing message is already in the modal.
+      }
+    }
+
+    return article;
 }
 
 

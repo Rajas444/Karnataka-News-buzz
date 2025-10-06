@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI agent that extracts the main content of a news article from a URL.

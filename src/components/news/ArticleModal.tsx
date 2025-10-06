@@ -12,11 +12,15 @@ import { format } from 'date-fns';
 import { Button } from '../ui/button';
 import ShareButtons from '@/components/shared/ShareButtons';
 import { ScrollArea } from '../ui/scroll-area';
+import { extractArticleContentFromUrl } from '@/ai/flows/extract-article-content-from-url';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ArticleModal() {
   const { isOpen, onClose, articleId } = useArticleModal();
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isFetchingFullContent, setIsFetchingFullContent] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -24,7 +28,6 @@ export default function ArticleModal() {
         setLoading(true);
         setArticle(null); // Clear previous article
         try {
-          // The getArticle function now handles both internal and external articles
           const fetchedArticle = await getArticle(articleId);
           setArticle(fetchedArticle);
         } catch (error) {
@@ -53,8 +56,27 @@ export default function ArticleModal() {
       onClose();
   }
 
+  const handleFetchFullContent = async () => {
+    if (!article?.sourceUrl) return;
+
+    setIsFetchingFullContent(true);
+    try {
+        const { content } = await extractArticleContentFromUrl({ url: article.sourceUrl });
+        setArticle(prev => prev ? { ...prev, content: content } : null);
+    } catch (e: any) {
+        console.error(`Failed to extract content from URL ${article.sourceUrl}: ${e.message}`);
+        toast({
+            title: 'Could Not Fetch Full Article',
+            description: 'We were unable to load the full content from the source. Please try the original link.',
+            variant: 'destructive',
+        });
+    } finally {
+        setIsFetchingFullContent(false);
+    }
+  };
+
   const isExternalArticle = article?.id.startsWith('http');
-  const showReadFullStory = (isExternalArticle || article?.sourceUrl) && (!article.content || article.content.length < 150);
+  const showReadFullStoryButton = (isExternalArticle || article?.sourceUrl) && (!article.content || article.content.length < 150);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -127,18 +149,17 @@ export default function ArticleModal() {
                     )}
                     
                     <div className="prose dark:prose-invert max-w-none whitespace-pre-wrap font-kannada text-base leading-relaxed text-foreground">
-                      {article.content}
+                      {isFetchingFullContent ? 'Loading full article...' : article.content}
                     </div>
                     
-                    {showReadFullStory && (
+                    {showReadFullStoryButton && (
                       <div className="pt-4 text-center">
-                        <Button asChild>
-                          <a href={article.sourceUrl || '#'} target="_blank" rel="noopener noreferrer">
-                            Read Full Story on {article.source} <ExternalLink className="ml-2 h-4 w-4" />
-                          </a>
+                        <Button onClick={handleFetchFullContent} disabled={isFetchingFullContent}>
+                           {isFetchingFullContent && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                           Read Full Story
                         </Button>
                         <p className="text-xs text-muted-foreground mt-2">
-                          This is a summary. Click above to read the full content on the original site.
+                          This is a summary. Click above to load the full content in the app.
                         </p>
                       </div>
                     )}
@@ -150,7 +171,7 @@ export default function ArticleModal() {
           {article && !loading && (
             <div className="border-t p-3 flex justify-between items-center bg-muted/50">
                 <ShareButtons url={typeof window !== 'undefined' ? `${window.location.origin}/article/${article.id}` : ''} title={article.title} />
-                 {article.sourceUrl && !showReadFullStory && (
+                 {article.sourceUrl && (
                     <Button variant="outline" size="sm" asChild>
                         <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
                             View Original Source <ExternalLink className="h-4 w-4" />

@@ -9,7 +9,6 @@ import { getDistricts } from './districts';
 import { getCategories } from './categories';
 import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
 import { getExternalNews } from './newsapi';
-import { extractArticleContentFromUrl } from '@/ai/flows/extract-article-content-from-url';
 
 const articlesCollection = collection(db, 'articles');
 
@@ -175,18 +174,6 @@ export async function getArticle(id: string): Promise<Article | null> {
         article = externalNews.find(a => a.id === id) || null;
     }
 
-    if (article && (!article.content || article.content.length < 100) && article.sourceUrl) {
-      try {
-        console.log(`Content for article "${article.title}" is short. Fetching full content from ${article.sourceUrl}`);
-        const { content } = await extractArticleContentFromUrl({ url: article.sourceUrl });
-        article.content = content;
-      } catch (e: any) {
-        console.error(`Failed to extract content from URL ${article.sourceUrl}: ${e.message}`);
-        // If extraction fails, we just proceed with the short content. 
-        // A user-facing message is already in the modal.
-      }
-    }
-
     return article;
 }
 
@@ -275,3 +262,4 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
     
 
     
+

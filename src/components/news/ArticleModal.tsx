@@ -65,11 +65,20 @@ export default function ArticleModal() {
         setArticle(prev => prev ? { ...prev, content: content } : null);
     } catch (e: any) {
         console.error(`Failed to extract content from URL ${article.sourceUrl}: ${e.message}`);
-        toast({
-            title: 'Could Not Fetch Full Article',
-            description: 'We were unable to load the full content from the source. Please try the original link.',
-            variant: 'destructive',
-        });
+        const errorMessage = e.message || 'An unknown error occurred.';
+        if (errorMessage.includes('503') || errorMessage.includes('overloaded')) {
+             toast({
+                title: 'AI Assistant is Busy',
+                description: 'The AI model is currently overloaded. Please try again in a few moments.',
+                variant: 'destructive',
+            });
+        } else {
+            toast({
+                title: 'Could Not Fetch Full Article',
+                description: 'We were unable to load the full content from the source. Please try the original link.',
+                variant: 'destructive',
+            });
+        }
     } finally {
         setIsFetchingFullContent(false);
     }
@@ -101,7 +110,7 @@ export default function ArticleModal() {
                             <NewspaperIcon className="h-3 w-3" />
                             {article.sourceUrl ? (
                               <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary flex items-center gap-1">
-                                {article.source} <ExternalLink className="h-3 w-3" />
+                                {article.source}
                               </a>
                             ) : (
                               article.source

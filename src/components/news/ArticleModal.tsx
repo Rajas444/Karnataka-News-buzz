@@ -67,19 +67,22 @@ export default function ArticleModal() {
     } catch (e: any) {
         console.error(`Failed to extract content from URL ${article.sourceUrl}: ${e.message}`);
         const errorMessage = e.message || 'An unknown error occurred.';
+        let toastDescription = 'We were unable to load the full content from the source. Opening the original article in a new tab for you.';
+
         if (errorMessage.includes('503') || errorMessage.includes('overloaded')) {
-             toast({
-                title: 'AI Assistant is Busy',
-                description: 'The AI model is currently overloaded. Please try again in a few moments.',
-                variant: 'destructive',
-            });
-        } else {
-            toast({
-                title: 'Could Not Fetch Full Article',
-                description: 'We were unable to load the full content from the source. Please try the original link.',
-                variant: 'destructive',
-            });
+             toastDescription = 'The AI model is currently overloaded. Opening the original article in a new tab for you.';
         }
+        
+        toast({
+            title: 'Could Not Fetch Full Article',
+            description: toastDescription,
+            variant: 'destructive',
+            duration: 7000,
+        });
+
+        // Fallback to opening the link in a new tab
+        window.open(article.sourceUrl, '_blank');
+
     } finally {
         setIsFetchingFullContent(false);
     }

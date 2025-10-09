@@ -19,9 +19,9 @@ interface NewsAPIArticleDTO {
 
 // Function to fetch news from NewsAPI.org
 async function fetchFromNewsAPI(): Promise<NewsApiArticle[]> {
-    const apiKey = process.env.NEWS_API_KEY;
-    if (!apiKey) {
-        console.error("NewsAPI key is not configured.");
+    const apiKey = process.env.NEXT_PUBLIC_NEWS_API_KEY;
+    if (!apiKey || apiKey === "your_news_api_key_here") {
+        console.error("NewsAPI key is not configured. Please add it to your .env file.");
         return [];
     }
 

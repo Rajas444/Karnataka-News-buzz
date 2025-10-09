@@ -9,6 +9,14 @@ import { useToast } from '@/hooks/use-toast';
 import { getCategories } from '@/services/categories';
 import { getArticles } from '@/services/articles';
 import { Button } from '../ui/button';
+import {
+  onSnapshot,
+  query,
+  collection,
+  orderBy,
+  limit,
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface ArticleListProps {
   initialArticles: Article[];
@@ -43,6 +51,29 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       }
     }
     fetchInitialData();
+
+    // Simplified Real-time listener for new articles
+    const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'), limit(1));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+                const newArticle = { id: change.doc.id, ...change.doc.data() } as Article;
+                // Avoid adding duplicates if the article is already in the list
+                setArticles(prev => {
+                    if (prev.find(a => a.id === newArticle.id)) {
+                        return prev;
+                    }
+                    console.log("New article detected, prepending to list:", newArticle.title);
+                    return [newArticle, ...prev];
+                });
+            }
+        });
+    }, (error) => {
+        console.error("Real-time update failed:", error);
+    });
+
+    return () => unsubscribe();
+
   }, []);
 
   const handleLoadMore = useCallback(async () => {
@@ -53,8 +84,8 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       const { articles: newArticles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
         pageSize: 10,
         startAfterDocId: lastVisibleDocId,
-        categorySlug: categorySlug,
-        districtId: districtId,
+        categorySlug,
+        districtId,
       });
       
       setArticles(prev => [...prev, ...newArticles]);

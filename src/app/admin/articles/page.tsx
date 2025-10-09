@@ -26,7 +26,6 @@ export default function ManageArticlesPage() {
   useEffect(() => {
     async function fetchArticles() {
       try {
-        // Fetch all articles without pagination for the admin page
         const { articles: fetchedArticles } = await getArticles();
         setArticles(fetchedArticles);
       } catch (error) {

@@ -48,4 +48,47 @@ export const placeholderCategories: Category[] = [
     { id: 'entertainment', name: 'Entertainment', slug: 'entertainment' },
 ];
 
-export const placeholderArticles: Article[] = [];
+export const placeholderArticles: Article[] = [
+  {
+    id: 'karnataka-caste-census-2025',
+    title: 'Karnataka Kicks Off Social and Educational Survey for 2025',
+    content: `The Karnataka State Backward Classes Commission has officially launched its comprehensive Social and Educational Survey for 2025. Commonly referred to as the caste census, the massive data collection drive has begun with its initial house-listing phase across the state, marking a significant step towards understanding the socio-economic landscape of Karnataka.\n\nEnumerators have started visiting households to issue a Unique Household ID (UHID) by affixing a sticker, a process already underway in several parts of Bengaluru and other districts. These stickers prominently display the UHID, a survey ID, a QR code for digital tracking, and a dedicated helpline number (8050770004) for any public queries. Officials have urged residents not to remove the stickers to ensure a seamless and accurate data collection process over the coming months.\n\nThe survey is designed to gather detailed, up-to-date information on the social, educational, and economic status of all communities residing in Karnataka. This data will be critical for evaluating the effectiveness of current reservation policies and for making informed decisions on future welfare programs and resource allocation.\n\nThe commission has emphasized its commitment to a transparent and thorough process. The findings of this census are expected to have far-reaching implications, potentially leading to a recalibration of reservation quotas and the introduction of new schemes aimed at uplifting marginalized communities. The final report is anticipated to be a foundational document for governance in the state for years to come.`,
+    imageUrl: 'https://static.langimg.com/vk/thumb/124031211/caste-census-begins-in-karnataka-decision-made-to-collect-data-in-3-ways-submission-of-these-2-documents-is-mandatory.jpg?height=900&imgsize=66932&resizemode=75&width=1600',
+    "data-ai-hint": 'census survey',
+    author: 'KNP Staff Reporter',
+    authorId: 'staff-1',
+    categoryIds: ['general', 'politics'],
+    status: 'published',
+    publishedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    seo: {
+      keywords: ['caste census', 'Karnataka', 'survey', 'Backward Classes Commission', '2025'],
+      metaDescription: 'The Karnataka State Backward Classes Commission has begun its 2025 Social and Educational Survey, with the house-listing phase now underway to collect data for future policies.',
+    },
+    views: 2840,
+    districtId: 'bengaluru-urban',
+    district: 'Bengaluru Urban',
+  },
+  {
+    id: 'world-aids-day-rally-udupi',
+    title: 'World AIDS Day: Awareness Rally Held in Udupi to Promote HIV Prevention',
+    content: `On the occasion of World AIDS Day, an awareness rally was organized in Udupi by the District Health and Family Welfare Department in collaboration with various non-governmental organizations. The rally, which saw participation from healthcare workers, students, and the general public, was flagged off from the District Hospital premises.\n\nParticipants marched through the city, holding placards and banners with slogans emphasizing the importance of HIV testing, safe practices, and the elimination of stigma and discrimination against people living with HIV. The event aimed to reinforce the message that with advancements in treatment, HIV is a manageable health condition and that community support is crucial.\n\nSpeaking at the event, the District Health Officer highlighted the progress made in HIV prevention and care but stressed the need for continued vigilance. "Our goal is to create a future where new HIV infections are a thing of the past. Events like these are vital to keep the conversation alive and ensure everyone has access to the information and services they need," he said.`,
+    imageUrl: 'https://storage.googleapis.com/stabl-media/6643322f-d897-4009-ac8a-115f5c1844a0.jpeg',
+    "data-ai-hint": 'HIV awareness rally',
+    author: 'KNP Staff Reporter',
+    authorId: 'staff-1',
+    categoryIds: ['health-lifestyle', 'society-community'],
+    status: 'published',
+    publishedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    seo: {
+      keywords: ['HIV', 'AIDS', 'World AIDS Day', 'Udupi', 'Health'],
+      metaDescription: 'An awareness rally was held in Udupi on World AIDS Day to promote HIV prevention, testing, and community support, with healthcare workers and the public participating.',
+    },
+    views: 1250,
+    districtId: 'udupi',
+    district: 'Udupi',
+  }
+];

@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useArticleModal } from '@/components/providers/article-modal-provider';
 import { getArticle } from '@/services/articles';
 import type { Article } from '@/lib/types';
-import { Loader2, MapPin, X, User, Newspaper as NewspaperIcon, ExternalLink } from 'lucide-react';
+import { Loader2, MapPin, X, User, Newspaper as NewspaperIcon, ExternalLink, Tag } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { Button } from '../ui/button';
@@ -15,6 +15,9 @@ import { ScrollArea } from '../ui/scroll-area';
 import { extractArticleContentFromUrl } from '@/ai/flows/extract-article-content-from-url';
 import { useToast } from '@/hooks/use-toast';
 import RelatedArticles from './RelatedArticles';
+import { getCategories } from '@/services/categories';
+import { Badge } from '../ui/badge';
+import Link from 'next/link';
 
 export default function ArticleModal() {
   const { isOpen, onClose, articleId } = useArticleModal();
@@ -22,6 +25,15 @@ export default function ArticleModal() {
   const [loading, setLoading] = useState(false);
   const [isFetchingFullContent, setIsFetchingFullContent] = useState(false);
   const { toast } = useToast();
+  const [allCategories, setAllCategories] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchCats() {
+      const cats = await getCategories();
+      setAllCategories(cats);
+    }
+    fetchCats();
+  }, []);
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -90,6 +102,8 @@ export default function ArticleModal() {
 
   const isExternalArticle = article?.id.startsWith('http');
   const showReadFullStoryButton = (isExternalArticle || article?.sourceUrl) && (!article.content || article.content.length < 150);
+  
+  const articleCategories = allCategories.filter(c => article?.categoryIds?.includes(c.id));
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -177,10 +191,16 @@ export default function ArticleModal() {
                       </div>
                     )}
 
-                    <RelatedArticles 
-                      categoryId={article.categoryIds?.[0]} 
-                      currentArticleId={article.id}
-                    />
+                    <div className="mt-8 space-y-4">
+                        {articleCategories.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="text-sm font-semibold flex items-center gap-1.5"><Tag className="h-4 w-4"/> Categories:</h4>
+                                {articleCategories.map(cat => (
+                                    <Badge key={cat.id} variant="secondary">{cat.name}</Badge>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
               </ScrollArea>
             )}

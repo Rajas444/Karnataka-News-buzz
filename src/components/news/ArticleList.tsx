@@ -59,7 +59,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     // Set up a real-time listener for new articles published *after* the page initially loaded.
     const q = query(
         collection(db, 'articles'), 
-        where('status', '==', 'published'),
         where('publishedAt', '>', Timestamp.fromDate(loadTime.current)),
         orderBy('publishedAt', 'desc')
     );

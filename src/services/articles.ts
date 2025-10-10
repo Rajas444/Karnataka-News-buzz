@@ -111,8 +111,8 @@ export async function getArticles(options?: {
     const { pageSize = 50, startAfterDocId, categorySlug, districtId } = options || {};
     
     // This is a simplified query that is less likely to require a composite index.
-    // It fetches all published articles, and we will filter them in memory.
     const constraints: QueryConstraint[] = [
+        where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
     ];
 
@@ -136,7 +136,7 @@ export async function getArticles(options?: {
         const articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
         // In-memory filtering
-        let filteredArticles = articles.filter(a => a.status === 'published');
+        let filteredArticles = articles;
         
         if (categorySlug && categorySlug !== 'all') {
             const categories = await getCategories();
@@ -278,5 +278,3 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         return [];
     }
 }
-
-    

@@ -108,11 +108,10 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 50, startAfterDocId, categorySlug, districtId } = options || {};
+    const { pageSize = 100, startAfterDocId, categorySlug, districtId } = options || {}; // Fetch a larger batch
     
-    // This is a simplified query that is less likely to require a composite index.
+    // Using a very simple query that does not require a composite index.
     const constraints: QueryConstraint[] = [
-        where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
     ];
 
@@ -133,10 +132,10 @@ export async function getArticles(options?: {
             return { articles: [], lastVisibleDocId: null };
         }
 
-        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        const allArticles = await Promise.all(snapshot.docs.map(serializeArticle));
 
-        // In-memory filtering
-        let filteredArticles = articles;
+        // Perform all filtering in-memory
+        let filteredArticles = allArticles.filter(a => a.status === 'published');
         
         if (categorySlug && categorySlug !== 'all') {
             const categories = await getCategories();
@@ -151,21 +150,18 @@ export async function getArticles(options?: {
         
         const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
         const newLastVisibleDocId = lastVisibleDoc ? lastVisibleDoc.id : null;
+        const hasMore = snapshot.docs.length === pageSize;
 
         return {
             articles: filteredArticles,
-            lastVisibleDocId: newLastVisibleDocId
+            lastVisibleDocId: hasMore ? newLastVisibleDocId : null
         };
     } catch (error: any) {
         console.error("An unexpected error occurred in getArticles:", error);
-        if (error.code === 'failed-precondition') {
-             console.log("[DEVELOPER INFO] Firestore composite index might be required. Falling back to client-side filtering for this query.");
-        }
+        // Throw the error to be handled by the calling component
         throw error;
     }
 }
-
-
 
 export async function getArticle(id: string): Promise<Article | null> {
     const isExternalId = id.startsWith('http');
@@ -278,3 +274,6 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         return [];
     }
 }
+
+
+    

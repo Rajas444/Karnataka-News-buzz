@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
 import { Loader2 } from 'lucide-react';
 import type { Article, Category } from '@/lib/types';
@@ -14,8 +14,8 @@ import {
   query,
   collection,
   orderBy,
-  limit,
   Timestamp,
+  where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -33,6 +33,9 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(initialLastVisibleDocId || null);
   const [hasMore, setHasMore] = useState(initialArticles.length > 0 && !!initialLastVisibleDocId);
   const { toast } = useToast();
+  
+  // Use a ref to store the timestamp of when the component loads.
+  const loadTime = useRef(new Date());
 
   useEffect(() => {
     // When the initial articles from the server change (e.g., due to filter change),
@@ -53,8 +56,14 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     }
     fetchInitialData();
 
-    // Simplified Real-time listener for new articles
-    const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'), limit(1));
+    // Set up a real-time listener for new articles published *after* the page initially loaded.
+    const q = query(
+        collection(db, 'articles'), 
+        where('status', '==', 'published'),
+        where('publishedAt', '>', Timestamp.fromDate(loadTime.current)),
+        orderBy('publishedAt', 'desc')
+    );
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
         snapshot.docChanges().forEach((change) => {
             if (change.type === 'added') {
@@ -62,10 +71,10 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
                  if (newArticle.publishedAt) {
                   newArticle.publishedAt = (newArticle.publishedAt as Timestamp).toDate().toISOString();
                 }
-                // Avoid adding duplicates if the article is already in the list
+                // Prepend the new article to the list, avoiding duplicates.
                 setArticles(prev => {
                     if (prev.some(a => a.id === newArticle.id)) {
-                        return prev;
+                        return prev; // Already exists, do nothing
                     }
                     console.log("New article detected, prepending to list:", newArticle.title);
                     return [newArticle, ...prev];
@@ -77,7 +86,8 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     });
 
     return () => unsubscribe();
-
+    // The loadTime.current is stable and should not be in dependency array
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLoadMore = useCallback(async () => {

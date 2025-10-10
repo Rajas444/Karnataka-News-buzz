@@ -16,7 +16,7 @@ export default function TrendingNews() {
   useEffect(() => {
     async function fetchTrending() {
       try {
-        const articles = await getExternalNews({ type: 'top-headlines' });
+        const articles = await getExternalNews({ q: 'Karnataka', type: 'top-headlines' });
         setTrending(articles.slice(0, 5));
       } catch (error) {
         console.error('Failed to fetch trending articles:', error);

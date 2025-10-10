@@ -2,7 +2,6 @@
 'use server';
 
 import type { Article as NewsApiArticle } from '@/lib/types';
-import { getArticles as getLocalArticles } from './articles';
 
 // This is a placeholder for the full NewsAPI article type
 interface NewsDataArticleDTO {
@@ -17,15 +16,17 @@ interface NewsDataArticleDTO {
 }
 
 // Function to fetch news from NewsAPI.org
-async function fetchFromNewsDataAPI(): Promise<NewsApiArticle[]> {
+async function fetchFromNewsDataAPI(options?: { q?: string }): Promise<NewsApiArticle[]> {
     const apiKey = process.env.NEWS_DATA_API_KEY;
     if (!apiKey || apiKey === "your_news_data_api_key_here") {
         console.warn("NewsData.io API key is not configured. External news feed will be empty.");
         return [];
     }
+    
+    const query = options?.q ? `&q=${encodeURIComponent(options.q)}` : '';
 
     // Fetching recent news from India in English language
-    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&country=in&language=en`;
+    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&country=in&language=en${query}`;
 
     try {
         const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour
@@ -62,7 +63,7 @@ async function fetchFromNewsDataAPI(): Promise<NewsApiArticle[]> {
 }
 
 
-export async function getExternalNews(options?: { type: 'everything' | 'top-headlines' }): Promise<NewsApiArticle[]> {
+export async function getExternalNews(options?: { type?: 'everything' | 'top-headlines', q?: string }): Promise<NewsApiArticle[]> {
     // For now, we only fetch from the primary endpoint of NewsData.io
-    return await fetchFromNewsDataAPI();
+    return await fetchFromNewsDataAPI({ q: options?.q });
 }

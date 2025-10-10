@@ -111,8 +111,8 @@ export async function getArticles(options?: {
 
     try {
         const constraints: QueryConstraint[] = [
-            where('status', '==', 'published'),
             orderBy('publishedAt', 'desc'),
+            where('status', '==', 'published'),
             limit(pageSize),
         ];
 
@@ -328,6 +328,7 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
     
 
     
+
 
 
 

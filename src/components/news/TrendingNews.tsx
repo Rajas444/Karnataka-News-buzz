@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getArticles } from '@/services/articles';
+import { getExternalNews } from '@/services/newsapi';
 import type { Article } from '@/lib/types';
 import { Loader2, TrendingUp } from 'lucide-react';
 import { useArticleModal } from '../providers/article-modal-provider';
@@ -16,11 +16,8 @@ export default function TrendingNews() {
   useEffect(() => {
     async function fetchTrending() {
       try {
-        // In a real app, you'd have a specific query for trending,
-        // but for now, we sort by views on the client.
-        const { articles } = await getArticles({ pageSize: 20 });
-        const sorted = articles.sort((a, b) => (b.views || 0) - (a.views || 0));
-        setTrending(sorted.slice(0, 5));
+        const articles = await getExternalNews({ type: 'top-headlines' });
+        setTrending(articles.slice(0, 5));
       } catch (error) {
         console.error('Failed to fetch trending articles:', error);
       } finally {
@@ -69,7 +66,7 @@ export default function TrendingNews() {
                         <p className="font-semibold leading-tight group-hover:underline font-kannada">
                             {article.title}
                         </p>
-                         <p className="text-xs text-muted-foreground">{article.views} views</p>
+                         <p className="text-xs text-muted-foreground">{article.source}</p>
                     </div>
                 </li>
             ))}

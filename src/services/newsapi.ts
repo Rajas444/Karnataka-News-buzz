@@ -18,15 +18,22 @@ interface NewsAPIArticleDTO {
 }
 
 // Function to fetch news from NewsAPI.org
-async function fetchFromNewsAPI(): Promise<NewsApiArticle[]> {
+async function fetchFromNewsAPI(endpoint: 'everything' | 'top-headlines' = 'top-headlines'): Promise<NewsApiArticle[]> {
     const apiKey = process.env.NEXT_PUBLIC_NEWS_API_KEY;
     if (!apiKey || apiKey === "your_news_api_key_here") {
         console.warn("NewsAPI key is not configured. External news feed will be empty.");
         return [];
     }
 
-    // Fetching recent news from India in English language, sorted by publish date
-    const url = `https://newsapi.org/v2/everything?q=Karnataka&language=en&sortBy=publishedAt&apiKey=${apiKey}`;
+    let url = '';
+    if (endpoint === 'top-headlines') {
+        // Fetching top headlines for Karnataka, sorted by popularity
+        url = `https://newsapi.org/v2/top-headlines?q=Karnataka&country=in&sortBy=popularity&apiKey=${apiKey}`;
+    } else {
+        // Fetching recent news from India in English language, sorted by publish date
+        url = `https://newsapi.org/v2/everything?q=Karnataka&language=en&sortBy=publishedAt&apiKey=${apiKey}`;
+    }
+
 
     try {
         const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour
@@ -63,6 +70,6 @@ async function fetchFromNewsAPI(): Promise<NewsApiArticle[]> {
 }
 
 
-export async function getExternalNews(): Promise<NewsApiArticle[]> {
-    return await fetchFromNewsAPI();
+export async function getExternalNews(options?: { type: 'everything' | 'top-headlines' }): Promise<NewsApiArticle[]> {
+    return await fetchFromNewsAPI(options?.type || 'top-headlines');
 }

@@ -14,7 +14,6 @@ import ShareButtons from '@/components/shared/ShareButtons';
 import { ScrollArea } from '../ui/scroll-area';
 import { extractArticleContentFromUrl } from '@/ai/flows/extract-article-content-from-url';
 import { useToast } from '@/hooks/use-toast';
-import RelatedArticles from './RelatedArticles';
 import { getCategories } from '@/services/categories';
 import { Badge } from '../ui/badge';
 import Link from 'next/link';

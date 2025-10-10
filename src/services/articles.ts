@@ -113,8 +113,19 @@ export async function getArticles(options?: {
         const constraints: QueryConstraint[] = [
             orderBy('publishedAt', 'desc'),
             where('status', '==', 'published'),
-            limit(pageSize),
         ];
+        
+        if (categorySlug && categorySlug !== 'all') {
+            const categories = await getCategories();
+            const categoryId = categories.find(c => c.slug === categorySlug)?.id;
+            if (categoryId) {
+                constraints.push(where('categoryIds', 'array-contains', categoryId));
+            }
+        }
+
+        if (districtId && districtId !== 'all') {
+            constraints.push(where('districtId', '==', districtId));
+        }
 
         if (startAfterDocId) {
             const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
@@ -122,23 +133,10 @@ export async function getArticles(options?: {
                 constraints.push(startAfter(startAfterDoc));
             }
         }
+        
+        constraints.push(limit(pageSize));
 
-        let finalConstraints = constraints;
-        let queryToRun: any = collection(db, 'articles');
-
-        if (categorySlug && categorySlug !== 'all') {
-            const categories = await getCategories();
-            const categoryId = categories.find(c => c.slug === categorySlug)?.id;
-            if (categoryId) {
-                finalConstraints.push(where('categoryIds', 'array-contains', categoryId));
-            }
-        }
-
-        if (districtId && districtId !== 'all') {
-            finalConstraints.push(where('districtId', '==', districtId));
-        }
-
-        const q = query(queryToRun, ...finalConstraints);
+        const q = query(collection(db, 'articles'), ...constraints);
         const snapshot = await getDocs(q);
 
         const articles = await Promise.all(snapshot.docs.map(serializeArticle));
@@ -156,13 +154,18 @@ export async function getArticles(options?: {
         };
         
     } catch (error: any) {
-        console.error("An unexpected error occurred in getArticles:", error);
-        if (error.code === 'failed-precondition' && options?.pageSize) {
-            console.warn(`[DEVELOPER INFO] Firestore composite index might be required. Falling back to client-side filtering for this query.`);
-            // Fallback for development: fetch all and filter client-side. NOT FOR PRODUCTION.
-            const allArticles = await getArticles(); // No pagination
+        // This is a fallback for development environments where the composite index might not exist.
+        // It fetches all articles and filters them on the server.
+        // WARNING: This is inefficient and should not be relied upon in production.
+        if (error.code === 'failed-precondition') {
+            console.warn(
+                `[DEVELOPER INFO] Firestore composite index might be required. Falling back to client-side filtering for this query. Message: ${error.message}`
+            );
             
-            let filteredArticles = allArticles.articles;
+            const allArticlesSnapshot = await getDocs(query(collection(db, "articles"), where("status", "==", "published"), orderBy("publishedAt", "desc")));
+            let allArticles = await Promise.all(allArticlesSnapshot.docs.map(serializeArticle));
+            
+            let filteredArticles = allArticles;
 
             if (categorySlug && categorySlug !== 'all') {
                  const categories = await getCategories();
@@ -181,7 +184,7 @@ export async function getArticles(options?: {
 
             let newLastVisibleDocId: string | null = null;
             if (filteredArticles.length > startIndex + pageSize) {
-                newLastVisibleDocId = paginatedArticles[paginatedArticles.length - 1]?.id;
+                newLastVisibleDocId = paginatedArticles.length > 0 ? paginatedArticles[paginatedArticles.length - 1]?.id : null;
             }
             
             return {
@@ -190,6 +193,8 @@ export async function getArticles(options?: {
             };
         }
         
+        // Re-throw other errors
+        console.error("An unexpected error occurred in getArticles:", error);
         throw error;
     }
 }
@@ -328,6 +333,7 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
     
 
     
+
 
 
 

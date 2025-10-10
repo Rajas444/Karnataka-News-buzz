@@ -30,7 +30,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('[AuthProvider] onAuthStateChanged triggered. User:', user?.email);
       setLoading(true);
       if (user) {
         setUser(user);
@@ -38,11 +37,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           const profile = userDoc.data() as UserProfile;
-          console.log('[AuthProvider] User profile found:', profile);
           setUserProfile(profile);
           setUserRole(profile.role);
         } else {
-          console.log('[AuthProvider] No user profile found in Firestore. Creating default.');
           // For this scaffold, we assume a default role of 'user' if no profile exists.
           // In a real app, you might want to create a profile here or handle it differently.
           const defaultProfile: UserProfile = {
@@ -55,17 +52,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserRole('user');
         }
       } else {
-        console.log('[AuthProvider] No user is logged in.');
         setUser(null);
         setUserProfile(null);
         setUserRole(null);
       }
-      console.log('[AuthProvider] Auth state loading finished.');
       setLoading(false);
     });
 
     return () => {
-        console.log('[AuthProvider] Unsubscribing from onAuthStateChanged.');
         unsubscribe();
     }
   }, []);

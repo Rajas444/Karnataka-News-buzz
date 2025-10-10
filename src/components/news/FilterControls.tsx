@@ -43,17 +43,17 @@ export default function FilterControls({ districts }: FilterControlsProps) {
     router.push(`/home?${newQueryString}`);
   };
 
-  const allDistricts = [{ id: 'all', name: 'All Districts' }, ...districts];
+  const allDistricts = [{ id: 'all', name: 'ಎಲ್ಲಾ ಜಿಲ್ಲೆಗಳು' }, ...districts];
 
   return (
     <Card>
         <CardHeader className="flex flex-row items-center gap-2">
             <Filter className="h-5 w-5" />
-            <CardTitle className="font-headline text-2xl">Filter News</CardTitle>
+            <CardTitle className="font-headline text-2xl">ಸುದ್ದಿ ಫಿಲ್ಟರ್ ಮಾಡಿ</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
              <div className="md:col-start-2 lg:col-start-2">
-                 <label className="text-sm font-medium mb-2 block">District</label>
+                 <label className="text-sm font-medium mb-2 block">ಜಿಲ್ಲೆ</label>
                 <Select onValueChange={(value) => handleFilterChange('district', value)} value={selectedDistrictId}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select District" />

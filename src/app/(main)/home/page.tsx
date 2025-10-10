@@ -106,7 +106,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                       </p>
                       <Button asChild size="lg">
                       <Link href={`/article/${topArticle.id}`}>
-                          Read More <ArrowRight className="ml-2 h-5 w-5" />
+                          ಮುಂದೆ ಓದಿ <ArrowRight className="ml-2 h-5 w-5" />
                       </Link>
                       </Button>
                   </div>
@@ -119,7 +119,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   <section>
                       <div className="flex justify-between items-center mb-6">
                           <h2 className="font-headline text-3xl font-bold">
-                              Recent News
+                              ಇತ್ತೀಚಿನ ಸುದ್ದಿ
                           </h2>
                       </div>
                       <ArticleList

@@ -31,11 +31,11 @@ export default function TrendingNews() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><TrendingUp /> Trending News</CardTitle>
-          <CardDescription>What's popular right now.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><TrendingUp /> ಟ್ರೆಂಡಿಂಗ್ ನ್ಯೂಸ್</CardTitle>
+          <CardDescription>ಈಗ ಜನಪ್ರಿಯವಾಗಿರುವುದೇನು.</CardDescription>
         </CardHeader>
         <CardContent className="h-48 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </CardContent>
       </Card>
     );
@@ -48,8 +48,8 @@ export default function TrendingNews() {
   return (
     <Card>
         <CardHeader>
-            <CardTitle className="flex items-center gap-2"><TrendingUp /> Trending News</CardTitle>
-            <CardDescription>What's popular right now across the state.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><TrendingUp /> ಟ್ರೆಂಡಿಂಗ್ ನ್ಯೂಸ್</CardTitle>
+            <CardDescription>ರಾಜ್ಯಾದ್ಯಂತ ಈಗ ಜನಪ್ರಿಯವಾಗಿರುವುದೇನು.</CardDescription>
         </CardHeader>
         <CardContent>
             <ul className="space-y-4">

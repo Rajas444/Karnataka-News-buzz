@@ -85,7 +85,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
             )}
         </div>
         <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1">
-          Read More <ArrowRight className="h-3 w-3" />
+          ಮುಂದೆ ಓದಿ <ArrowRight className="h-3 w-3" />
         </div>
       </CardFooter>
     </Card>
@@ -135,7 +135,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
                 )}
             </div>
             <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1">
-            Read More <ArrowRight className="h-3 w-3" />
+            ಮುಂದೆ ಓದಿ <ArrowRight className="h-3 w-3" />
             </div>
         </CardFooter>
         </Card>

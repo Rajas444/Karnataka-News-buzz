@@ -116,9 +116,9 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   if (articles.length === 0) {
     return (
       <div className="text-center py-12 bg-card rounded-lg">
-        <h2 className="text-2xl font-bold mb-4 font-kannada">No Articles Found</h2>
+        <h2 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಲೇಖನಗಳು ಕಂಡುಬಂದಿಲ್ಲ</h2>
         <p className="text-muted-foreground font-kannada">
-          There are no articles available for the selected filters. Please try again later or select different filters.
+          ಆಯ್ದ ಫಿಲ್ಟರ್‌ಗಳಿಗಾಗಿ ಯಾವುದೇ ಲೇಖನಗಳು ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ ಅಥವಾ ಬೇರೆ ಫಿಲ್ಟರ್‌ಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ.
         </p>
       </div>
     );
@@ -135,7 +135,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
         <div className="text-center mt-8">
           <Button onClick={handleLoadMore} disabled={loadingMore}>
             {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {loadingMore ? 'Loading...' : 'Load More News'}
+            {loadingMore ? 'ಲೋಡ್ ಆಗುತ್ತಿದೆ...' : 'ಇನ್ನಷ್ಟು ಸುದ್ದಿಗಳನ್ನು ಲೋಡ್ ಮಾಡಿ'}
           </Button>
         </div>
       )}

@@ -107,50 +107,89 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 1000, startAfterDocId, categorySlug, districtId } = options || {}; // Fetch all by default now
+    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
 
     try {
-        const q = query(collection(db, 'articles'), orderBy('publishedAt', 'desc'));
-        const snapshot = await getDocs(q);
+        const constraints: QueryConstraint[] = [
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc'),
+            limit(pageSize),
+        ];
 
-        let allArticles = await Promise.all(snapshot.docs.map(serializeArticle));
+        if (startAfterDocId) {
+            const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
+            if (startAfterDoc.exists()) {
+                constraints.push(startAfter(startAfterDoc));
+            }
+        }
 
-        // Filter in-code to avoid index dependency
-        let filteredArticles = allArticles.filter(article => article.status === 'published');
-        
+        let finalConstraints = constraints;
+        let queryToRun: any = collection(db, 'articles');
+
         if (categorySlug && categorySlug !== 'all') {
             const categories = await getCategories();
             const categoryId = categories.find(c => c.slug === categorySlug)?.id;
             if (categoryId) {
-                filteredArticles = filteredArticles.filter(article => article.categoryIds.includes(categoryId));
+                finalConstraints.push(where('categoryIds', 'array-contains', categoryId));
             }
         }
 
         if (districtId && districtId !== 'all') {
-            filteredArticles = filteredArticles.filter(article => article.districtId === districtId);
+            finalConstraints.push(where('districtId', '==', districtId));
         }
-        
-        // Manual pagination on the filtered list
-        const startIndex = startAfterDocId ? filteredArticles.findIndex(a => a.id === startAfterDocId) + 1 : 0;
-        const paginatedArticles = filteredArticles.slice(startIndex, startIndex + (options?.pageSize || 10));
 
-        let newLastVisibleDocId: string | null = null;
-        if (filteredArticles.length > startIndex + (options?.pageSize || 10)) {
-            newLastVisibleDocId = paginatedArticles[paginatedArticles.length - 1]?.id;
+        const q = query(queryToRun, ...finalConstraints);
+        const snapshot = await getDocs(q);
+
+        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+        
+        const lastVisible = snapshot.docs.length === pageSize ? snapshot.docs[snapshot.docs.length - 1] : null;
+        
+        let newLastVisibleDocId = null;
+        if (lastVisible) {
+            newLastVisibleDocId = lastVisible.id;
         }
 
         return {
-            articles: paginatedArticles,
+            articles,
             lastVisibleDocId: newLastVisibleDocId,
         };
         
     } catch (error: any) {
         console.error("An unexpected error occurred in getArticles:", error);
-        if (error.code === 'failed-precondition') {
-             const devError = new Error(`[DEVELOPER INFO] A Firestore composite index is required for this query to work. The app will not crash, but no articles were returned. Please create the index using the link from the browser console, or by inspecting the full error object: ${error.message}`);
-            console.error(devError);
-            throw devError;
+        if (error.code === 'failed-precondition' && options?.pageSize) {
+            console.warn(`[DEVELOPER INFO] Firestore composite index might be required. Falling back to client-side filtering for this query.`);
+            // Fallback for development: fetch all and filter client-side. NOT FOR PRODUCTION.
+            const allArticles = await getArticles(); // No pagination
+            
+            let filteredArticles = allArticles.articles;
+
+            if (categorySlug && categorySlug !== 'all') {
+                 const categories = await getCategories();
+                const categoryId = categories.find(c => c.slug === categorySlug)?.id;
+                if (categoryId) {
+                    filteredArticles = filteredArticles.filter(a => a.categoryIds.includes(categoryId));
+                }
+            }
+
+            if (districtId && districtId !== 'all') {
+                filteredArticles = filteredArticles.filter(a => a.districtId === districtId);
+            }
+
+            const startIndex = startAfterDocId ? filteredArticles.findIndex(a => a.id === startAfterDocId) + 1 : 0;
+            const paginatedArticles = filteredArticles.slice(startIndex, startIndex + pageSize);
+
+            let newLastVisibleDocId: string | null = null;
+            if (filteredArticles.length > startIndex + pageSize) {
+                newLastVisibleDocId = paginatedArticles[paginatedArticles.length - 1]?.id;
+            }
+            
+            return {
+                articles: paginatedArticles,
+                lastVisibleDocId: newLastVisibleDocId,
+            };
         }
+        
         throw error;
     }
 }
@@ -289,5 +328,6 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
     
 
     
+
 
 

@@ -21,17 +21,18 @@ interface NewsAPIArticleDTO {
 async function fetchFromNewsAPI(): Promise<NewsApiArticle[]> {
     const apiKey = process.env.NEXT_PUBLIC_NEWS_API_KEY;
     if (!apiKey || apiKey === "your_news_api_key_here") {
-        console.error("NewsAPI key is not configured. Please add it to your .env file.");
+        console.warn("NewsAPI key is not configured. External news feed will be empty.");
         return [];
     }
 
-    // Fetching top headlines from India in English language
-    const url = `https://newsapi.org/v2/top-headlines?country=in&language=en&apiKey=${apiKey}`;
+    // Fetching recent news from India in English language, sorted by publish date
+    const url = `https://newsapi.org/v2/everything?q=Karnataka&language=en&sortBy=publishedAt&apiKey=${apiKey}`;
 
     try {
         const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour
         if (!response.ok) {
-            console.error(`NewsAPI request failed with status: ${response.status}`);
+            const errorBody = await response.json();
+            console.error(`NewsAPI request failed with status: ${response.status}`, errorBody);
             return [];
         }
         const data = await response.json();

@@ -10,7 +10,7 @@ import CommunityHighlights from '@/components/posts/CommunityHighlights';
 import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
-import { placeholderArticles } from '@/lib/placeholder-data';
+import { getExternalNews } from '@/services/newsapi';
 
 type HomePageProps = {
   searchParams?: {
@@ -27,6 +27,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   let initialArticles: Article[] = [];
   let lastVisibleDocId: string | null = null;
   let error: string | null = null;
+  let topArticle: Article | null = null;
   
   try {
     districts = await getDistricts();
@@ -44,17 +45,25 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     initialArticles = articles;
     lastVisibleDocId = newLastVisibleDocId;
 
+    if (initialArticles.length > 0) {
+      topArticle = initialArticles.shift() ?? null;
+    } else {
+        // If no local articles, fetch from external API to get a top article
+        const externalNews = await getExternalNews();
+        if (externalNews.length > 0) {
+            topArticle = externalNews.shift() ?? null;
+            // The rest of the external news can be part of the initial list if local is empty
+            if (initialArticles.length === 0) {
+              initialArticles = externalNews.slice(0, 9); // limit to 9 more
+            }
+        }
+    }
+
   } catch (e: any) {
     error = e.message || 'An unknown error occurred while fetching articles from the database.';
     console.error("Error fetching initial articles:", error);
   }
-
-  const topArticle = placeholderArticles.length > 0 ? placeholderArticles[0] : (initialArticles.length > 0 ? initialArticles[0] : null);
   
-  if (topArticle && topArticle.id === initialArticles[0]?.id) {
-    initialArticles.shift();
-  }
-
 
   const renderErrorState = () => (
     <div className="text-center bg-card p-8 rounded-lg">

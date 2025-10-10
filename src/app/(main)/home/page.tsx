@@ -51,10 +51,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         // If no local articles, fetch from external API to get a top article
         const externalNews = await getExternalNews();
         if (externalNews.length > 0) {
-            topArticle = externalNews.shift() ?? null;
+            topArticle = externalNews[0] ?? null;
             // The rest of the external news can be part of the initial list if local is empty
             if (initialArticles.length === 0) {
-              initialArticles = externalNews.slice(0, 9); // limit to 9 more
+              initialArticles = externalNews.slice(1, 10); // limit to 9 more
             }
         }
     }
@@ -101,7 +101,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                       {topArticle.title}
                       </h1>
                       <p className="text-muted-foreground text-lg mb-6 font-kannada">
-                        {(topArticle.seo.metaDescription || topArticle.content).substring(0, 150)}...
+                        {(topArticle.seo?.metaDescription || topArticle.content || '').substring(0, 150)}...
                       </p>
                       <Button asChild size="lg">
                       <Link href={`/article/${topArticle.id}`}>

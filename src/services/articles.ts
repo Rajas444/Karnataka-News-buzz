@@ -108,48 +108,58 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 100, startAfterDocId, categorySlug, districtId } = options || {};
-
-    let articles: Article[] = [];
+    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
     
+    // This is a simplified query that is less likely to require a composite index.
+    // It fetches all published articles, and we will filter them in memory.
+    // For large datasets, a proper index is the right solution, but this provides a robust fallback.
+    const constraints: QueryConstraint[] = [
+        where('status', '==', 'published'),
+        orderBy('publishedAt', 'desc'),
+    ];
+
+    if (startAfterDocId) {
+        const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
+        if (startAfterDoc.exists()) {
+            constraints.push(startAfter(startAfterDoc));
+        }
+    }
+    
+    constraints.push(limit(pageSize));
+
     try {
-        // Broad, simple query that does not require a composite index
-        const q = query(
-            collection(db, 'articles'),
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
-            limit(pageSize)
-        );
-        
+        const q = query(articlesCollection, ...constraints);
         const snapshot = await getDocs(q);
-        articles = await Promise.all(snapshot.docs.map(serializeArticle));
+
+        if (snapshot.empty) {
+            return { articles: [], lastVisibleDocId: null };
+        }
+
+        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
         // In-memory filtering
         let filteredArticles = articles;
-
         if (categorySlug && categorySlug !== 'all') {
             const categories = await getCategories();
             const categoryId = categories.find(c => c.slug === categorySlug)?.id;
             if (categoryId) {
-                filteredArticles = filteredArticles.filter(a => a.categoryIds && a.categoryIds.includes(categoryId));
+                filteredArticles = filteredArticles.filter(a => a.categoryIds?.includes(categoryId));
             }
         }
-
         if (districtId && districtId !== 'all') {
             filteredArticles = filteredArticles.filter(a => a.districtId === districtId);
         }
         
+        const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+        const newLastVisibleDocId = lastVisibleDoc ? lastVisibleDoc.id : null;
+
         return {
-            articles: filteredArticles.slice(0, options?.pageSize || 10),
-            // Pagination is simplified here. For true pagination with this model,
-            // we'd need to fetch more docs and manage cursor logic in-memory.
-            // For now, returning null indicates we're not supporting 'load more' with this fallback.
-            lastVisibleDocId: null, 
+            articles: filteredArticles,
+            lastVisibleDocId: newLastVisibleDocId
         };
-        
     } catch (error: any) {
         console.error("An unexpected error occurred in getArticles:", error);
-        // If even the simple query fails, return empty
+        // Fallback for when even the simplified query fails (e.g. no articles collection)
         return { articles: [], lastVisibleDocId: null };
     }
 }
@@ -247,25 +257,23 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
 
     let articles: Article[] = [];
     try {
-        // Simplified query that is less likely to require a composite index
         const q = query(
             articlesCollection,
             where('categoryIds', 'array-contains', categoryId),
             where('status', '==', 'published'),
-            limit(5) // Fetch a few extra to filter out the current one
+            orderBy('publishedAt', 'desc'),
+            limit(5) 
         );
 
         const snapshot = await getDocs(q);
         articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
-        // Perform sorting and filtering in-memory
         return articles
-            .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
             .filter(article => article.id !== currentArticleId)
             .slice(0, 3);
 
     } catch (error) {
-        console.error("Error fetching related articles:", error);
+        console.error("Error fetching related articles (index may be required):", error);
         return [];
     }
 }

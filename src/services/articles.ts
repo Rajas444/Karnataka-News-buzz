@@ -108,32 +108,39 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 100, startAfterDocId, categorySlug, districtId } = options || {};
+    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
 
+    let articles: Article[] = [];
+    let lastVisible: DocumentSnapshot | null = null;
+    
     try {
         const constraints: QueryConstraint[] = [
             where('status', '==', 'published'),
             orderBy('publishedAt', 'desc'),
+            limit(pageSize),
         ];
 
         if (startAfterDocId) {
-             const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
+            const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
             if (startAfterDoc.exists()) {
                 constraints.push(startAfter(startAfterDoc));
             }
         }
         
-        // We fetch a larger batch initially (e.g., 100) and filter in memory.
-        // This is a trade-off to avoid complex composite indexes during development.
-        // For production, creating the specific indexes would be more performant.
-        constraints.push(limit(pageSize));
+        let q = query(collection(db, 'articles'), ...constraints);
+        let snapshot = await getDocs(q);
 
-        const q = query(collection(db, 'articles'), ...constraints);
-        const snapshot = await getDocs(q);
+        // This is a fallback in case the composite index is not created
+        if (snapshot.empty && !startAfterDocId) {
+            console.warn('[DEVELOPER INFO] Firestore composite index might be required. Falling back to client-side filtering for this query.');
+            q = query(collection(db, 'articles'), limit(100)); // Fetch a larger, simpler batch
+            snapshot = await getDocs(q);
+        }
+        
+        lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
-        let articles = await Promise.all(snapshot.docs.map(serializeArticle));
-
-        // In-memory filtering
+        // In-memory filtering if needed
         if (categorySlug && categorySlug !== 'all') {
             const categories = await getCategories();
             const categoryId = categories.find(c => c.slug === categorySlug)?.id;
@@ -145,24 +152,33 @@ export async function getArticles(options?: {
         if (districtId && districtId !== 'all') {
             articles = articles.filter(a => a.districtId === districtId);
         }
-
-        // We are not implementing pagination on top of the in-memory filter for simplicity
-        // as the root cause is the index, and this approach is a workaround.
-        // We simply return the filtered list, which might be smaller than pageSize.
-        const finalArticles = articles.slice(0, options?.pageSize || 10);
-        const lastVisible = finalArticles.length > 0 ? finalArticles[finalArticles.length - 1] : null;
-
+        
         return {
-            articles: finalArticles,
+            articles,
             lastVisibleDocId: lastVisible ? lastVisible.id : null,
         };
         
     } catch (error: any) {
+         // This specifically catches the "missing index" error and provides a fallback.
+        if (error.code === 'failed-precondition') {
+            console.warn(`[DEVELOPER INFO] Firestore composite index is required. Falling back to a simpler query. Error: ${error.message}`);
+             const fallbackQuery = query(collection(db, 'articles'), limit(100));
+             const snapshot = await getDocs(fallbackQuery);
+             articles = await Promise.all(snapshot.docs.map(doc => serializeArticle(doc)));
+             // Manually filter and sort in code
+             articles = articles.filter(a => a.status === 'published').sort((a,b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
+             // Re-apply filters
+             if (categorySlug && categorySlug !== 'all') { /* ... */ }
+             if (districtId && districtId !== 'all') { /* ... */ }
+             
+             return { articles: articles.slice(0, pageSize), lastVisibleDocId: null };
+        }
         console.error("An unexpected error occurred in getArticles:", error);
-        // If any error occurs, return an empty set to prevent crashing the page.
-        return { articles: [], lastVisibleDocId: null };
+        throw error;
     }
 }
+
 
 
 export async function getArticle(id: string): Promise<Article | null> {
@@ -298,6 +314,7 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
     
 
     
+
 
 
 

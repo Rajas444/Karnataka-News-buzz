@@ -13,15 +13,15 @@ import TrendingNews from '@/components/news/TrendingNews';
 import { getExternalNews } from '@/services/newsapi';
 
 type HomePageProps = {
-  searchParams?: {
+  searchParams: {
     category?: string;
     district?: string;
   };
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
-  const categorySlug = searchParams?.category;
-  const districtId = searchParams?.district;
+  const categorySlug = searchParams.category;
+  const districtId = searchParams.district;
 
   let districts = [];
   let initialArticles: Article[] = [];
@@ -91,6 +91,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                       src={topArticle.imageUrl || 'https://picsum.photos/seed/1/800/600'}
                       alt={topArticle.title}
                       fill
+                      priority
                       className="object-cover"
                       data-ai-hint={topArticle['data-ai-hint']}
                       sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"

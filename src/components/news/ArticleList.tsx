@@ -15,6 +15,7 @@ import {
   collection,
   orderBy,
   limit,
+  Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -58,9 +59,12 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
         snapshot.docChanges().forEach((change) => {
             if (change.type === 'added') {
                 const newArticle = { id: change.doc.id, ...change.doc.data() } as Article;
+                 if (newArticle.publishedAt) {
+                  newArticle.publishedAt = (newArticle.publishedAt as Timestamp).toDate().toISOString();
+                }
                 // Avoid adding duplicates if the article is already in the list
                 setArticles(prev => {
-                    if (prev.find(a => a.id === newArticle.id)) {
+                    if (prev.some(a => a.id === newArticle.id)) {
                         return prev;
                     }
                     console.log("New article detected, prepending to list:", newArticle.title);

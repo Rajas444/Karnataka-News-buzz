@@ -108,13 +108,11 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
+    const { pageSize = 50, startAfterDocId, categorySlug, districtId } = options || {};
     
     // This is a simplified query that is less likely to require a composite index.
     // It fetches all published articles, and we will filter them in memory.
-    // For large datasets, a proper index is the right solution, but this provides a robust fallback.
     const constraints: QueryConstraint[] = [
-        where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
     ];
 
@@ -138,7 +136,8 @@ export async function getArticles(options?: {
         const articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
         // In-memory filtering
-        let filteredArticles = articles;
+        let filteredArticles = articles.filter(a => a.status === 'published');
+        
         if (categorySlug && categorySlug !== 'all') {
             const categories = await getCategories();
             const categoryId = categories.find(c => c.slug === categorySlug)?.id;
@@ -159,8 +158,10 @@ export async function getArticles(options?: {
         };
     } catch (error: any) {
         console.error("An unexpected error occurred in getArticles:", error);
-        // Fallback for when even the simplified query fails (e.g. no articles collection)
-        return { articles: [], lastVisibleDocId: null };
+        if (error.code === 'failed-precondition') {
+             console.log("[DEVELOPER INFO] Firestore composite index might be required. Falling back to client-side filtering for this query.");
+        }
+        throw error;
     }
 }
 
@@ -277,3 +278,5 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         return [];
     }
 }
+
+    

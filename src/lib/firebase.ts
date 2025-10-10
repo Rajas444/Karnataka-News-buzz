@@ -13,27 +13,22 @@ export const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
 };
 
-// Function to check if all required Firebase config values are present
-function isFirebaseConfigValid(config: typeof firebaseConfig): boolean {
-  return !!(config.apiKey && config.projectId && config.appId);
-}
-
 let app, auth, db, storage;
 
-if (isFirebaseConfigValid(firebaseConfig)) {
+try {
   app = getApps().length ? getApp() : initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
-} else {
-  console.error("Firebase configuration is missing or invalid. Please check your .env file.");
-  // Throwing an error here would prevent the app from even building,
-  // so we'll allow the services to be null and they will fail at runtime,
-  // which is how Firestore services behave when uninitialized.
-  app = null;
-  auth = null;
-  db = null;
-  storage = null;
+} catch (error) {
+    console.error("Firebase initialization error:", error);
+    // In a production environment, you might want to handle this more gracefully.
+    // For now, we'll allow the app to continue, and services will fail at runtime.
+    app = null;
+    auth = null;
+    db = null;
+    storage = null;
 }
+
 
 export { app, auth, db, storage };

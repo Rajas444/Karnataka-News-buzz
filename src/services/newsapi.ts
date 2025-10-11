@@ -26,8 +26,6 @@ async function fetchFromNewsDataAPI(options?: { q?: string }): Promise<NewsApiAr
     const query = options?.q ? `&q=${encodeURIComponent(options.q)}` : '';
     
     // Fetching recent news from India in Kannada language.
-    // Removed from_date and to_date as they can cause 422 errors on certain plans.
-    // The API by default returns the latest articles.
     const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&country=in&language=kn${query}`;
 
     try {

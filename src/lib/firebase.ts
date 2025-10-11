@@ -13,29 +13,21 @@ export const firebaseConfig: FirebaseOptions = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
 };
 
-const allConfigKeysPresent = Object.values(firebaseConfig).every(key => !!key);
-
 let app, auth, db, storage;
 
-if (!allConfigKeysPresent) {
-    console.error("Firebase configuration is missing or incomplete. Please check your environment variables.");
+try {
+    app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+} catch (error) {
+    console.error("Firebase initialization error:", error);
+    // Set to null if initialization fails
     app = null;
     auth = null;
     db = null;
     storage = null;
-} else {
-    try {
-      app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-      auth = getAuth(app);
-      db = getFirestore(app);
-      storage = getStorage(app);
-    } catch (error) {
-        console.error("Firebase initialization error:", error);
-        app = null;
-        auth = null;
-        db = null;
-        storage = null;
-    }
 }
+
 
 export { app, auth, db, storage };

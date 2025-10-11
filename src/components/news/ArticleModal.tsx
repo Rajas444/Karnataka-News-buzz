@@ -120,7 +120,7 @@ export default function ArticleModal() {
                     <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 items-center">
                       {article.publishedAt && <span>{format(new Date(article.publishedAt), 'PPP')}</span>}
                       {article.district && (
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 font-kannada">
                           <MapPin className="h-3 w-3" /> {article.district}
                         </span>
                       )}
@@ -193,11 +193,17 @@ export default function ArticleModal() {
                     )}
 
                     <div className="mt-8 space-y-4">
+                        {article.district && (
+                          <div className="flex items-center gap-2 font-kannada">
+                                <h4 className="text-sm font-semibold flex items-center gap-1.5"><MapPin className="h-4 w-4"/> ಜಿಲ್ಲೆ:</h4>
+                                <Badge variant="secondary">{article.district}</Badge>
+                            </div>
+                        )}
                         {articleCategories.length > 0 && (
                             <div className="flex flex-wrap items-center gap-2">
-                                <h4 className="text-sm font-semibold flex items-center gap-1.5"><Tag className="h-4 w-4"/> Categories:</h4>
+                                <h4 className="text-sm font-semibold flex items-center gap-1.5"><Tag className="h-4 w-4"/> ವರ್ಗಗಳು:</h4>
                                 {articleCategories.map(cat => (
-                                    <Badge key={cat.id} variant="secondary">{cat.name}</Badge>
+                                    <Badge key={cat.id} variant="secondary" className="font-kannada">{cat.name}</Badge>
                                 ))}
                             </div>
                         )}

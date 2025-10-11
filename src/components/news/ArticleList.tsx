@@ -75,7 +75,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
                     if (prev.some(a => a.id === newArticle.id)) {
                         return prev; // Already exists, do nothing
                     }
-                    console.log("New article detected, prepending to list:", newArticle.title);
                     return [newArticle, ...prev];
                 });
             }

@@ -25,6 +25,8 @@ export default function ArticleModal() {
   const [isFetchingFullContent, setIsFetchingFullContent] = useState(false);
   const { toast } = useToast();
   const [allCategories, setAllCategories] = useState<any[]>([]);
+  
+  const descriptionId = 'article-modal-description';
 
   useEffect(() => {
     async function fetchCats() {
@@ -106,7 +108,7 @@ export default function ArticleModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0 gap-0" aria-describedby={descriptionId}>
           <DialogHeader className="p-4 border-b">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
@@ -114,7 +116,7 @@ export default function ArticleModal() {
                   {loading ? 'Loading...' : article?.title}
                 </DialogTitle>
                 {article && !loading && (
-                  <DialogDescription asChild>
+                  <DialogDescription asChild id={descriptionId}>
                     <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 items-center">
                       {article.publishedAt && <span>{format(new Date(article.publishedAt), 'PPP')}</span>}
                       {article.district && (

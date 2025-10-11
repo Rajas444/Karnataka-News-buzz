@@ -24,9 +24,17 @@ async function fetchFromNewsDataAPI(options?: { q?: string }): Promise<NewsApiAr
     }
     
     const query = options?.q ? `&q=${encodeURIComponent(options.q)}` : '';
+    
+    // Get today's date and the date 7 days ago to fetch recent news
+    const toDate = new Date();
+    const fromDate = new Date();
+    fromDate.setDate(toDate.getDate() - 7);
+    
+    const toDateString = toDate.toISOString().split('T')[0];
+    const fromDateString = fromDate.toISOString().split('T')[0];
 
-    // Fetching recent news from India in Kannada language
-    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&country=in&language=kn${query}`;
+    // Fetching recent news from India in Kannada language from the last 7 days
+    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&country=in&language=kn${query}&from_date=${fromDateString}&to_date=${toDateString}`;
 
     try {
         const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour
@@ -67,4 +75,3 @@ export async function getExternalNews(options?: { type?: 'everything' | 'top-hea
     // For now, we only fetch from the primary endpoint of NewsData.io
     return await fetchFromNewsDataAPI({ q: options?.q });
 }
-

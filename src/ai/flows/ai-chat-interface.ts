@@ -6,7 +6,7 @@
  *
  * - aiChat - A function that handles the AI chat process.
  * - AIChatInput - The input type for the aiChat function.
- * - AIChatOutput - The return type for the aiChat function.
+ * - AIChatOutput - The return type for the ai-chat-interface function.
  */
 
 import {ai} from '@/ai/genkit';

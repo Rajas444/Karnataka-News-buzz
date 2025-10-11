@@ -78,13 +78,13 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
                 <span>{getPublishedDate()}</span>
             </div>
             {article.district && (
-                 <div className="flex items-center gap-1">
+                 <div className="flex items-center gap-1 font-kannada">
                     <MapPin className="h-3 w-3" />
                     <span>{article.district}</span>
                 </div>
             )}
         </div>
-        <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1">
+        <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1 font-kannada">
           ಮುಂದೆ ಓದಿ <ArrowRight className="h-3 w-3" />
         </div>
       </CardFooter>
@@ -128,13 +128,18 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
         <CardFooter className="p-4 bg-muted/50 text-xs text-muted-foreground flex justify-between items-center flex-wrap gap-y-2">
             <div className="flex items-center gap-2">
                 {article.district && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 font-kannada">
                         <MapPin className="h-3 w-3" />
                         <span>{article.district}</span>
                     </div>
                 )}
+                 {article.source && (
+                    <div className="flex items-center gap-1">
+                        <span>{article.source}</span>
+                    </div>
+                )}
             </div>
-            <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1">
+            <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1 font-kannada">
             ಮುಂದೆ ಓದಿ <ArrowRight className="h-3 w-3" />
             </div>
         </CardFooter>

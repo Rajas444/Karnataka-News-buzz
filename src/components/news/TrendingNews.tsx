@@ -16,7 +16,7 @@ export default function TrendingNews() {
   useEffect(() => {
     async function fetchTrending() {
       try {
-        const articles = await getExternalNews({ q: 'Karnataka', type: 'top-headlines' });
+        const articles = await getExternalNews({ q: 'ಕರ್ನಾಟಕ', type: 'top-headlines' });
         setTrending(articles.slice(0, 5));
       } catch (error) {
         console.error('Failed to fetch trending articles:', error);
@@ -31,8 +31,8 @@ export default function TrendingNews() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><TrendingUp /> ಟ್ರೆಂಡಿಂಗ್ ನ್ಯೂಸ್</CardTitle>
-          <CardDescription>ಈಗ ಜನಪ್ರಿಯವಾಗಿರುವುದೇನು.</CardDescription>
+          <CardTitle className="flex items-center gap-2 font-kannada"><TrendingUp /> ಟ್ರೆಂಡಿಂಗ್ ನ್ಯೂಸ್</CardTitle>
+          <CardDescription className="font-kannada">ಈಗ ಜನಪ್ರಿಯವಾಗಿರುವುದೇನು.</CardDescription>
         </CardHeader>
         <CardContent className="h-48 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -48,8 +48,8 @@ export default function TrendingNews() {
   return (
     <Card>
         <CardHeader>
-            <CardTitle className="flex items-center gap-2"><TrendingUp /> ಟ್ರೆಂಡಿಂಗ್ ನ್ಯೂಸ್</CardTitle>
-            <CardDescription>ರಾಜ್ಯಾದ್ಯಂತ ಈಗ ಜನಪ್ರಿಯವಾಗಿರುವುದೇನು.</CardDescription>
+            <CardTitle className="flex items-center gap-2 font-kannada"><TrendingUp /> ಟ್ರೆಂಡಿಂಗ್ ನ್ಯೂಸ್</CardTitle>
+            <CardDescription className="font-kannada">ರಾಜ್ಯಾದ್ಯಂತ ಈಗ ಜನಪ್ರಿಯವಾಗಿರುವುದೇನು.</CardDescription>
         </CardHeader>
         <CardContent>
             <ul className="space-y-4">

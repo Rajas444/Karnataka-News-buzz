@@ -25,8 +25,8 @@ async function fetchFromNewsDataAPI(options?: { q?: string }): Promise<NewsApiAr
     
     const query = options?.q ? `&q=${encodeURIComponent(options.q)}` : '';
 
-    // Fetching recent news from India in English language
-    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&country=in&language=en${query}`;
+    // Fetching recent news from India in Kannada language
+    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&country=in&language=kn${query}`;
 
     try {
         const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour
@@ -67,3 +67,4 @@ export async function getExternalNews(options?: { type?: 'everything' | 'top-hea
     // For now, we only fetch from the primary endpoint of NewsData.io
     return await fetchFromNewsDataAPI({ q: options?.q });
 }
+

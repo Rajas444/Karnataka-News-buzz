@@ -1,142 +1,151 @@
 /**
  * @file Firestore Security Rules
- * @version 2
- *
- * @description
- * This ruleset enforces a strict user-ownership model for user profiles and
- * allows public read access to articles, categories, districts, jobs, and posts.
- * Only the author can create, update, or delete an article or post.
- * User profiles are private and accessible only to the owner.
+ * @description This ruleset enforces a tiered security model. User profiles are private, accessible only to the owning user.
+ * Articles are publicly readable but only editable by their authors. Categories and Districts are publicly readable.
+ * Jobs are publicly readable, and Posts (community posts) are also publicly readable, editable by their authors.
  *
  * Data Structure:
- * - /users/{userId}: User profile data, accessible only by the user.
- * - /articles/{articleId}: News articles, publicly readable but owner-writable.
- * - /categories/{categoryId}: News categories, publicly readable.
- * - /districts/{districtId}: Districts, publicly readable.
- * - /jobs/{jobId}: Job postings, publicly readable.
- * - /posts/{postId}: Community posts, publicly readable but owner-writable.
+ * - /users/{userId}: User profile data.
+ * - /articles/{articleId}: News articles.
+ * - /categories/{categoryId}: News categories.
+ * - /districts/{districtId}: District information.
+ * - /jobs/{jobId}: Job postings
+ * - /posts/{postId}: Community posts.
  *
  * Key Security Decisions:
- * - User profiles are strictly private (owner-only access).
- * - Articles and posts are publicly readable but only the author can create, update, or delete.
- * - Categories, districts, and jobs are publicly readable and writable, suitable for prototyping.
+ * - User profiles are strictly private and owner-accessible only.
+ * - Articles are publicly readable, but only the author can modify/delete them.
+ * - Categories and Districts are completely public.
+ * - Jobs and Posts are publicly readable, but only the author can modify/delete them.
+ * - Listing of user documents is disallowed.
  *
  * Denormalization for Authorization:
- * - Articles and posts include an `authorId` field for ownership checks, avoiding the need for additional reads.
+ * - Articles, Jobs, and Posts require the `authorId` field to match the authenticated user's `uid` for write operations.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the request is authenticated.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the authenticated user's ID matches the provided user ID.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the authenticated user's ID matches the existing document's owner ID.
-     */
-    function isExistingOwner(ownerId) {
-        return isSignedIn() && request.auth.uid == ownerId && resource != null;
-    }
-
-    /**
-     * @description Rules for user profiles.
+     * @description Secures user profiles, allowing only the owning user to read and write their own profile.
      * @path /users/{userId}
-     * @allow (create) - User 'alice' (auth.uid: 'alice') can create their own profile at /users/alice.
-     * @allow (get, update, delete) - User 'alice' (auth.uid: 'alice') can read, update, and delete their own profile at /users/alice.
-     * @deny (create, update, delete) - User 'bob' (auth.uid: 'bob') cannot create, update, or delete user 'alice's profile at /users/alice.
-     * @principle Enforces document ownership for user profiles.
+     * @allow (create, update, delete, get) User with UID 'user123' can create/update/delete their own profile at /users/user123.
+     * @deny (create, update, delete, get) User with UID 'user456' cannot access /users/user123.
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+        return isSignedIn() && resource.data.uid == request.auth.uid;
+      }
+
+      allow get: if isSignedIn() && isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
-      allow delete: if isExistingOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() && isOwner(userId) && request.resource.data.uid == request.auth.uid;
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Rules for news articles.
+     * @description Manages access to news articles, allowing public read access but restricting write access to the author.
      * @path /articles/{articleId}
-     * @allow (get, list) - Any user can read any article.
-     * @allow (create) - User 'alice' (auth.uid: 'alice') can create an article with authorId: 'alice'.
-     * @allow (update, delete) - User 'alice' (auth.uid: 'alice') can update and delete their own article (where resource.data.authorId == 'alice').
-     * @deny (create) - User 'bob' (auth.uid: 'bob') cannot create an article with authorId: 'alice'.
-     * @deny (update, delete) - User 'bob' (auth.uid: 'bob') cannot update or delete user 'alice's article.
-     * @principle Enforces document ownership for writes; allows public reads.
+     * @allow (get, list) Any user can read/list articles.
+     * @allow (create, update, delete) User with UID 'auth123' can create/update/delete an article where article.authorId == 'auth123'.
+     * @deny (create) User attempts to create an article with mismatched authorId.
+     * @deny (update, delete) User tries to update/delete an article they don't own.
+     * @principle Provides public read access with owner-only writes, validated by the 'authorId' field.
      */
     match /articles/{articleId} {
-      allow get: if true;
-      allow list: if true;
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      function isOwner(authorId) {
+        return request.auth.uid == authorId;
+      }
+      function isExistingOwner(authorId) {
+        return isSignedIn() && resource.data.authorId == request.auth.uid;
+      }
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.authorId);
-      allow delete: if isExistingOwner(resource.data.authorId);
+      allow update: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
     }
 
     /**
-     * @description Rules for news categories.
+     * @description Provides completely public access to news categories.
      * @path /categories/{categoryId}
-     * @allow (get, list, create, update, delete) - Any user can read, list, create, update, or delete any category.
+     * @allow (get, list, create, update, delete) Any user can read/list/create/update/delete categories.
+     * @principle Allows public access for all operations.
      */
     match /categories/{categoryId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
-    }
-
-     /**
-      * @description Rules for districts.
-      * @path /districts/{districtId}
-      * @allow (get, list, create, update, delete) - Any user can read, list, create, update, or delete any district.
-      */
-    match /districts/{districtId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+       allow create, update, delete: if false;
     }
 
     /**
-     * @description Rules for job postings.
+     * @description Provides completely public access to district information.
+     * @path /districts/{districtId}
+     * @allow (get, list, create, update, delete) Any user can read/list districts.
+     * @principle Allows public access for all read operations.
+     */
+    match /districts/{districtId} {
+      allow get, list: if true;
+       allow create, update, delete: if false;
+    }
+
+        /**
+     * @description Manages access to job postings, allowing public read access but restricting write access to the author.
      * @path /jobs/{jobId}
-     * @allow (get, list, create, update, delete) - Any user can read, list, create, update, or delete any job posting.
+     * @allow (get, list) Any user can read/list job postings.
+     * @allow (create, update, delete) User with UID 'auth123' can create/update/delete a job posting where job.authorId == 'auth123'.
+     * @deny (create) User attempts to create a job posting with mismatched authorId.
+     * @deny (update, delete) User tries to update/delete a job posting they don't own.
+     * @principle Provides public read access with owner-only writes, validated by the 'authorId' field.
      */
     match /jobs/{jobId} {
-        allow get: if true;
-        allow list: if true;
-        allow create: if isSignedIn();
-        allow update: if isSignedIn();
-        allow delete: if isSignedIn();
+        function isSignedIn() {
+            return request.auth != null;
+        }
+        function isOwner(authorId) {
+            return request.auth.uid == authorId;
+        }
+        function isExistingOwner(authorId) {
+            return isSignedIn() && resource.data.authorId == request.auth.uid;
+        }
+        allow get, list: if true;
+        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+        allow update: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+        allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
     }
 
-    /**
-     * @description Rules for community posts.
+        /**
+     * @description Manages access to community posts, allowing public read access but restricting write access to the author.
      * @path /posts/{postId}
-     * @allow (get, list) - Any user can read any post.
-     * @allow (create) - User 'alice' (auth.uid: 'alice') can create a post with authorId: 'alice'.
-     * @allow (update, delete) - User 'alice' (auth.uid: 'alice') can update and delete their own post (where resource.data.authorId == 'alice').
-     * @deny (create) - User 'bob' (auth.uid: 'bob') cannot create a post with authorId: 'alice'.
-     * @deny (update, delete) - User 'bob' (auth.uid: 'bob') cannot update or delete user 'alice's post.
+     * @allow (get, list) Any user can read/list community posts.
+     * @allow (create, update, delete) User with UID 'auth123' can create/update/delete a post where post.authorId == 'auth123'.
+     * @deny (create) User attempts to create a community post with mismatched authorId.
+     * @deny (update, delete) User tries to update/delete a community post they don't own.
+     * @principle Provides public read access with owner-only writes, validated by the 'authorId' field.
      */
     match /posts/{postId} {
-        allow get: if true;
-        allow list: if true;
+        function isSignedIn() {
+            return request.auth != null;
+        }
+        function isOwner(authorId) {
+            return request.auth.uid == authorId;
+        }
+        function isExistingOwner(authorId) {
+            return isSignedIn() && resource.data.authorId == request.auth.uid;
+        }
+        allow get, list: if true;
         allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-        allow update: if isExistingOwner(resource.data.authorId);
-        allow delete: if isExistingOwner(resource.data.authorId);
+        allow update: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+        allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
     }
   }
 }

@@ -108,6 +108,8 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
                 requestResourceData: newArticleData,
             });
             errorEmitter.emit('permission-error', permissionError);
+            // Throw a standard error for the server
+            throw new Error(permissionError.message);
         }
         throw serverError; // Re-throw other errors
     });
@@ -147,9 +149,12 @@ export async function getArticles(options?: {
                 path: articlesCollection.path,
                 operation: 'list',
             });
+            // Emit the rich error for client-side listeners
             errorEmitter.emit('permission-error', permissionError);
+            // Throw a generic, serializable error for server components
+            throw new Error(permissionError.message);
         }
-        // Re-throw the error to ensure the calling component knows the request failed
+        // Re-throw other types of errors
         throw serverError;
     });
 
@@ -201,6 +206,7 @@ export async function getArticle(id: string): Promise<Article | null> {
                     operation: 'get',
                 });
                 errorEmitter.emit('permission-error', permissionError);
+                throw new Error(permissionError.message);
             }
             throw error;
         }
@@ -268,6 +274,7 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
                 requestResourceData: updateData,
             });
             errorEmitter.emit('permission-error', permissionError);
+            throw new Error(permissionError.message);
         }
         throw serverError;
     });
@@ -292,6 +299,7 @@ export async function deleteArticle(id: string): Promise<void> {
                 operation: 'delete',
             });
             errorEmitter.emit('permission-error', permissionError);
+            throw new Error(permissionError.message);
         }
         throw serverError;
     });
@@ -322,5 +330,3 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         return [];
     }
 }
-
-    

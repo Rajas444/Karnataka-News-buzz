@@ -1,0 +1,123 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores public information about a user.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "photoURL": { "type": "string", "format": "uri", "description": "URL of the user's profile picture." },
+        "role": { "type": "string", "enum": ["admin", "editor", "user"], "description": "The user's role in the system." },
+        "phoneNumber": { "type": "string", "description": "The user's phone number." }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Article": {
+      "title": "News Article",
+      "description": "Represents a single news article in the portal.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "author": { "type": "string" },
+        "authorId": { "type": "string" },
+        "categoryIds": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["published", "draft", "scheduled", "archived"] },
+        "publishedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "source": { "type": "string" },
+        "sourceUrl": { "type": "string", "format": "uri" },
+        "views": { "type": "number" },
+        "districtId": { "type": "string" }
+      },
+      "required": ["title", "content", "authorId", "status", "createdAt"]
+    },
+    "Category": {
+      "title": "News Category",
+      "description": "A category for organizing news articles.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" }
+      },
+      "required": ["name", "slug"]
+    },
+    "District": {
+      "title": "District",
+      "description": "A district in Karnataka.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "Job": {
+        "title": "Job Posting",
+        "description": "Represents a job opportunity.",
+        "type": "object",
+        "properties": {
+            "title": { "type": "string" },
+            "company": { "type": "string" },
+            "location": { "type": "string" },
+            "qualification": { "type": "string" },
+            "description": { "type": "string" },
+            "applyLink": { "type": "string", "format": "uri" },
+            "jobType": { "type": "string", "enum": ["Government", "Private", "Fresher", "Internship"] },
+            "lastDateToApply": { "type": "string", "format": "date-time" },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["title", "company", "location", "applyLink", "lastDateToApply"]
+    },
+    "Post": {
+        "title": "Community Post",
+        "description": "A post created by a community member.",
+        "type": "object",
+        "properties": {
+            "title": { "type": "string" },
+            "description": { "type": "string" },
+            "category": { "type": "string" },
+            "location": { "type": "string" },
+            "imageUrl": { "type": "string", "format": "uri" },
+            "authorId": { "type": "string" },
+            "authorName": { "type": "string" },
+            "authorPhotoURL": { "type": "string", "format": "uri" },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["title", "description", "authorId", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": ["password", "google.com"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores user profile information."
+    },
+    "/articles/{articleId}": {
+      "schema": { "$ref": "#/entities/Article" },
+      "description": "Stores individual news articles."
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Stores news categories."
+    },
+     "/districts/{districtId}": {
+      "schema": { "$ref": "#/entities/District" },
+      "description": "Stores the list of districts."
+    },
+    "/jobs/{jobId}": {
+        "schema": { "$ref": "#/entities/Job" },
+        "description": "Stores job postings."
+    },
+    "/posts/{postId}": {
+        "schema": { "$ref": "#/entities/Post" },
+        "description": "Stores community-generated posts."
+    }
+  }
+}

@@ -3,52 +3,53 @@
 
 import type { Article as NewsApiArticle } from '@/lib/types';
 
-// This is a placeholder for the full NewsAPI article type
-interface NewsDataArticleDTO {
-    article_id: string;
+interface GNewsArticleDTO {
     title: string;
-    description: string | null;
-    link: string;
-    image_url: string | null;
-    pubDate: string;
-    source_id: string;
-    content: string | null;
+    description: string;
+    content: string;
+    url: string;
+    image: string;
+    publishedAt: string;
+    source: {
+        name: string;
+        url: string;
+    };
 }
 
-// Function to fetch news from NewsAPI.org
-async function fetchFromNewsDataAPI(options?: { q?: string }): Promise<NewsApiArticle[]> {
-    const apiKey = process.env.NEWS_DATA_API_KEY;
-    if (!apiKey || apiKey === "your_news_data_api_key_here") {
-        console.warn("NewsData.io API key is not configured. External news feed will be empty.");
+// Function to fetch news from GNews API
+async function fetchFromGNewsAPI(options?: { q?: string }): Promise<NewsApiArticle[]> {
+    const apiKey = process.env.NEXT_PUBLIC_GNEWS_API_KEY;
+    if (!apiKey || apiKey === "your_gnews_api_key_here") {
+        console.warn("GNews API key is not configured. External news feed will be empty.");
         return [];
     }
     
     const query = options?.q ? `&q=${encodeURIComponent(options.q)}` : '';
     
-    // Fetching recent news from India in Kannada language.
-    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&country=in&language=kn${query}`;
+    // Fetching top headlines from India in Kannada language.
+    const url = `https://gnews.io/api/v4/top-headlines?token=${apiKey}&lang=kn&country=in${query}`;
 
     try {
         const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour
         if (!response.ok) {
             const errorBody = await response.json();
-            console.error(`NewsData.io request failed with status: ${response.status}`, errorBody);
+            console.error(`GNews API request failed with status: ${response.status}`, errorBody);
             return [];
         }
         const data = await response.json();
         
         // Map the API response to our local Article type
-        return data.results.map((article: NewsDataArticleDTO) => ({
-            id: article.link, // Use URL as a unique ID for external articles
+        return data.articles.map((article: GNewsArticleDTO) => ({
+            id: article.url, // Use URL as a unique ID for external articles
             title: article.title,
-            content: article.description || '',
-            imageUrl: article.image_url,
-            author: article.source_id,
-            publishedAt: article.pubDate,
-            source: article.source_id,
-            sourceUrl: article.link,
+            content: article.description || article.content || '',
+            imageUrl: article.image,
+            author: article.source.name,
+            publishedAt: article.publishedAt,
+            source: article.source.name,
+            sourceUrl: article.url,
             // Fill in other required fields with default values
-            authorId: 'news-data-api',
+            authorId: 'gnews-api',
             categoryIds: ['external'],
             status: 'published',
             seo: { keywords: [], metaDescription: article.description || '' },
@@ -57,13 +58,12 @@ async function fetchFromNewsDataAPI(options?: { q?: string }): Promise<NewsApiAr
             updatedAt: new Date().toISOString(),
         }));
     } catch (error) {
-        console.error("Failed to fetch from NewsData.io:", error);
+        console.error("Failed to fetch from GNews API:", error);
         return [];
     }
 }
 
 
 export async function getExternalNews(options?: { type?: 'everything' | 'top-headlines', q?: string }): Promise<NewsApiArticle[]> {
-    // For now, we only fetch from the primary endpoint of NewsData.io
-    return await fetchFromNewsDataAPI({ q: options?.q });
+    return await fetchFromGNewsAPI({ q: options?.q });
 }

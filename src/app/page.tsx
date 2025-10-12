@@ -3,19 +3,30 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Newspaper } from 'lucide-react';
+import { Newspaper, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,6 +36,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [authError, setAuthError] = useState<string | null>(null);
+  const [resetEmail, setResetEmail] = useState('');
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -77,6 +89,22 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  const handlePasswordReset = async () => {
+    if (!resetEmail) {
+      toast({ title: "Email is required", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      toast({ title: "Password Reset Email Sent", description: "Check your inbox for a link to reset your password." });
+    } catch (error: any) {
+      toast({ title: "Error", description: "Could not send password reset email. Please check the email address.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }
   
     if (authLoading || user) {
         return (
@@ -126,7 +154,30 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button type="button" className="text-sm text-primary hover:underline">Forgot password?</button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Reset Password</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Enter your email address and we will send you a link to reset your password.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="space-y-2">
+                           <Label htmlFor="reset-email">Email Address</Label>
+                           <Input id="reset-email" type="email" placeholder="user@example.com" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} />
+                        </div>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handlePasswordReset}>Send Reset Link</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                </div>
                 <Input
                   id="password"
                   type="password"

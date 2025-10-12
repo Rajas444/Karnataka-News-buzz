@@ -1,137 +1,98 @@
-/**
- * @file Firestore Security Rules
- * @version 2
- *
- * @Core Philosophy
- * This ruleset prioritizes security by enforcing strict ownership and role-based access control.
- * It provides flexibility for prototyping by minimizing data validation.
- *
- * @Data Structure
- * - /users/{userId}: Stores user profile information, accessible only to the user and admins.
- * - /articles/{articleId}: Stores news articles, publicly readable, but writable only by the author and admins.
- * - /categories/{categoryId}: Stores news categories, publicly readable.
- * - /districts/{districtId}: Stores district information, publicly readable.
- * - /jobs/{jobId}: Stores job postings, publicly readable.
- * - /posts/{postId}: Stores community posts, publicly readable, writable by the author.
- *
- * @Key Security Decisions
- * - User listing is disallowed for privacy.
- * - The 'articles' collection uses a public-read, owner-write pattern.
- * - Role-based access control is implemented for administrative functions.
- * - All write operations (create, update, delete) require authentication.
- *
- * @Denormalization for Authorization
- * The 'articles' documents have an 'authorId' field to enable owner-based write rules.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile information.
+     * @description Controls access to user profile documents.
      * @path /users/{userId}
-     * @allow (create) - User with matching uid can create their profile.
-     * @allow (get, update, delete) - User with matching uid can get, update, or delete their profile.
-     * @deny (create) - User tries to create a profile with a different uid.
+     * @allow (read, write) if the user is authenticated and the UID matches the userId.
+     * @deny (read, write) if the user is not authenticated or the UID does not match the userId.
      * @principle Enforces document ownership for user profiles.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      allow get: if isSignedIn() && isOwner(userId);
+      allow get, update, delete: if isOwner(userId);
+      allow create: if isSignedIn() && request.auth.uid == userId;
       allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Controls access to news articles.
+     * @description Controls access to article documents.
      * @path /articles/{articleId}
-     * @allow (get, list) - Anyone can read news articles.
-     * @allow (create) - User can create a new article if they are the author.
-     * @allow (update, delete) - Only the author can update or delete an article.
-     * @deny (create) - User tries to create an article with a mismatched authorId.
-     * @deny (update, delete) - User tries to update or delete an article they don't own.
-     * @principle Public read access with owner-only write access.
+     * @allow (read) to anyone.
+     * @allow (create, update, delete) to users with the 'admin' role.
+     * @deny (create, update, delete) to non-admins.
+     * @principle Allows public read access but restricts write access to admins.
      */
     match /articles/{articleId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(authorId) {
-        return request.auth.uid == authorId;
-      }
-
       allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update: if isSignedIn() && getAfter().data.authorId == request.auth.uid;
-      allow delete: if isSignedIn() && get().data.authorId == request.auth.uid;
+      allow create, update, delete: if isAdmin();
     }
 
     /**
-     * @description Controls access to news categories.
+     * @description Controls access to category documents.
      * @path /categories/{categoryId}
-     * @allow (get, list) - Anyone can read news categories.
-     * @deny (create, update, delete) - No one can create, update, or delete news categories.
-     * @principle Public read access, no write access.
+     * @allow (read) to anyone.
+     * @allow (create, update, delete) to users with the 'admin' role.
+     * @deny (create, update, delete) to non-admins.
+     * @principle Allows public read access but restricts write access to admins.
      */
     match /categories/{categoryId} {
       allow get, list: if true;
+      allow create, update, delete: if isAdmin();
     }
 
     /**
-     * @description Controls access to districts.
+     * @description Controls access to district documents.
      * @path /districts/{districtId}
-     * @allow (get, list) - Anyone can read district information.
-     * @deny (create, update, delete) - No one can create, update, or delete district information.
-     * @principle Public read access, no write access.
+     * @allow (read) to anyone.
+     * @allow (create, update, delete) to users with the 'admin' role.
+     * @deny (create, update, delete) to non-admins.
+     * @principle Allows public read access but restricts write access to admins.
      */
     match /districts/{districtId} {
       allow get, list: if true;
+      allow create, update, delete: if isAdmin();
     }
 
     /**
-     * @description Controls access to job postings.
+     * @description Controls access to job documents.
      * @path /jobs/{jobId}
-     * @allow (get, list) - Anyone can read job postings.
-     * @deny (create, update, delete) - No one can create, update, or delete job postings.
-     * @principle Public read access, no write access.
+     * @allow (read) to anyone.
+     * @allow (create, update, delete) to users with the 'admin' role.
+     * @deny (create, update, delete) to non-admins.
+     * @principle Allows public read access but restricts write access to admins.
      */
-    match /jobs/{jobId} {
-        allow get, list: if true;
-    }
+        match /jobs/{jobId} {
+            allow get, list: if true;
+            allow create, update, delete: if isAdmin();
+        }
 
     /**
-     * @description Controls access to community posts.
+     * @description Controls access to post documents.
      * @path /posts/{postId}
-     * @allow (get, list) - Anyone can read community posts.
-     * @allow (create) - User can create a new post if they are the author.
-     * @allow (update, delete) - Only the author can update or delete a post.
-     * @deny (create) - User tries to create a post with a mismatched authorId.
-     * @deny (update, delete) - User tries to update or delete a post they don't own.
-     * @principle Public read access with owner-only write access.
+     * @allow (read) to anyone.
+     * @allow (create, update, delete) to users with the 'admin' role.
+     * @deny (create, update, delete) to non-admins.
+     * @principle Allows public read access but restricts write access to admins.
      */
     match /posts/{postId} {
-        function isSignedIn() {
-            return request.auth != null;
-        }
-
-        function isOwner(authorId) {
-            return request.auth.uid == authorId;
-        }
-
-        allow get, list: if true;
-        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-        allow update: if isSignedIn() && getAfter().data.authorId == request.auth.uid;
-        allow delete: if isSignedIn() && get().data.authorId == request.auth.uid;
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
     }
+
   }
+
+  // Helper functions
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  function isOwner(userId) {
+    return isSignedIn() && request.auth.uid == userId;
+  }
+
+  function isAdmin() {
+       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+  }
+
 }

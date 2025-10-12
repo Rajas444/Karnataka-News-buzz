@@ -14,13 +14,13 @@ import { getExternalNews } from '@/services/newsapi';
 import { Suspense } from 'react';
 
 type HomePageProps = {
-  searchParams?: {
+  searchParams: {
     category?: string;
     district?: string;
   };
 };
 
-async function HomePageContent({ searchParams }: HomePageProps) {
+export default async function HomePage({ searchParams }: HomePageProps) {
   const categorySlug = searchParams?.category;
   const districtId = searchParams?.district;
 
@@ -149,16 +149,4 @@ async function HomePageContent({ searchParams }: HomePageProps) {
 
     </div>
   );
-}
-
-export default function HomePage({ searchParams }: HomePageProps) {
-    return (
-        <Suspense fallback={
-            <div className="container mx-auto px-4 py-8 text-center">
-                <p>Loading news...</p>
-            </div>
-        }>
-            <HomePageContent searchParams={searchParams} />
-        </Suspense>
-    )
 }

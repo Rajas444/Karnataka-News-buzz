@@ -154,7 +154,11 @@ async function HomePageContent({ searchParams }: HomePageProps) {
 
 export default function HomePage({ searchParams }: HomePageProps) {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={
+            <div className="container mx-auto px-4 py-8 text-center">
+                <p>Loading news...</p>
+            </div>
+        }>
             <HomePageContent searchParams={searchParams} />
         </Suspense>
     )

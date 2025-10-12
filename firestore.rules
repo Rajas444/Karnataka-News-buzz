@@ -43,8 +43,12 @@ service cloud.firestore {
      * @principle Enforces user-ownership for all profile data.
      */
     match /users/{userId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       function isOwner(userId) {
-        return request.auth.uid == userId;
+        return isSignedIn() && request.auth.uid == userId;
       }
 
       allow get: if isOwner(userId);
@@ -68,8 +72,12 @@ service cloud.firestore {
      * @principle Enforces public read access with owner-only writes.
      */
     match /articles/{articleId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       function isOwner(authorId) {
-        return request.auth.uid == authorId;
+        return isSignedIn() && request.auth.uid == authorId;
       }
 
       function isExistingOwner(authorId) {
@@ -78,7 +86,7 @@ service cloud.firestore {
 
       allow get: if true;
       allow list: if true;
-      allow create: if request.auth.uid == request.resource.data.authorId;
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
       allow update: if isExistingOwner(resource.data.authorId);
       allow delete: if isExistingOwner(resource.data.authorId);
     }
@@ -151,8 +159,12 @@ service cloud.firestore {
      * @principle Enforces public read access with owner-only writes.
      */
     match /posts/{postId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       function isOwner(authorId) {
-        return request.auth.uid == authorId;
+        return isSignedIn() && request.auth.uid == authorId;
       }
 
       function isExistingOwner(authorId) {
@@ -161,7 +173,7 @@ service cloud.firestore {
 
       allow get: if true;
       allow list: if true;
-      allow create: if request.auth.uid == request.resource.data.authorId;
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
       allow update: if isExistingOwner(resource.data.authorId);
       allow delete: if isExistingOwner(resource.data.authorId);
     }

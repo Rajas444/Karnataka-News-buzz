@@ -11,8 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Newspaper } from 'lucide-react';
+import { Newspaper, Terminal } from 'lucide-react';
 import Link from 'next/link';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -21,27 +22,26 @@ export default function RegisterPage() {
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setAuthError(null);
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // All new users are created with the 'user' role by default.
-      // Admin promotion is handled manually in the Firestore console.
       const userDocRef = doc(db, 'users', user.uid);
       await setDoc(userDocRef, {
         uid: user.uid,
         email: user.email,
         displayName: displayName,
-        role: 'user', // Default role is 'user'
+        role: 'user',
         photoURL: ''
       });
 
-      // Log out the user immediately after registration to force them to the correct login page
       await auth.signOut();
 
       toast({
@@ -53,25 +53,13 @@ export default function RegisterPage() {
 
     } catch (error: any) {
       console.error(error);
-      if (error.code === 'auth/email-already-in-use') {
-         toast({
-            title: 'Registration Failed',
-            description: "An account with this email already exists.",
-            variant: 'destructive',
-        });
-      } else if (error.code === 'auth/configuration-not-found') {
-        toast({
-            title: 'Configuration Error',
-            description: "Email/Password sign-in is not enabled in your Firebase project. Please enable it in the Firebase console.",
-            variant: 'destructive',
-            duration: 9000,
-        });
+      const errorCode = error.code || '';
+      if (errorCode.includes('requests-to-this-api') && (errorCode.includes('signup-are-blocked') || errorCode.includes('signinwithpassword-are-blocked'))) {
+         setAuthError("Registration is disabled. The Email/Password sign-in method is not enabled in this Firebase project.");
+      } else if (error.code === 'auth/email-already-in-use') {
+         setAuthError("An account with this email already exists.");
       } else {
-        toast({
-            title: 'Registration Failed',
-            description: error.message || 'An unknown error occurred.',
-            variant: 'destructive',
-        });
+        setAuthError(error.message || 'An unknown error occurred.');
       }
     } finally {
       setLoading(false);
@@ -93,6 +81,13 @@ export default function RegisterPage() {
             <CardDescription>Enter your details to register.</CardDescription>
           </CardHeader>
           <CardContent>
+            {authError && (
+                <Alert variant="destructive" className="mb-4">
+                    <Terminal className="h-4 w-4" />
+                    <AlertTitle>Registration Failed</AlertTitle>
+                    <AlertDescription>{authError}</AlertDescription>
+                </Alert>
+            )}
             <form onSubmit={handleRegister} className="space-y-4">
                <div className="space-y-2">
                 <Label htmlFor="displayName">Full Name</Label>

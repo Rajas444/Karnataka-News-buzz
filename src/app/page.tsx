@@ -14,6 +14,8 @@ import { Newspaper } from 'lucide-react';
 import Link from 'next/link';
 import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Terminal } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -37,6 +40,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setAuthError(null);
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -45,48 +49,29 @@ export default function LoginPage() {
       const userDocRef = doc(db, 'users', firestoreUser.uid);
       const userDoc = await getDoc(userDocRef);
 
-      // The useAuth hook will handle role checking and redirection via its own useEffect.
-      // We just need to ensure the login is successful.
       if (userDoc.exists()) {
         const profile = userDoc.data();
          if (profile.role === 'admin') {
             toast({ title: 'Admin Login Detected', description: 'Redirecting to admin dashboard...' });
-            router.push('/admin'); // Redirect admin user
+            router.push('/admin');
             return;
         }
       }
       
       toast({ title: 'Login Successful', description: 'Redirecting...' });
-      router.push('/home'); // Redirect regular user
+      router.push('/home');
 
     } catch (error: any) {
       console.error(error);
-      if (error.code === 'auth/configuration-not-found') {
-        toast({
-            title: 'Configuration Error',
-            description: "Email/Password sign-in is not enabled in your Firebase project. Please enable it in the Firebase console.",
-            variant: 'destructive',
-            duration: 9000,
-        });
+      const errorCode = error.code || '';
+      if (errorCode.includes('requests-to-this-api') && errorCode.includes('signinwithpassword-are-blocked')) {
+        setAuthError("Email/Password sign-in is not enabled in your Firebase project. Please enable it in the Firebase console's Authentication section.");
       } else if (error.code === 'auth/invalid-credential') {
-        toast({
-            title: 'Login Failed',
-            description: "Invalid credentials. Please check your email and password.",
-            variant: 'destructive',
-        });
+        setAuthError("Invalid credentials. Please check your email and password.");
       } else if (error.message?.includes('client is offline') || error.code === 'unavailable') {
-        toast({
-          title: 'Firestore Error',
-          description: 'Could not connect to the database. Please ensure Firestore is enabled and has correct rules.',
-          variant: 'destructive',
-          duration: 9000,
-        });
+        setAuthError('Could not connect to the database. Please ensure Firestore is enabled and has correct rules.');
       } else {
-        toast({
-            title: 'Login Failed',
-            description: error.message || 'An unknown error occurred.',
-            variant: 'destructive',
-        });
+        setAuthError(error.message || 'An unknown error occurred.');
       }
     } finally {
       setLoading(false);
@@ -120,6 +105,13 @@ export default function LoginPage() {
             <CardDescription>Enter your credentials to access your account.</CardDescription>
           </CardHeader>
           <CardContent>
+            {authError && (
+                <Alert variant="destructive" className="mb-4">
+                    <Terminal className="h-4 w-4" />
+                    <AlertTitle>Login Failed</AlertTitle>
+                    <AlertDescription>{authError}</AlertDescription>
+                </Alert>
+            )}
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>

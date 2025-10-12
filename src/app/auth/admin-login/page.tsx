@@ -10,9 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Newspaper, ShieldCheck } from 'lucide-react';
+import { Newspaper, ShieldCheck, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -21,15 +22,10 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-
-  console.log('[AdminLoginPage] Auth State:', { authLoading, user: !!user, userRole });
-
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    // This effect will handle redirecting away if the user is ALREADY an admin.
-    console.log('[AdminLoginPage] useEffect check:', { authLoading, user: !!user, userRole });
     if (!authLoading && user && userRole === 'admin') {
-        console.log('[AdminLoginPage] Redirecting already-logged-in admin to dashboard.');
         router.replace('/admin/dashboard');
     }
   }, [user, userRole, authLoading, router]);
@@ -37,21 +33,22 @@ export default function AdminLoginPage() {
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setAuthError(null);
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: 'Login Successful', description: 'Redirecting to dashboard...' });
-      // The useEffect should handle the redirect now once the auth state is updated.
       router.replace('/admin/dashboard');
     } catch (error: any) {
       console.error("Login failed:", error);
-      toast({
-        title: 'Login Failed',
-        description: error.code === 'auth/invalid-credential' 
-            ? 'Invalid credentials. Please ensure you are using an admin account.'
-            : (error.message || 'An unknown error occurred.'),
-        variant: 'destructive',
-      });
+      const errorCode = error.code || '';
+      if (errorCode.includes('requests-to-this-api') && errorCode.includes('signinwithpassword-are-blocked')) {
+        setAuthError("Email/Password sign-in is not enabled for this Firebase project. Please enable it in the Firebase Console under Authentication > Sign-in method.");
+      } else if (error.code === 'auth/invalid-credential') {
+        setAuthError('Invalid credentials. Please ensure you are using an admin account.');
+      } else {
+        setAuthError(error.message || 'An unknown error occurred.');
+      }
     } finally {
         setLoading(false);
     }
@@ -85,6 +82,13 @@ export default function AdminLoginPage() {
             <CardDescription>Enter your administrator credentials to access the dashboard.</CardDescription>
           </CardHeader>
           <CardContent>
+            {authError && (
+                <Alert variant="destructive" className="mb-4">
+                    <Terminal className="h-4 w-4" />
+                    <AlertTitle>Login Failed</AlertTitle>
+                    <AlertDescription>{authError}</AlertDescription>
+                </Alert>
+            )}
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Admin Email</Label>

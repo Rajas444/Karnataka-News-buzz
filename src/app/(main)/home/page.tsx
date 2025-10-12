@@ -11,17 +11,18 @@ import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
 import { getExternalNews } from '@/services/newsapi';
+import { Suspense } from 'react';
 
 type HomePageProps = {
-  searchParams: {
+  searchParams?: {
     category?: string;
     district?: string;
   };
 };
 
-export default async function HomePage({ searchParams }: HomePageProps) {
-  const categorySlug = searchParams.category;
-  const districtId = searchParams.district;
+async function HomePageContent({ searchParams }: HomePageProps) {
+  const categorySlug = searchParams?.category;
+  const districtId = searchParams?.district;
 
   let districts = [];
   let initialArticles: Article[] = [];
@@ -145,4 +146,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
     </div>
   );
+}
+
+export default function HomePage({ searchParams }: HomePageProps) {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <HomePageContent searchParams={searchParams} />
+        </Suspense>
+    )
 }

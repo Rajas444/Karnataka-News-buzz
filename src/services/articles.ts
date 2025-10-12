@@ -9,6 +9,8 @@ import { getDistricts } from './districts';
 import { getCategories } from './categories';
 import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
 import { getExternalNews } from './newsapi';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const articlesCollection = collection(db, 'articles');
 
@@ -79,7 +81,7 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
   
   const { categoryId, ...restOfData } = data as any;
 
-  const docRef = await addDoc(articlesCollection, {
+  const newArticleData = {
     ...restOfData,
     categoryIds: data.categoryIds,
     imageUrl,
@@ -95,7 +97,20 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
       keywords: data.seoKeywords?.split(',').map(k => k.trim()) || [],
       metaDescription: data.seoMetaDescription || '',
     }
-  });
+  };
+
+  const docRef = await addDoc(articlesCollection, newArticleData)
+    .catch((serverError) => {
+        if (serverError.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: articlesCollection.path,
+                operation: 'create',
+                requestResourceData: newArticleData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        }
+        throw serverError; // Re-throw other errors
+    });
 
   const docSnap = await getDoc(docRef);
   return serializeArticle(docSnap);
@@ -110,7 +125,6 @@ export async function getArticles(options?: {
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
     const { pageSize = 100, startAfterDocId, categorySlug, districtId } = options || {}; // Fetch a larger batch
     
-    // Using a very simple query that does not require a composite index.
     const constraints: QueryConstraint[] = [
         orderBy('publishedAt', 'desc'),
     ];
@@ -132,10 +146,7 @@ export async function getArticles(options?: {
             return { articles: [], lastVisibleDocId: null };
         }
 
-        const allArticles = await Promise.all(snapshot.docs.map(serializeArticle));
-
-        // Perform all filtering in-memory
-        let filteredArticles = allArticles.filter(a => a.status === 'published');
+        let filteredArticles = await Promise.all(snapshot.docs.map(serializeArticle));
         
         if (categorySlug && categorySlug !== 'all') {
             const categories = await getCategories();
@@ -157,8 +168,14 @@ export async function getArticles(options?: {
             lastVisibleDocId: hasMore ? newLastVisibleDocId : null
         };
     } catch (error: any) {
-        console.error("An unexpected error occurred in getArticles:", error);
-        // Throw the error to be handled by the calling component
+        if (error.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: articlesCollection.path,
+                operation: 'list',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        }
+        // Throw the original error to be handled by the calling component
         throw error;
     }
 }
@@ -169,18 +186,26 @@ export async function getArticle(id: string): Promise<Article | null> {
     let article: Article | null = null;
 
     if (!isExternalId) {
-        // Fetch from local Firestore DB
         const docRef = doc(db, 'articles', id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            article = await serializeArticle(docSnap);
-            // Increment view count for local articles
-            const currentViews = docSnap.data().views || 0;
-            await updateDoc(docRef, { views: currentViews + 1 });
+        try {
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                article = await serializeArticle(docSnap);
+                const currentViews = docSnap.data().views || 0;
+                await updateDoc(docRef, { views: currentViews + 1 });
+            }
+        } catch(error: any) {
+            if (error.code === 'permission-denied') {
+                const permissionError = new FirestorePermissionError({
+                    path: docRef.path,
+                    operation: 'get',
+                });
+                errorEmitter.emit('permission-error', permissionError);
+            }
+            throw error;
         }
+
     } else {
-        // If not found locally, try fetching from the external NewsAPI
-        // We use the URL as the ID for external articles
         const externalNews = await getExternalNews();
         article = externalNews.find(a => a.id === id) || null;
     }
@@ -220,7 +245,7 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
 
   const { categoryId, districtId, ...restOfData } = data as any;
   
-  await updateDoc(docRef, {
+  const updateData = {
     ...restOfData,
     districtId: districtId,
     categoryIds: data.categoryIds,
@@ -232,7 +257,20 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
       keywords: data.seoKeywords?.split(',').map(k => k.trim()) || [],
       metaDescription: data.seoMetaDescription || '',
     }
-  });
+  };
+
+  await updateDoc(docRef, updateData)
+    .catch((serverError) => {
+        if (serverError.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'update',
+                requestResourceData: updateData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        }
+        throw serverError;
+    });
 
   const updatedDoc = await getDoc(docRef);
   return serializeArticle(updatedDoc);
@@ -246,7 +284,17 @@ export async function deleteArticle(id: string): Promise<void> {
     if (article?.imagePath) {
         await deleteFromCloudinary(article.imagePath);
     }
-    await deleteDoc(docRef);
+    await deleteDoc(docRef)
+    .catch((serverError) => {
+        if (serverError.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'delete',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        }
+        throw serverError;
+    });
 }
 
 export async function getRelatedArticles(categoryId: string, currentArticleId: string): Promise<Article[]> {
@@ -269,11 +317,8 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
             .filter(article => article.id !== currentArticleId)
             .slice(0, 3);
 
-    } catch (error) {
+    } catch (error)_ {
         console.error("Error fetching related articles (index may be required):", error);
         return [];
     }
 }
-
-
-    

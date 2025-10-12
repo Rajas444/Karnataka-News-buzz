@@ -6,6 +6,7 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { ArticleModalProvider } from '@/components/providers/article-modal-provider';
+import FirebaseErrorListener from '@/components/FirebaseErrorListener';
 
 export const metadata: Metadata = {
   title: 'Karnataka News Pulse',
@@ -36,6 +37,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
+            <FirebaseErrorListener />
             <ArticleModalProvider>
               {children}
               <Toaster />

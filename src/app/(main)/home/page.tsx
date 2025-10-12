@@ -11,7 +11,6 @@ import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
 import { getExternalNews } from '@/services/newsapi';
-import { Suspense } from 'react';
 
 type HomePageProps = {
   searchParams: {
@@ -54,13 +53,17 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       topArticle = initialArticles.shift() ?? null;
     } else if (!districtId && !categorySlug) {
         // If no local articles and no filters applied, fetch from external API to get a top article
-        const externalNews = await getExternalNews();
-        if (externalNews.length > 0) {
-            topArticle = externalNews[0] ?? null;
-            // The rest of the external news can be part of the initial list if local is empty
-            if (initialArticles.length === 0) {
-              initialArticles = externalNews.slice(1, 10); // limit to 9 more
-            }
+        try {
+          const externalNews = await getExternalNews();
+          if (externalNews.length > 0) {
+              topArticle = externalNews[0] ?? null;
+              // The rest of the external news can be part of the initial list if local is empty
+              if (initialArticles.length === 0) {
+                initialArticles = externalNews.slice(1, 10); // limit to 9 more
+              }
+          }
+        } catch(e) {
+          console.error("Failed to fetch external news for top article", e);
         }
     }
 

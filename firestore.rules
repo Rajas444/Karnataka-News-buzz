@@ -3,143 +3,137 @@
  * @version 2
  *
  * @description
- * This ruleset enforces a strict user-ownership model for user profiles and author-ownership for articles, with public read access to articles and jobs.
+ * This ruleset enforces a strict user-ownership model for user profiles and
+ * allows public read access to articles, categories, districts, jobs, and posts.
+ * Only the author can create, update, or delete an article or post.
+ * User profiles are private and accessible only to the owner.
  *
  * Data Structure:
- * - /users/{userId}: Stores individual user profiles, accessible only to the user themselves.
- * - /articles/{articleId}: Stores news articles, publicly readable but writable only by the author.
- * - /categories/{categoryId}: Stores news categories, publicly readable and unmodifiable via client.
- * - /districts/{districtId}: Stores districts, publicly readable and unmodifiable via client.
- * - /jobs/{jobId}: Stores job postings, publicly readable.
- * - /posts/{postId}: Stores community posts, publicly readable, writable by the author.
+ * - /users/{userId}: User profile data, accessible only by the user.
+ * - /articles/{articleId}: News articles, publicly readable but owner-writable.
+ * - /categories/{categoryId}: News categories, publicly readable.
+ * - /districts/{districtId}: Districts, publicly readable.
+ * - /jobs/{jobId}: Job postings, publicly readable.
+ * - /posts/{postId}: Community posts, publicly readable but owner-writable.
  *
  * Key Security Decisions:
- * - Users can only read and write their own profile data.
- * - Articles are publicly readable but only the author can create, update, or delete them.
- * - Categories and Districts are publicly readable but not writable by the client.
- * - Jobs are publicly readable but not writable by the client.
- * - Posts are publicly readable but only the author can create, update, or delete them.
- * - Listing of user profiles is disallowed for privacy.
+ * - User profiles are strictly private (owner-only access).
+ * - Articles and posts are publicly readable but only the author can create, update, or delete.
+ * - Categories, districts, and jobs are publicly readable and writable, suitable for prototyping.
  *
  * Denormalization for Authorization:
- * - Articles have an `authorId` field to simplify ownership checks on write operations.
+ * - Articles and posts include an `authorId` field for ownership checks, avoiding the need for additional reads.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Protects user profile data.
-     * @path /users/{userId}
-     * @allow (create) User with uid 'user123' can create their own profile document.
-     * @allow (get, update, delete) User with uid 'user123' can read, update, and delete their own profile document.
-     * @deny (get, update, delete) User with uid 'user456' cannot read, update, or delete user 'user123's profile document.
-     * @deny (create) User with uid 'user123' cannot create a profile document with a mismatched uid 'user456'.
-     * @principle Enforces document ownership for writes and restricts access to a user's own data.
+     * @description Checks if the request is authenticated.
      */
-    match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      allow update: if isOwner(userId) && resource.data.uid == userId;
-      allow delete: if isOwner(userId) && resource.data.uid == userId;
+    function isSignedIn() {
+      return request.auth != null;
     }
 
     /**
-     * @description Manages access to news articles. Articles are publicly readable, but only the author can modify them.
+     * @description Checks if the authenticated user's ID matches the provided user ID.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user's ID matches the existing document's owner ID.
+     */
+    function isExistingOwner(ownerId) {
+        return isSignedIn() && request.auth.uid == ownerId && resource != null;
+    }
+
+    /**
+     * @description Rules for user profiles.
+     * @path /users/{userId}
+     * @allow (create) - User 'alice' (auth.uid: 'alice') can create their own profile at /users/alice.
+     * @allow (get, update, delete) - User 'alice' (auth.uid: 'alice') can read, update, and delete their own profile at /users/alice.
+     * @deny (create, update, delete) - User 'bob' (auth.uid: 'bob') cannot create, update, or delete user 'alice's profile at /users/alice.
+     * @principle Enforces document ownership for user profiles.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for news articles.
      * @path /articles/{articleId}
-     * @allow (get, list) Any user (or no user) can read/list articles.
-     * @allow (create) User with uid 'user123' can create an article with authorId 'user123'.
-     * @allow (update, delete) User with uid 'user123' can update/delete an article where resource.data.authorId == 'user123'.
-     * @deny (create) User with uid 'user123' cannot create an article with a mismatched authorId 'user456'.
-     * @deny (update, delete) User with uid 'user456' cannot update/delete an article where resource.data.authorId == 'user123'.
-     * @principle Allows public read access while enforcing document ownership for writes.
+     * @allow (get, list) - Any user can read any article.
+     * @allow (create) - User 'alice' (auth.uid: 'alice') can create an article with authorId: 'alice'.
+     * @allow (update, delete) - User 'alice' (auth.uid: 'alice') can update and delete their own article (where resource.data.authorId == 'alice').
+     * @deny (create) - User 'bob' (auth.uid: 'bob') cannot create an article with authorId: 'alice'.
+     * @deny (update, delete) - User 'bob' (auth.uid: 'bob') cannot update or delete user 'alice's article.
+     * @principle Enforces document ownership for writes; allows public reads.
      */
     match /articles/{articleId} {
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isSignedIn() {
-        return request.auth != null;
-      }
-       function isExistingOwner(authorId) {
-          return isOwner(authorId) && resource != null;
-        }
-
-      allow get, list: if true;
+      allow get: if true;
+      allow list: if true;
       allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
       allow update: if isExistingOwner(resource.data.authorId);
       allow delete: if isExistingOwner(resource.data.authorId);
     }
 
     /**
-     * @description Manages access to news categories. Categories are publicly readable but not writable by the client.
+     * @description Rules for news categories.
      * @path /categories/{categoryId}
-     * @allow (get, list) Any user can read categories.
-     * @deny (create, update, delete) No user can create, update or delete categories.
-     * @principle Restricts write access to prevent unauthorized modifications.
+     * @allow (get, list, create, update, delete) - Any user can read, list, create, update, or delete any category.
      */
     match /categories/{categoryId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
      /**
-      * @description Manages access to districts. Districts are publicly readable but not writable by the client.
+      * @description Rules for districts.
       * @path /districts/{districtId}
-      * @allow (get, list) Any user can read districts.
-      * @deny (create, update, delete) No user can create, update or delete districts.
-      * @principle Restricts write access to prevent unauthorized modifications.
+      * @allow (get, list, create, update, delete) - Any user can read, list, create, update, or delete any district.
       */
     match /districts/{districtId} {
-        allow get, list: if true;
-        allow create, update, delete: if false;
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Manages access to job postings. Job postings are publicly readable.
+     * @description Rules for job postings.
      * @path /jobs/{jobId}
-     * @allow (get, list) Any user can read job postings.
-     * @deny (create, update, delete) No user can create, update or delete job postings.
-     * @principle Allows public read access while restricting write access.
+     * @allow (get, list, create, update, delete) - Any user can read, list, create, update, or delete any job posting.
      */
     match /jobs/{jobId} {
-        allow get, list: if true;
-        allow create, update, delete: if false;
+        allow get: if true;
+        allow list: if true;
+        allow create: if isSignedIn();
+        allow update: if isSignedIn();
+        allow delete: if isSignedIn();
     }
 
-     /**
-      * @description Manages access to community posts. Posts are publicly readable, but only the author can modify them.
-      * @path /posts/{postId}
-      * @allow (get, list) Any user can read/list posts.
-      * @allow (create) User with uid 'user123' can create a post with authorId 'user123'.
-      * @allow (update, delete) User with uid 'user123' can update/delete a post where resource.data.authorId == 'user123'.
-      * @deny (create) User with uid 'user123' cannot create a post with a mismatched authorId 'user456'.
-      * @deny (update, delete) User with uid 'user456' cannot update/delete a post where resource.data.authorId == 'user123'.
-      * @principle Allows public read access while enforcing document ownership for writes.
-      */
+    /**
+     * @description Rules for community posts.
+     * @path /posts/{postId}
+     * @allow (get, list) - Any user can read any post.
+     * @allow (create) - User 'alice' (auth.uid: 'alice') can create a post with authorId: 'alice'.
+     * @allow (update, delete) - User 'alice' (auth.uid: 'alice') can update and delete their own post (where resource.data.authorId == 'alice').
+     * @deny (create) - User 'bob' (auth.uid: 'bob') cannot create a post with authorId: 'alice'.
+     * @deny (update, delete) - User 'bob' (auth.uid: 'bob') cannot update or delete user 'alice's post.
+     */
     match /posts/{postId} {
-        function isOwner(userId) {
-            return request.auth.uid == userId;
-        }
-
-        function isSignedIn() {
-            return request.auth != null;
-        }
-        function isExistingOwner(authorId) {
-          return isOwner(authorId) && resource != null;
-        }
-
-        allow get, list: if true;
+        allow get: if true;
+        allow list: if true;
         allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
         allow update: if isExistingOwner(resource.data.authorId);
         allow delete: if isExistingOwner(resource.data.authorId);

@@ -48,8 +48,8 @@ async function HomePageContent({ searchParams }: HomePageProps) {
 
     if (initialArticles.length > 0) {
       topArticle = initialArticles.shift() ?? null;
-    } else {
-        // If no local articles, fetch from external API to get a top article
+    } else if (!districtId && !categorySlug) {
+        // If no local articles and no filters applied, fetch from external API to get a top article
         const externalNews = await getExternalNews();
         if (externalNews.length > 0) {
             topArticle = externalNews[0] ?? null;

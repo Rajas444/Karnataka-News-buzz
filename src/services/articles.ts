@@ -125,11 +125,23 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 100, startAfterDocId, categorySlug, districtId } = options || {};
+    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
     
     const constraints: QueryConstraint[] = [
         orderBy('publishedAt', 'desc'),
     ];
+
+    if (districtId && districtId !== 'all') {
+        constraints.push(where('districtId', '==', districtId));
+    }
+    
+    if (categorySlug && categorySlug !== 'all') {
+        const categories = await getCategories();
+        const categoryId = categories.find(c => c.slug === categorySlug)?.id;
+        if (categoryId) {
+            constraints.push(where('categoryIds', 'array-contains', categoryId));
+        }
+    }
 
     if (startAfterDocId) {
         const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
@@ -158,25 +170,14 @@ export async function getArticles(options?: {
         return { articles: [], lastVisibleDocId: null };
     }
 
-    let filteredArticles = await Promise.all(snapshot.docs.map(serializeArticle));
-    
-    if (categorySlug && categorySlug !== 'all') {
-        const categories = await getCategories();
-        const categoryId = categories.find(c => c.slug === categorySlug)?.id;
-        if (categoryId) {
-            filteredArticles = filteredArticles.filter(a => a.categoryIds?.includes(categoryId));
-        }
-    }
-    if (districtId && districtId !== 'all') {
-        filteredArticles = filteredArticles.filter(a => a.districtId === districtId);
-    }
+    const articles = await Promise.all(snapshot.docs.map(serializeArticle));
     
     const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
     const newLastVisibleDocId = lastVisibleDoc ? lastVisibleDoc.id : null;
     const hasMore = snapshot.docs.length === pageSize;
 
     return {
-        articles: filteredArticles,
+        articles,
         lastVisibleDocId: hasMore ? newLastVisibleDocId : null
     };
 }

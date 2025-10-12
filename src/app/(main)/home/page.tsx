@@ -38,11 +38,11 @@ async function HomePageContent({ searchParams }: HomePageProps) {
 
   try {
     const { articles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
-      pageSize: districtId ? 50 : 10, // Fetch more if filtering by district to ensure we have enough to display
+      pageSize: 50, // Fetch a larger batch to increase chances of finding matches
       categorySlug,
     });
     
-    // Manual filtering for district
+    // Manual filtering for district since a composite index is not available.
     const filteredArticles = districtId && districtId !== 'all' 
       ? articles.filter(a => a.districtId === districtId) 
       : articles;

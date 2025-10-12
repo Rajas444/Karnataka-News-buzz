@@ -123,7 +123,7 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 100, startAfterDocId, categorySlug, districtId } = options || {}; // Fetch a larger batch
+    const { pageSize = 100, startAfterDocId, categorySlug, districtId } = options || {};
     
     const constraints: QueryConstraint[] = [
         orderBy('publishedAt', 'desc'),
@@ -138,46 +138,46 @@ export async function getArticles(options?: {
     
     constraints.push(limit(pageSize));
 
-    try {
-        const q = query(articlesCollection, ...constraints);
-        const snapshot = await getDocs(q);
-
-        if (snapshot.empty) {
-            return { articles: [], lastVisibleDocId: null };
-        }
-
-        let filteredArticles = await Promise.all(snapshot.docs.map(serializeArticle));
-        
-        if (categorySlug && categorySlug !== 'all') {
-            const categories = await getCategories();
-            const categoryId = categories.find(c => c.slug === categorySlug)?.id;
-            if (categoryId) {
-                filteredArticles = filteredArticles.filter(a => a.categoryIds?.includes(categoryId));
-            }
-        }
-        if (districtId && districtId !== 'all') {
-            filteredArticles = filteredArticles.filter(a => a.districtId === districtId);
-        }
-        
-        const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
-        const newLastVisibleDocId = lastVisibleDoc ? lastVisibleDoc.id : null;
-        const hasMore = snapshot.docs.length === pageSize;
-
-        return {
-            articles: filteredArticles,
-            lastVisibleDocId: hasMore ? newLastVisibleDocId : null
-        };
-    } catch (error: any) {
-        if (error.code === 'permission-denied') {
+    const q = query(articlesCollection, ...constraints);
+    
+    // Use .catch() to handle permission errors specifically
+    const snapshot = await getDocs(q).catch((serverError) => {
+        if (serverError.code === 'permission-denied') {
             const permissionError = new FirestorePermissionError({
                 path: articlesCollection.path,
                 operation: 'list',
             });
             errorEmitter.emit('permission-error', permissionError);
         }
-        // Throw the original error to be handled by the calling component
-        throw error;
+        // Re-throw the error to ensure the calling component knows the request failed
+        throw serverError;
+    });
+
+    if (snapshot.empty) {
+        return { articles: [], lastVisibleDocId: null };
     }
+
+    let filteredArticles = await Promise.all(snapshot.docs.map(serializeArticle));
+    
+    if (categorySlug && categorySlug !== 'all') {
+        const categories = await getCategories();
+        const categoryId = categories.find(c => c.slug === categorySlug)?.id;
+        if (categoryId) {
+            filteredArticles = filteredArticles.filter(a => a.categoryIds?.includes(categoryId));
+        }
+    }
+    if (districtId && districtId !== 'all') {
+        filteredArticles = filteredArticles.filter(a => a.districtId === districtId);
+    }
+    
+    const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+    const newLastVisibleDocId = lastVisibleDoc ? lastVisibleDoc.id : null;
+    const hasMore = snapshot.docs.length === pageSize;
+
+    return {
+        articles: filteredArticles,
+        lastVisibleDocId: hasMore ? newLastVisibleDocId : null
+    };
 }
 
 export async function getArticle(id: string): Promise<Article | null> {
@@ -317,8 +317,10 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
             .filter(article => article.id !== currentArticleId)
             .slice(0, 3);
 
-    } catch (error)_ {
+    } catch (error) {
         console.error("Error fetching related articles (index may be required):", error);
         return [];
     }
 }
+
+    

@@ -23,29 +23,22 @@ interface ArticleListProps {
   initialArticles: Article[];
   categorySlug?: string;
   districtId?: string;
-  initialLastVisibleDocId?: string | null;
 }
 
-export default function ArticleList({ initialArticles, categorySlug, districtId, initialLastVisibleDocId }: ArticleListProps) {
+export default function ArticleList({ initialArticles, categorySlug, districtId }: ArticleListProps) {
   const [articles, setArticles] = useState<Article[]>(initialArticles);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(initialLastVisibleDocId || null);
-  const [hasMore, setHasMore] = useState(initialArticles.length > 0 && !!initialLastVisibleDocId);
+  const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(initialArticles.length > 0);
   const { toast } = useToast();
   
-  // Use a ref to store the timestamp of when the component loads.
   const loadTime = useRef(new Date());
 
   useEffect(() => {
-    // When the initial articles from the server change (e.g., due to filter change),
-    // reset the state of this component.
-    setArticles(initialArticles);
-    setLastVisibleDocId(initialLastVisibleDocId);
-    setHasMore(initialArticles.length > 0 && !!initialLastVisibleDocId);
-  }, [initialArticles, initialLastVisibleDocId]);
-  
-  useEffect(() => {
+    // This effect now primarily manages fetching categories and setting up the real-time listener.
+    // The articles themselves are passed down as props.
+    
     async function fetchInitialData() {
       try {
         const fetchedCategories = await getCategories();
@@ -55,6 +48,23 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
       }
     }
     fetchInitialData();
+
+    // The parent component now controls the initial list, so we set the initial lastVisibleDocId from there.
+    // We only need to find the last doc if we're going to load more.
+    if (initialArticles.length > 0) {
+        const lastInitialArticle = initialArticles[initialArticles.length - 1];
+        if (lastInitialArticle && !lastInitialArticle.id.startsWith('http')) {
+            setLastVisibleDocId(lastInitialArticle.id);
+        } else {
+            setLastVisibleDocId(null);
+        }
+    } else {
+        setLastVisibleDocId(null);
+    }
+    setHasMore(initialArticles.length > 0 && lastVisibleDocId !== null);
+    
+    // Reset articles when filters change
+    setArticles(initialArticles);
 
     // Set up a real-time listener for new articles published *after* the page initially loaded.
     const q = query(
@@ -70,12 +80,16 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
                  if (newArticle.publishedAt) {
                   newArticle.publishedAt = (newArticle.publishedAt as Timestamp).toDate().toISOString();
                 }
-                // Prepend the new article to the list, avoiding duplicates.
+                // Prepend the new article to the list, applying current filters
                 setArticles(prev => {
-                    if (prev.some(a => a.id === newArticle.id)) {
-                        return prev; // Already exists, do nothing
+                    const shouldShow = 
+                        (!categorySlug || newArticle.categoryIds?.includes(categorySlug)) &&
+                        (!districtId || districtId === 'all' || newArticle.districtId === districtId);
+
+                    if (shouldShow && !prev.some(a => a.id === newArticle.id)) {
+                        return [newArticle, ...prev];
                     }
-                    return [newArticle, ...prev];
+                    return prev;
                 });
             }
         });
@@ -84,21 +98,23 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     });
 
     return () => unsubscribe();
-    // The loadTime.current is stable and should not be in dependency array
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialArticles, categorySlug, districtId, lastVisibleDocId]);
 
   const handleLoadMore = useCallback(async () => {
-    if (!hasMore || loadingMore) return;
+    if (!hasMore || loadingMore || !lastVisibleDocId) return;
 
     setLoadingMore(true);
     try {
-      const { articles: newArticles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
+      const { articles: fetchedArticles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
         pageSize: 10,
         startAfterDocId: lastVisibleDocId,
         categorySlug,
-        districtId,
       });
+
+      // Manually filter by district for subsequent loads as well
+      const newArticles = districtId && districtId !== 'all' 
+          ? fetchedArticles.filter(a => a.districtId === districtId)
+          : fetchedArticles;
       
       setArticles(prev => [...prev, ...newArticles]);
       setLastVisibleDocId(newLastVisibleDocId);

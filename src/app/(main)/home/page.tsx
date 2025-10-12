@@ -131,7 +131,6 @@ async function HomePageContent({ searchParams }: HomePageProps) {
                           initialArticles={initialArticles}
                           categorySlug={categorySlug}
                           districtId={districtId}
-                          initialLastVisibleDocId={lastVisibleDocId}
                       />
                   </section>
               </div>

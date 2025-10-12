@@ -123,9 +123,8 @@ export async function getArticles(options?: {
   pageSize?: number;
   startAfterDocId?: string | null;
   categorySlug?: string;
-  districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
+    const { pageSize = 10, startAfterDocId, categorySlug } = options || {};
     
     const constraints: QueryConstraint[] = [
         orderBy('publishedAt', 'desc'),
@@ -137,10 +136,6 @@ export async function getArticles(options?: {
         if (categoryId) {
             constraints.push(where('categoryIds', 'array-contains', categoryId));
         }
-    }
-
-    if (districtId && districtId !== 'all') {
-        constraints.push(where('districtId', '==', districtId));
     }
 
     if (startAfterDocId) {

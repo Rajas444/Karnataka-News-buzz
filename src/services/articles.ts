@@ -145,14 +145,21 @@ export async function getArticles(options?: {
     // Use .catch() to handle permission errors specifically
     const snapshot = await getDocs(q).catch((serverError) => {
         if (serverError.code === 'permission-denied') {
-            const permissionError = new FirestorePermissionError({
-                path: articlesCollection.path,
-                operation: 'list',
-            });
-            // Emit the rich error for client-side listeners
-            errorEmitter.emit('permission-error', permissionError);
-            // Throw a generic, serializable error for server components
-            throw new Error(permissionError.message);
+            // This code can run on the server OR the client.
+            // We must only create the client-side error object on the client.
+            if (typeof window === 'undefined') {
+                // We are on the server. Throw a standard, serializable error.
+                throw new Error('Firestore permission denied while fetching articles on the server.');
+            } else {
+                // We are on the client. We can create and emit the rich error.
+                const permissionError = new FirestorePermissionError({
+                    path: articlesCollection.path,
+                    operation: 'list',
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                 // We still throw a standard error for the client component to handle.
+                throw new Error(permissionError.message);
+            }
         }
         // Re-throw other types of errors
         throw serverError;
@@ -330,3 +337,5 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         return [];
     }
 }
+
+    

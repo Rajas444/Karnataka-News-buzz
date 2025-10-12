@@ -38,12 +38,16 @@ async function HomePageContent({ searchParams }: HomePageProps) {
 
   try {
     const { articles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
-      pageSize: 10,
+      pageSize: districtId ? 50 : 10, // Fetch more if filtering by district to ensure we have enough to display
       categorySlug,
-      districtId,
     });
     
-    initialArticles = articles;
+    // Manual filtering for district
+    const filteredArticles = districtId && districtId !== 'all' 
+      ? articles.filter(a => a.districtId === districtId) 
+      : articles;
+
+    initialArticles = filteredArticles.slice(0, 10);
     lastVisibleDocId = newLastVisibleDocId;
 
     if (initialArticles.length > 0) {

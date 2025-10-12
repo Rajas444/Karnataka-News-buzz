@@ -131,16 +131,16 @@ export async function getArticles(options?: {
         orderBy('publishedAt', 'desc'),
     ];
 
-    if (districtId && districtId !== 'all') {
-        constraints.push(where('districtId', '==', districtId));
-    }
-    
     if (categorySlug && categorySlug !== 'all') {
         const categories = await getCategories();
         const categoryId = categories.find(c => c.slug === categorySlug)?.id;
         if (categoryId) {
             constraints.push(where('categoryIds', 'array-contains', categoryId));
         }
+    }
+
+    if (districtId && districtId !== 'all') {
+        constraints.push(where('districtId', '==', districtId));
     }
 
     if (startAfterDocId) {

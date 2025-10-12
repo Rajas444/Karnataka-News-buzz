@@ -123,8 +123,9 @@ export async function getArticles(options?: {
   pageSize?: number;
   startAfterDocId?: string | null;
   categorySlug?: string;
+  districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const { pageSize = 10, startAfterDocId, categorySlug } = options || {};
+    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
     
     const constraints: QueryConstraint[] = [
         orderBy('publishedAt', 'desc'),
@@ -137,6 +138,11 @@ export async function getArticles(options?: {
             constraints.push(where('categoryIds', 'array-contains', categoryId));
         }
     }
+    
+    // NOTE: This was removed because it requires a composite index. Filtering is handled client-side on initial load.
+    // if (districtId && districtId !== 'all') {
+    //   constraints.push(where('districtId', '==', districtId));
+    // }
 
     if (startAfterDocId) {
         const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
@@ -188,24 +194,23 @@ export async function getArticle(id: string): Promise<Article | null> {
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 article = await serializeArticle(docSnap);
-                const currentViews = docSnap.data().views || 0;
-                await updateDoc(docRef, { views: currentViews + 1 });
+                // The view count update should be a non-blocking operation
+                updateDoc(docRef, { views: (article.views || 0) + 1 }).catch(e => console.error("Failed to update view count:", e));
             }
         } catch(error: any) {
-            if (error.code === 'permission-denied') {
-                const permissionError = new FirestorePermissionError({
-                    path: docRef.path,
-                    operation: 'get',
-                });
-                errorEmitter.emit('permission-error', permissionError);
-                throw new Error(permissionError.message);
-            }
-            throw error;
+            // Simply re-throw the error. The client component will handle it.
+            // Don't try to create a client-side error on the server.
+            throw new Error(`Failed to fetch article: ${error.message}`);
         }
 
     } else {
-        const externalNews = await getExternalNews();
-        article = externalNews.find(a => a.id === id) || null;
+        // For external articles, we can fetch them from our newsapi service
+        try {
+            const externalNews = await getExternalNews();
+            article = externalNews.find(a => a.id === id) || null;
+        } catch (error: any) {
+            throw new Error(`Failed to fetch external news article: ${error.message}`);
+        }
     }
 
     return article;

@@ -1,160 +1,55 @@
-/**
- * @fileoverview Firestore Security Rules for the application.
- *
- * Core Philosophy:
- * This ruleset prioritizes a secure, owner-centric model for user data and content creation,
- * while allowing public read access to certain collections like 'articles' and 'jobs' for general consumption.
- * Write access to these public collections is restricted to authenticated users,
- * enforcing ownership via the 'authorId' field in documents.
- * All user-specific data is stored under the /users/{userId} path and is accessible only to the owning user.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profile information, accessible only to the user.
- * - /articles/{articleId}: Stores news articles, publicly readable, but owner-writeable.
- * - /categories/{categoryId}: Stores news categories, publicly readable.
- * - /districts/{districtId}: Stores districts, publicly readable.
- * - /jobs/{jobId}: Stores job postings, publicly readable, but owner-writeable.
- * - /posts/{postId}: Stores community posts, publicly readable, but owner-writeable.
- *
- * Key Security Decisions:
- * - User listing is disallowed.
- * - Public read access is granted to 'articles', 'categories', 'districts', 'jobs', and 'posts' for wider accessibility.
- * - Owner-only writes are enforced on 'articles', 'jobs', and 'posts' using the 'authorId' field.
- * - In case of ambiguity, the rules default to the most secure interpretation (e.g., denying access).
- *
- * Denormalization for Authorization:
- * - The 'articles', 'jobs', and 'posts' collections rely on the 'authorId' field within each document
- *   to determine ownership, avoiding the need for costly 'get()' operations to separate user profiles.
- *   This allows for efficient and secure owner-based access control.
- *
- * Structural Segregation:
- * - There are no separate private/public collections for the same data type.
- *   All public data is stored in top-level collections with appropriate ownership controls.
- */
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * @description Checks if the user is signed in.
-     * @returns {boolean} True if the user is signed in, false otherwise.
-     */
-    function isSignedIn() {
+    
+    // Helper functions to make rules more readable.
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the authenticated user is the owner of the resource.
-     * @param {string} userId - The user ID to compare against the authenticated user's ID.
-     * @returns {boolean} True if the user is the owner, false otherwise.
-     */
+    function isAdmin() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
-    /**
-     * @description Checks if the authenticated user is the existing owner of the resource.
-     * @param {string} userId - The user ID to compare against the authenticated user's ID.
-     * @returns {boolean} True if the user is the owner and the resource exists, false otherwise.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Rule set for user profiles.
-     * @path /users/{userId}
-     * @allow (create) - Authenticated user with UID 'user123' can create their profile at /users/user123.
-     * @allow (get, update, delete) - Authenticated user with UID 'user123' can access their profile at /users/user123.
-     * @deny (create) - Authenticated user with UID 'user456' cannot create a profile at /users/user123.
-     * @deny (get, update, delete) - Authenticated user with UID 'user456' cannot access the profile at /users/user123.
-     * @principle Enforces document ownership for writes.
-     */
+    // Rules for user profiles. Only the owner can read or write their own data.
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false; // User listing is disallowed
-
-      // Self-creation: User can create their own profile.
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-
-      // Owner-only updates and deletes.  Enforce immutability of uid.
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
-      allow delete: if isExistingOwner(userId);
+      allow read, write: if isOwner(userId);
     }
 
-    /**
-     * @description Rule set for news articles.
-     * @path /articles/{articleId}
-     * @allow (get, list) - Any user can read articles.
-     * @allow (create) - Authenticated user with UID 'user123' can create an article with authorId 'user123'.
-     * @allow (update, delete) - Authenticated user with UID 'user123' can update/delete an article with authorId 'user123'.
-     * @deny (create) - Authenticated user with UID 'user456' cannot create an article with authorId 'user123'.
-     * @deny (update, delete) - Authenticated user with UID 'user456' cannot update/delete an article with authorId 'user123'.
-     * @principle Enforces document ownership for writes, allows public reads.
-     */
+    // Rules for public content collections.
+    // Anyone can read, but only admins can write.
     match /articles/{articleId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.authorId);
-      allow delete: if isExistingOwner(resource.data.authorId);
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
-    /**
-     * @description Rule set for news categories.
-     * @path /categories/{categoryId}
-     * @allow (get, list) - Any user can read categories.
-     * @deny (create, update, delete) - No user can create, update, or delete categories.
-     * @principle Allows public reads, restricts writes.
-     */
     match /categories/{categoryId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
-    /**
-     * @description Rule set for districts.
-     * @path /districts/{districtId}
-     * @allow (get, list) - Any user can read districts.
-     * @deny (create, update, delete) - No user can create, update, or delete districts.
-     * @principle Allows public reads, restricts writes.
-     */
     match /districts/{districtId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+      allow read: if true;
+      allow write: if isAdmin();
     }
-
-    /**
-     * @description Rule set for job postings.
-     * @path /jobs/{jobId}
-     * @allow (get, list) - Any user can read job postings.
-     * @allow (create) - Authenticated user with UID 'user123' can create a job posting.
-     * @allow (update, delete) - Authenticated user with UID 'user123' can update/delete a job posting if they are the owner.
-     * @deny (create) - Unauthenticated user cannot create a job posting.
-     *
-     * @principle Allows public reads, restricts writes to authenticated owners.
-     */
+    
     match /jobs/{jobId} {
-        allow get, list: if true;
-        allow create: if isSignedIn();
-        allow update: if isExistingOwner(resource.data.authorId);
-        allow delete: if isExistingOwner(resource.data.authorId);
+        allow read: if true;
+        allow write: if isAdmin();
     }
 
-    /**
-     * @description Rule set for community posts.
-     * @path /posts/{postId}
-     * @allow (get, list) - Any user can read community posts.
-     * @allow (create) - Authenticated user with UID 'user123' can create a community post with authorId 'user123'.
-     * @allow (update, delete) - Authenticated user with UID 'user123' can update/delete a community post with authorId 'user123'.
-     * @deny (create) - Authenticated user with UID 'user456' cannot create a community post with authorId 'user123'.
-     * @deny (update, delete) - Authenticated user with UID 'user456' cannot update/delete a community post with authorId 'user123'.
-     * @principle Enforces document ownership for writes, allows public reads.
-     */
+    // Rules for user-generated posts.
+    // Anyone can read. Authenticated users can create. Only the author can update/delete.
     match /posts/{postId} {
-        allow get, list: if true;
-        allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-        allow update: if isExistingOwner(resource.data.authorId);
-        allow delete: if isExistingOwner(resource.data.authorId);
+      allow read: if true;
+      allow create: if isAuthenticated() && isOwner(request.resource.data.authorId);
+      allow update, delete: if isOwner(resource.data.authorId);
     }
   }
 }

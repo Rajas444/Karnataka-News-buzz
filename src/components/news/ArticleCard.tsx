@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Article, Category } from '@/lib/types';
-import { formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { Calendar, ArrowRight, MapPin } from 'lucide-react';
 import { useArticleModal } from '@/components/providers/article-modal-provider';
 
@@ -39,7 +39,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
         ? new Date(article.publishedAt)
         : (article.publishedAt as any).toDate();
         
-    return formatDistanceToNow(date, { addSuffix: true });
+    return format(date, 'PPP');
   }
 
   const articleContent = (

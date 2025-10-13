@@ -67,11 +67,14 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
 
   // This effect handles real-time updates for new articles.
   useEffect(() => {
-    const q = query(
-        collection(db, 'articles'), 
+    if (!db) return; // Ensure db is initialized
+
+    const constraints = [
         where('publishedAt', '>', Timestamp.fromDate(loadTime.current)),
         orderBy('publishedAt', 'desc')
-    );
+    ];
+    
+    const q = query(collection(db, 'articles'), ...constraints);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         snapshot.docChanges().forEach((change) => {

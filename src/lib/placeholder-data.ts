@@ -46,6 +46,7 @@ export const placeholderCategories: Category[] = [
     { id: 'society-community', name: 'Society & Community', slug: 'society-community' },
     { id: 'jobs-career', name: 'Jobs & Career', slug: 'jobs-career' },
     { id: 'entertainment', name: 'Entertainment', slug: 'entertainment' },
+    { id: 'ganesh-chaturthi', name: 'ಗಣೇಶ ಚತುರ್ಥಿ', slug: 'ganesh-chaturthi' },
 ];
 
 export const placeholderArticles: Article[] = [

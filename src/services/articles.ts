@@ -127,59 +127,89 @@ export async function getArticles(options?: {
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
     const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
     
-    const constraints: QueryConstraint[] = [
-        orderBy('publishedAt', 'desc'),
-    ];
+    let allArticles: Article[] = [];
+    let newLastVisibleDocId: string | null = null;
+    let hasMore = true;
 
-    if (categorySlug && categorySlug !== 'all') {
-        const categories = await getCategories();
-        const categoryId = categories.find(c => c.slug === categorySlug)?.id;
-        if (categoryId) {
-            constraints.push(where('categoryIds', 'array-contains', categoryId));
-        }
-    }
-    
-    // NOTE: This was removed because it requires a composite index. Filtering is handled client-side on initial load.
-    // if (districtId && districtId !== 'all') {
-    //   constraints.push(where('districtId', '==', districtId));
-    // }
-
+    // We will fetch articles in batches until we have enough to satisfy the page size
+    // after client-side filtering. This avoids complex composite indexes in Firestore.
+    let lastDoc: DocumentSnapshot | undefined = undefined;
     if (startAfterDocId) {
-        const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
-        if (startAfterDoc.exists()) {
-            constraints.push(startAfter(startAfterDoc));
+        const startAfterDocSnap = await getDoc(doc(db, 'articles', startAfterDocId));
+        if (startAfterDocSnap.exists()) {
+            lastDoc = startAfterDocSnap;
         }
     }
-    
-    constraints.push(limit(pageSize));
 
-    const q = query(articlesCollection, ...constraints);
-    
-    const snapshot = await getDocs(q).catch((serverError) => {
-        if (serverError.code === 'permission-denied') {
-            const permissionError = new FirestorePermissionError({
-                path: articlesCollection.path,
-                operation: 'list',
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            throw new Error(permissionError.message);
+    const articlesToReturn: Article[] = [];
+
+    // Loop to fetch and filter until we have enough articles
+    while (articlesToReturn.length < pageSize && hasMore) {
+        const constraints: QueryConstraint[] = [
+            orderBy('publishedAt', 'desc'),
+            limit(25) // Fetch a larger batch to filter from
+        ];
+
+        if (categorySlug && categorySlug !== 'all') {
+            const categories = await getCategories();
+            const categoryId = categories.find(c => c.slug === categorySlug)?.id;
+            if (categoryId) {
+                constraints.push(where('categoryIds', 'array-contains', categoryId));
+            }
         }
-        throw serverError;
-    });
+        
+        if (lastDoc) {
+            constraints.push(startAfter(lastDoc));
+        }
 
-    if (snapshot.empty) {
-        return { articles: [], lastVisibleDocId: null };
+        const q = query(articlesCollection, ...constraints);
+        
+        const snapshot = await getDocs(q).catch((serverError) => {
+            if (serverError.code === 'permission-denied') {
+                const permissionError = new FirestorePermissionError({
+                    path: articlesCollection.path,
+                    operation: 'list',
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                throw new Error(permissionError.message);
+            }
+            throw serverError;
+        });
+
+        if (snapshot.empty) {
+            hasMore = false;
+            break;
+        }
+        
+        const fetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
+
+        const filteredArticles = districtId && districtId !== 'all'
+            ? fetchedArticles.filter(a => a.districtId === districtId)
+            : fetchedArticles;
+        
+        articlesToReturn.push(...filteredArticles);
+        
+        lastDoc = snapshot.docs[snapshot.docs.length - 1];
+        hasMore = snapshot.docs.length === 25; // If we fetched less than the limit, there are no more pages.
     }
 
-    const articles = await Promise.all(snapshot.docs.map(serializeArticle));
-    
-    const lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
-    const newLastVisibleDocId = lastVisibleDoc ? lastVisibleDoc.id : null;
-    const hasMore = snapshot.docs.length === pageSize;
+    // Slice the results to the requested page size and determine the new last visible doc
+    const finalArticles = articlesToReturn.slice(0, pageSize);
+    if (finalArticles.length > 0 && articlesToReturn.length > pageSize) {
+        // We have more than a page, so there's definitely a next page.
+        // The last doc ID for the *next* page is the ID of the last item in the *current* page.
+        newLastVisibleDocId = finalArticles[finalArticles.length - 1].id;
+    } else if (lastDoc && finalArticles.length < pageSize) {
+        // This was the last page of results
+        newLastVisibleDocId = null;
+    } else if (lastDoc) {
+        newLastVisibleDocId = lastDoc.id;
+    }
+
 
     return {
-        articles,
-        lastVisibleDocId: hasMore ? newLastVisibleDocId : null
+        articles: finalArticles,
+        lastVisibleDocId: newLastVisibleDocId
     };
 }
 
@@ -198,8 +228,6 @@ export async function getArticle(id: string): Promise<Article | null> {
                 updateDoc(docRef, { views: (article.views || 0) + 1 }).catch(e => console.error("Failed to update view count:", e));
             }
         } catch(error: any) {
-            // Simply re-throw the error. The client component will handle it.
-            // Don't try to create a client-side error on the server.
             throw new Error(`Failed to fetch article: ${error.message}`);
         }
 
@@ -246,11 +274,11 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
     }
   }
 
-  const { categoryId, districtId, ...restOfData } = data as any;
+  const { categoryId, districtId: dataDistrictId, ...restOfData } = data as any;
   
   const updateData = {
     ...restOfData,
-    districtId: districtId,
+    districtId: dataDistrictId,
     categoryIds: data.categoryIds,
     imageUrl,
     imagePath,

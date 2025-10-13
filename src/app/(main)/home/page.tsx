@@ -25,7 +25,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   let districts = [];
   let initialArticles: Article[] = [];
-  let lastVisibleDocId: string | null = null;
   let error: string | null = null;
   let topArticle: Article | null = null;
   
@@ -36,18 +35,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   try {
-    const { articles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
-      pageSize: 50, // Fetch a larger batch to increase chances of finding matches
+    // Pass districtId to getArticles so filtering happens on the server.
+    const { articles } = await getArticles({
+      pageSize: 11, // Fetch one extra for the top article
       categorySlug,
+      districtId
     });
     
-    // Manual filtering for district since a composite index is not available.
-    const filteredArticles = districtId && districtId !== 'all' 
-      ? articles.filter(a => a.districtId === districtId) 
-      : articles;
-
-    initialArticles = filteredArticles.slice(0, 10);
-    lastVisibleDocId = newLastVisibleDocId;
+    initialArticles = articles;
 
     if (initialArticles.length > 0) {
       topArticle = initialArticles.shift() ?? null;

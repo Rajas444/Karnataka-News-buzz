@@ -35,10 +35,8 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
   
   const loadTime = useRef(new Date());
 
+  // This effect sets up the component state based on initial props.
   useEffect(() => {
-    // This effect now primarily manages fetching categories and setting up the real-time listener.
-    // The articles themselves are passed down as props.
-    
     async function fetchInitialData() {
       try {
         const fetchedCategories = await getCategories();
@@ -48,9 +46,10 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
       }
     }
     fetchInitialData();
-
-    // The parent component now controls the initial list, so we set the initial lastVisibleDocId from there.
-    // We only need to find the last doc if we're going to load more.
+    
+    setArticles(initialArticles);
+    
+    // Determine the last visible document ID from the initial server-side rendered articles
     if (initialArticles.length > 0) {
         const lastInitialArticle = initialArticles[initialArticles.length - 1];
         if (lastInitialArticle && !lastInitialArticle.id.startsWith('http')) {
@@ -58,15 +57,16 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
         } else {
             setLastVisibleDocId(null);
         }
+        setHasMore(true); // Assume there might be more to load
     } else {
         setLastVisibleDocId(null);
+        setHasMore(false);
     }
-    setHasMore(initialArticles.length > 0 && lastVisibleDocId !== null);
-    
-    // Reset articles when filters change
-    setArticles(initialArticles);
+  }, [initialArticles]);
 
-    // Set up a real-time listener for new articles published *after* the page initially loaded.
+
+  // This effect handles real-time updates for new articles.
+  useEffect(() => {
     const q = query(
         collection(db, 'articles'), 
         where('publishedAt', '>', Timestamp.fromDate(loadTime.current)),
@@ -78,7 +78,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
             if (change.type === 'added') {
                 const newArticle = { id: change.doc.id, ...change.doc.data() } as Article;
                  if (newArticle.publishedAt) {
-                  newArticle.publishedAt = (newArticle.publishedAt as Timestamp).toDate().toISOString();
+                  newArticle.publishedAt = (newArticle.publishedAt as any).toDate().toISOString();
                 }
                 // Prepend the new article to the list, applying current filters
                 setArticles(prev => {
@@ -98,27 +98,27 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     });
 
     return () => unsubscribe();
-  }, [initialArticles, categorySlug, districtId, lastVisibleDocId]);
+  }, [categorySlug, districtId]);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !lastVisibleDocId) return;
 
     setLoadingMore(true);
     try {
-      const { articles: fetchedArticles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
+      const { articles: newArticles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
         pageSize: 10,
         startAfterDocId: lastVisibleDocId,
         categorySlug,
+        districtId, // Pass the districtId to the fetch function
       });
-
-      // Manually filter by district for subsequent loads as well
-      const newArticles = districtId && districtId !== 'all' 
-          ? fetchedArticles.filter(a => a.districtId === districtId)
-          : fetchedArticles;
       
-      setArticles(prev => [...prev, ...newArticles]);
-      setLastVisibleDocId(newLastVisibleDocId);
-      setHasMore(newArticles.length > 0 && newLastVisibleDocId !== null);
+      if (newArticles.length > 0) {
+        setArticles(prev => [...prev, ...newArticles]);
+        setLastVisibleDocId(newLastVisibleDocId);
+        setHasMore(newLastVisibleDocId !== null);
+      } else {
+        setHasMore(false);
+      }
 
     } catch (error: any) {
       console.error("Failed to load more articles", error);

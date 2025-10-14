@@ -5,13 +5,22 @@ import { db } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
 import { collection, getDocs, query, orderBy, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const usersCollection = collection(db, 'users');
 
 // READ (all)
 export async function getUsers(): Promise<UserProfile[]> {
     const q = query(usersCollection, orderBy('displayName'));
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(q).catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: usersCollection.path,
+            operation: 'list',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw permissionError;
+    });
     return snapshot.docs.map(doc => doc.data() as UserProfile);
 }
 
@@ -40,5 +49,13 @@ export async function updateUserProfile(uid: string, data: { displayName: string
         updateData.imagePath = public_id; // Store the public_id for future deletions
     }
     
-    await updateDoc(userDocRef, updateData);
+    updateDoc(userDocRef, updateData).catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'update',
+            requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw permissionError;
+    });
 }

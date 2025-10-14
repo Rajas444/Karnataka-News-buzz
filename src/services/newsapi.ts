@@ -23,8 +23,8 @@ async function fetchFromGNewsAPI(options?: { q?: string }): Promise<NewsApiArtic
         return [];
     }
     
-    const query = options?.q ? `&q=${encodeURIComponent(options.q)}` : 'karnataka';
-    const url = `https://gnews.io/api/v4/search?q=${query}&lang=kn&country=in&apikey=${apiKey}`;
+    const query = options?.q || 'karnataka';
+    const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=kn&country=in&apikey=${apiKey}`;
 
     try {
         const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour

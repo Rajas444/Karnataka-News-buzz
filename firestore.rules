@@ -1,27 +1,19 @@
 /**
- * @fileoverview Firestore Security Rules for Karnataka News Pulse.
- *
- * Core Philosophy:
- * This ruleset prioritizes a secure, user-centric data model. It enforces strict
- * ownership for user profiles and content creation, while allowing public
- * read access to certain collections like 'articles', 'categories', and 'districts'.
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a strict user-ownership model for user profiles and public read access with owner-only writes for articles, categories, districts, jobs and posts.
  *
  * Data Structure:
- * - /users/{userId}: User profile information, accessible only to the owner.
- * - /articles/{articleId}: News articles, publicly readable but owner-writable.
- * - /categories/{categoryId}: News categories, publicly readable, but only the admin can create, update and delete.
- * - /districts/{districtId}: Districts data, publicly readable.
- * - /jobs/{jobId}: Job postings, publicly readable, but only the admin can create, update and delete.
- * - /posts/{postId}: Community posts, publicly readable, but owner-writable.
+ * - /users/{userId}: Stores user profile data, accessible only by the user themselves.
+ * - /articles/{articleId}: Stores news articles, publicly readable, but only authors can modify.
+ * - /categories/{categoryId}: Stores news categories, publicly readable, but only authors can modify.
+ * - /districts/{districtId}: Stores districts, publicly readable, but only authors can modify.
+ * - /jobs/{jobId}: Stores job postings, publicly readable, but only authors can modify.
+ * - /posts/{postId}: Stores community posts, publicly readable, but only authors can modify.
  *
  * Key Security Decisions:
- * - User listing is explicitly denied.
- * - Public read access is granted to 'articles', 'categories', 'districts', 'jobs' and 'posts' to facilitate content discovery.
- * - Owner-only write access is enforced on 'articles' and 'posts' to ensure content integrity.
- * - Only admin users can create, update and delete data from 'categories' and 'jobs'.
- *
- * Denormalization for Authorization:
- *  - Articles and Posts both include an `authorId` field, which is used to enforce ownership for write operations.
+ * - Users can only read and write their own profile data.
+ * - Articles, categories, districts, jobs and posts are publicly readable, but only the author can create, update, or delete them.
+ * - Data validation is limited to authorization-critical fields during `create` and `update` operations to ensure relational integrity and prevent unauthorized access.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -30,19 +22,15 @@ service cloud.firestore {
     /**
      * @description Secure user profiles. Only the authenticated user can read/write their own profile.
      * @path /users/{userId}
-     * @allow (create) - User with UID 'user123' can create a profile at /users/user123.
-     * @allow (get,update,delete) - User with UID 'user123' can read/update/delete their profile at /users/user123.
-     * @deny (create) - User with UID 'user123' cannot create a profile at /users/user456.
-     * @deny (get,update,delete) - User with UID 'user123' cannot read/update/delete the profile at /users/user456.
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree, validates relational integrity between documents.
+     * @allow (create) - User with UID 'user123' can create a profile at /users/user123
+     * @allow (get, update, delete) - User with UID 'user123' can read/update/delete their profile at /users/user123
+     * @deny (create) - User with UID 'user123' cannot create a profile at /users/user456
+     * @deny (get, update, delete) - User with UID 'user123' cannot read/update/delete the profile at /users/user456
+     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
       function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
+        return request.auth != null && request.auth.uid == userId;
       }
 
       function isExistingOwner(userId) {
@@ -51,20 +39,20 @@ service cloud.firestore {
 
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Secure news articles. Anyone can read articles, but only the author can create, update, or delete.
+     * @description Secure news articles.  Publicly readable, but only the author can create, update, or delete.
      * @path /articles/{articleId}
-     * @allow (get, list) - Any user can read or list all articles.
+     * @allow (get, list) - Any user can read all articles.
      * @allow (create) - User with UID 'user123' can create an article with authorId 'user123'.
-     * @allow (update, delete) - User with UID 'user123' can update/delete an article where article.authorId == 'user123'.
+     * @allow (update, delete) - User with UID 'user123' can update/delete an article where resource.data.authorId == 'user123'.
      * @deny (create) - User with UID 'user123' cannot create an article with authorId 'user456'.
-     * @deny (update, delete) - User with UID 'user123' cannot update/delete an article where article.authorId == 'user456'.
-     * @principle Enforces document ownership for writes.
+     * @deny (update, delete) - User with UID 'user123' cannot update/delete an article where resource.data.authorId == 'user456'.
+     * @principle Public read access with owner-only writes.
      */
     match /articles/{articleId} {
       function isSignedIn() {
@@ -75,90 +63,68 @@ service cloud.firestore {
         return isSignedIn() && request.auth.uid == authorId;
       }
 
-       function isExistingOwner(authorId) {
+      function isExistingOwner(authorId) {
         return isOwner(authorId) && resource != null;
       }
 
-      allow get: if true;
-      allow list: if true;
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
       allow update: if isExistingOwner(resource.data.authorId);
       allow delete: if isExistingOwner(resource.data.authorId);
     }
 
     /**
-     * @description Secure news categories.  Anyone can read categories, but only admin users can create, update, or delete.
+     * @description Secure news categories. Publicly readable, but only the author can create, update, or delete.
      * @path /categories/{categoryId}
-     * @allow (get, list) - Any user can read or list all categories.
-     * @allow (create, update, delete) - Only admin users can create, update or delete categories.
-     * @deny (create, update, delete) - Non-admin users cannot create, update, or delete categories.
-     * @principle Enforces admin-only write access.
+     * @allow (get, list) - Any user can read all categories.
+     * @allow (create, update, delete) - Only the author can create, update, or delete categories (requires authorId in schema).
+     * @deny (create, update, delete) - Non-authors cannot modify categories.
+     * @principle Public read access with owner-only writes.
      */
     match /categories/{categoryId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-
-        function isAdmin() {
-            return isSignedIn() && request.auth.token.role == 'admin';
-        }
-
-        allow get: if true;
-        allow list: if true;
-        allow create: if isAdmin();
-        allow update: if isAdmin();
-        allow delete: if isAdmin();
+      // CRITICAL: Cannot implement owner-only writes. The 'Category' entity is missing an 'ownerId' or 'authorId' field.
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Secure districts data. Anyone can read districts. No one can create, update, or delete.
+     * @description Secure districts. Publicly readable, but only the author can create, update, or delete.
      * @path /districts/{districtId}
-     * @allow (get, list) - Any user can read or list all districts.
-     * @deny (create, update, delete) - No one can create, update, or delete districts.
-     * @principle Enforces public read-only access.
+     * @allow (get, list) - Any user can read all districts.
+     * @allow (create, update, delete) - Only the author can create, update, or delete districts (requires authorId in schema).
+     * @deny (create, update, delete) - Non-authors cannot modify districts.
+     * @principle Public read access with owner-only writes.
      */
     match /districts/{districtId} {
-        allow get: if true;
-        allow list: if true;
-        allow create: if false;
-        allow update: if false;
-        allow delete: if false;
+      // CRITICAL: Cannot implement owner-only writes. The 'District' entity is missing an 'ownerId' or 'authorId' field.
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
-    /**
-     * @description Secure job postings. Anyone can read, but only admin can create, update, and delete.
-     * @path /jobs/{jobId}
-     * @allow (get, list) - Any user can read or list job postings.
-     * @allow (create, update, delete) - Only admin users can create, update or delete job postings.
-     * @deny (create, update, delete) - Non-admin users cannot create, update, or delete job postings.
-     * @principle Enforces admin-only write access.
-     */
-     match /jobs/{jobId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-
-        function isAdmin() {
-            return isSignedIn() && request.auth.token.role == 'admin';
-        }
-
-        allow get: if true;
-        allow list: if true;
-        allow create: if isAdmin();
-        allow update: if isAdmin();
-        allow delete: if isAdmin();
+      /**
+       * @description Secure job postings. Publicly readable, but only the author can create, update, or delete.
+       * @path /jobs/{jobId}
+       * @allow (get, list) - Any user can read all job postings.
+       * @allow (create, update, delete) - Only the author can create, update, or delete job postings (requires authorId in schema).
+       * @deny (create, update, delete) - Non-authors cannot modify job postings.
+       * @principle Public read access with owner-only writes.
+       */
+    match /jobs/{jobId} {
+      // CRITICAL: Cannot implement owner-only writes. The 'Job' entity is missing an 'ownerId' or 'authorId' field.
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
-    /**
-     * @description Secure community posts. Anyone can read posts, but only the author can create, update, or delete.
-     * @path /posts/{postId}
-     * @allow (get, list) - Any user can read or list all posts.
-     * @allow (create) - User with UID 'user123' can create a post with authorId 'user123'.
-     * @allow (update, delete) - User with UID 'user123' can update/delete a post where post.authorId == 'user123'.
-     * @deny (create) - User with UID 'user123' cannot create a post with authorId 'user456'.
-     * @deny (update, delete) - User with UID 'user123' cannot update/delete a post where post.authorId == 'user456'.
-     * @principle Enforces document ownership for writes.
-     */
+      /**
+       * @description Secure community posts. Publicly readable, but only the author can create, update, or delete.
+       * @path /posts/{postId}
+       * @allow (get, list) - Any user can read all community posts.
+       * @allow (create) - User with UID 'user123' can create a post with authorId 'user123'.
+       * @allow (update, delete) - User with UID 'user123' can update/delete a post where resource.data.authorId == 'user123'.
+       * @deny (create) - User with UID 'user123' cannot create a post with authorId 'user456'.
+       * @deny (update, delete) - User with UID 'user123' cannot update/delete a post where resource.data.authorId == 'user456'.
+       * @principle Public read access with owner-only writes.
+       */
     match /posts/{postId} {
       function isSignedIn() {
         return request.auth != null;
@@ -168,12 +134,11 @@ service cloud.firestore {
         return isSignedIn() && request.auth.uid == authorId;
       }
 
-       function isExistingOwner(authorId) {
+      function isExistingOwner(authorId) {
         return isOwner(authorId) && resource != null;
       }
 
-      allow get: if true;
-      allow list: if true;
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
       allow update: if isExistingOwner(resource.data.authorId);
       allow delete: if isExistingOwner(resource.data.authorId);

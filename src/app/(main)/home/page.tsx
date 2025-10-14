@@ -11,6 +11,7 @@ import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
 import { getExternalNews } from '@/services/newsapi';
+import { placeholderArticles } from '@/lib/placeholder-data';
 
 type HomePageProps = {
   searchParams: {
@@ -35,9 +36,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   try {
-    // Pass districtId to getArticles so filtering happens on the server.
     const { articles } = await getArticles({
-      pageSize: 11, // Fetch one extra for the top article
+      pageSize: 11,
       categorySlug,
       districtId
     });
@@ -46,20 +46,26 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
     if (initialArticles.length > 0) {
       topArticle = initialArticles.shift() ?? null;
-    } else if (!districtId && !categorySlug) {
-        // If no local articles and no filters applied, fetch from external API to get a top article
-        try {
-          const externalNews = await getExternalNews();
-          if (externalNews.length > 0) {
-              topArticle = externalNews[0] ?? null;
-              // The rest of the external news can be part of the initial list if local is empty
-              if (initialArticles.length === 0) {
-                initialArticles = externalNews.slice(1, 10); // limit to 9 more
-              }
-          }
-        } catch(e) {
-          console.error("Failed to fetch external news for top article", e);
+    } else {
+      // Fallback logic when local articles are empty
+      let fallbackNews: Article[] = [];
+      try {
+        fallbackNews = await getExternalNews();
+      } catch(e) {
+        console.error("Failed to fetch external news, using placeholders as fallback.", e);
+      }
+      
+      if (fallbackNews.length === 0) {
+        // If external news also fails or is empty, use placeholders
+        fallbackNews = placeholderArticles;
+      }
+        
+      if (fallbackNews.length > 0) {
+        topArticle = fallbackNews[0] ?? null;
+        if (initialArticles.length === 0) {
+          initialArticles = fallbackNews.slice(1, 10);
         }
+      }
     }
 
   } catch (e: any) {

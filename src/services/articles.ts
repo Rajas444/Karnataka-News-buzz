@@ -9,6 +9,7 @@ import { getDistricts } from './districts';
 import { getCategories } from './categories';
 import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
 import { getExternalNews } from './newsapi';
+import { placeholderArticles } from '@/lib/placeholder-data';
 
 async function serializeArticle(doc: any): Promise<Article> {
     const data = doc.data();
@@ -108,53 +109,63 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const articlesCollection = collection(db, 'articles');
-    const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
-    
-    const constraints = [];
+    try {
+        const articlesCollection = collection(db, 'articles');
+        const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
+        
+        const constraints = [];
 
-    if (categorySlug && categorySlug !== 'all') {
-        const categories = await getCategories();
-        const categoryId = categories.find(c => c.slug === categorySlug)?.id;
-        if (categoryId) {
-            constraints.push(where('categoryIds', 'array-contains', categoryId));
+        if (categorySlug && categorySlug !== 'all') {
+            const categories = await getCategories();
+            const categoryId = categories.find(c => c.slug === categorySlug)?.id;
+            if (categoryId) {
+                constraints.push(where('categoryIds', 'array-contains', categoryId));
+            }
         }
-    }
 
-    constraints.push(orderBy('publishedAt', 'desc'));
+        constraints.push(orderBy('publishedAt', 'desc'));
 
-    if (startAfterDocId) {
-        const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
-        if (startAfterDoc.exists()) {
-            constraints.push(startAfter(startAfterDoc));
+        if (startAfterDocId) {
+            const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
+            if (startAfterDoc.exists()) {
+                constraints.push(startAfter(startAfterDoc));
+            }
         }
-    }
 
-    constraints.push(limit(25));
-    
-    const q = query(articlesCollection, ...constraints);
-    const snapshot = await getDocs(q);
+        constraints.push(limit(25));
+        
+        const q = query(articlesCollection, ...constraints);
+        const snapshot = await getDocs(q);
 
-    const fetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
-    
-    const filteredArticles = districtId && districtId !== 'all'
-        ? fetchedArticles.filter(a => a.districtId === districtId)
-        : fetchedArticles;
-    
-    const finalArticles = filteredArticles.slice(0, pageSize);
-    let newLastVisibleDocId: string | null = null;
-
-    if (snapshot.docs.length > 0) {
-        const lastVisibleDocInBatch = snapshot.docs[snapshot.docs.length - 1];
-        if (finalArticles.length > 0 && lastVisibleDocInBatch) {
-             newLastVisibleDocId = lastVisibleDocInBatch.id;
+        if (snapshot.empty && !startAfterDocId) {
+            // If the initial fetch is empty, return placeholders
+            return { articles: placeholderArticles, lastVisibleDocId: null };
         }
+
+        const fetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
+        
+        const filteredArticles = districtId && districtId !== 'all'
+            ? fetchedArticles.filter(a => a.districtId === districtId)
+            : fetchedArticles;
+        
+        const finalArticles = filteredArticles.slice(0, pageSize);
+        let newLastVisibleDocId: string | null = null;
+
+        if (snapshot.docs.length > 0) {
+            const lastVisibleDocInBatch = snapshot.docs[snapshot.docs.length - 1];
+            if (finalArticles.length > 0 && lastVisibleDocInBatch) {
+                newLastVisibleDocId = lastVisibleDocInBatch.id;
+            }
+        }
+    
+        return {
+            articles: finalArticles,
+            lastVisibleDocId: newLastVisibleDocId
+        };
+    } catch(error) {
+        console.warn("Failed to fetch articles from Firestore, using placeholder data. Error:", error);
+        return { articles: placeholderArticles, lastVisibleDocId: null };
     }
-   
-    return {
-        articles: finalArticles,
-        lastVisibleDocId: newLastVisibleDocId
-    };
 }
 
 
@@ -179,6 +190,11 @@ export async function getArticle(id: string): Promise<Article | null> {
             throw new Error(`Failed to fetch external news article: ${error.message}`);
         }
     }
+
+    if (!article && placeholderArticles.some(p => p.id === id)) {
+        article = placeholderArticles.find(p => p.id === id) || null;
+    }
+
 
     return article;
 }

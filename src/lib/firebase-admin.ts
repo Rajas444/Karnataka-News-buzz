@@ -1,34 +1,41 @@
 
 import * as admin from 'firebase-admin';
 
-let app: admin.app.App;
+let db: admin.firestore.Firestore;
+let auth: admin.auth.Auth;
 
-function getAdminApp() {
-    if (admin.apps.length > 0) {
-        return admin.apps[0]!;
-    }
+function initializeAdmin() {
+  if (admin.apps.length > 0) {
+    const app = admin.apps[0]!;
+    db = app.firestore();
+    auth = app.auth();
+    return;
+  }
 
-    try {
-        // When deployed to a Google Cloud environment, the SDK can auto-discover credentials
-        // and project ID. For local development, `serviceAccountKey.json` is needed.
-        const serviceAccount = require('../../serviceAccountKey.json');
-        app = admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
-        return app;
-    } catch (error: any) {
-         if (error.code === 'MODULE_NOT_FOUND') {
-            console.warn('serviceAccountKey.json not found. Falling back to default credentials. This is expected in a deployed environment.');
-            app = admin.initializeApp();
-            return app;
-        }
-        console.error('Firebase Admin initialization error:', error.message);
-        throw error;
+  try {
+    const serviceAccount = require('../../serviceAccountKey.json');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+  } catch (error: any) {
+    if (error.code === 'MODULE_NOT_FOUND') {
+      console.warn(
+        'serviceAccountKey.json not found. Attempting to initialize with default credentials. This is expected in a deployed environment.'
+      );
+      admin.initializeApp();
+    } else {
+      console.error('Firebase Admin initialization error:', error.message);
+      // In case of a severe error, we still proceed but db and auth will be undefined,
+      // which will cause subsequent operations to fail with a clearer message.
+      return;
     }
+  }
+
+  db = admin.firestore();
+  auth = admin.auth();
 }
 
-
-const db = getAdminApp().firestore();
-const auth = getAdminApp().auth();
+// Call the initialization function at the module level
+initializeAdmin();
 
 export { db, auth };

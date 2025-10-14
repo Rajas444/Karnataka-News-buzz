@@ -1,16 +1,17 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
+import { db } from '@/lib/firebase-admin';
 import type { Job, JobFormValues } from '@/lib/types';
 import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, Timestamp } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
-const jobsCollection = collection(db, 'jobs');
 
 // CREATE
 export async function createJob(data: JobFormValues): Promise<Job> {
+  if (!db) {
+    throw new Error('Firestore is not initialized');
+  }
+  const jobsCollection = collection(db, 'jobs');
   const jobData = {
     ...data,
     lastDateToApply: Timestamp.fromDate(new Date(data.lastDateToApply)),
@@ -18,15 +19,7 @@ export async function createJob(data: JobFormValues): Promise<Job> {
     updatedAt: serverTimestamp(),
   };
 
-  const docRef = await addDoc(jobsCollection, jobData).catch((serverError) => {
-    const permissionError = new FirestorePermissionError({
-      path: jobsCollection.path,
-      operation: 'create',
-      requestResourceData: jobData,
-    });
-    errorEmitter.emit('permission-error', permissionError);
-    throw permissionError;
-  });
+  const docRef = await addDoc(jobsCollection, jobData);
   
   const docSnap = await getDoc(docRef);
   const newJobData = docSnap.data();
@@ -42,15 +35,13 @@ export async function createJob(data: JobFormValues): Promise<Job> {
 
 // READ (all)
 export async function getJobs(): Promise<Job[]> {
+    if (!db) {
+      console.error("Firestore is not initialized, returning empty jobs array.");
+      return [];
+    }
+    const jobsCollection = collection(db, 'jobs');
     const q = query(jobsCollection, orderBy('lastDateToApply', 'desc'));
-    const snapshot = await getDocs(q).catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-            path: jobsCollection.path,
-            operation: 'list',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw permissionError;
-    });
+    const snapshot = await getDocs(q);
     
     return snapshot.docs.map(doc => {
         const data = doc.data();
@@ -66,34 +57,32 @@ export async function getJobs(): Promise<Job[]> {
 
 // READ (one)
 export async function getJob(id: string): Promise<Job | null> {
+  if (!db) {
+    console.error("Firestore is not initialized, cannot get job.");
+    return null;
+  }
   const docRef = doc(db, 'jobs', id);
-  try {
-    const docSnap = await getDoc(docRef);
+  const docSnap = await getDoc(docRef);
 
-    if (docSnap.exists()) {
-        const data = docSnap.data();
-        return {
-            id: docSnap.id,
-            ...data,
-            lastDateToApply: (data.lastDateToApply as Timestamp).toDate(),
-            createdAt: (data.createdAt as Timestamp).toDate(),
-            updatedAt: (data.updatedAt as Timestamp).toDate(),
-        } as Job;
-    } else {
-        return null;
-    }
-  } catch (serverError) {
-    const permissionError = new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'get',
-    });
-    errorEmitter.emit('permission-error', permissionError);
-    throw permissionError;
+  if (docSnap.exists()) {
+      const data = docSnap.data();
+      return {
+          id: docSnap.id,
+          ...data,
+          lastDateToApply: (data.lastDateToApply as Timestamp).toDate(),
+          createdAt: (data.createdAt as Timestamp).toDate(),
+          updatedAt: (data.updatedAt as Timestamp).toDate(),
+      } as Job;
+  } else {
+      return null;
   }
 }
 
 // UPDATE
 export async function updateJob(id: string, data: JobFormValues): Promise<void> {
+  if (!db) {
+    throw new Error('Firestore is not initialized');
+  }
   const docRef = doc(db, 'jobs', id);
   const updateData = {
     ...data,
@@ -101,27 +90,15 @@ export async function updateJob(id: string, data: JobFormValues): Promise<void> 
     updatedAt: serverTimestamp(),
   };
 
-  updateDoc(docRef, updateData).catch((serverError) => {
-    const permissionError = new FirestorePermissionError({
-      path: docRef.path,
-      operation: 'update',
-      requestResourceData: updateData,
-    });
-    errorEmitter.emit('permission-error', permissionError);
-    throw permissionError;
-  });
+  await updateDoc(docRef, updateData);
 }
 
 
 // DELETE
 export async function deleteJob(id: string): Promise<void> {
-    const docRef = doc(db, 'jobs', id);
-    deleteDoc(docRef).catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-            path: docRef.path,
-            operation: 'delete',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw permissionError;
-    });
+  if (!db) {
+    throw new Error('Firestore is not initialized');
+  }
+  const docRef = doc(db, 'jobs', id);
+  await deleteDoc(docRef);
 }

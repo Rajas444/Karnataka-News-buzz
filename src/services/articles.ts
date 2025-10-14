@@ -1,7 +1,7 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
+import { db } from '@/lib/firebase-admin';
 import type { Article, ArticleFormValues } from '@/lib/types';
 import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, where, QueryConstraint, Timestamp, limit, startAfter, DocumentSnapshot, orderBy } from 'firebase/firestore';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
@@ -9,10 +9,6 @@ import { getDistricts } from './districts';
 import { getCategories } from './categories';
 import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
 import { getExternalNews } from './newsapi';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
-
-const articlesCollection = collection(db, 'articles');
 
 async function serializeArticle(doc: DocumentSnapshot): Promise<Article> {
     const data = doc.data();
@@ -51,6 +47,11 @@ async function serializeArticle(doc: DocumentSnapshot): Promise<Article> {
 }
 
 export async function createArticle(data: ArticleFormValues & { categoryIds: string[] }): Promise<Article> {
+  if (!db) {
+    throw new Error('Firestore is not initialized');
+  }
+  const articlesCollection = collection(db, 'articles');
+  
   let imageUrl = data.imageUrl || null;
   let imagePath = ''; // Using imagePath to store the Cloudinary public_id
 
@@ -65,14 +66,12 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
         imagePath = public_id;
     } catch (error: any) {
         console.warn(`Watermarking or upload failed, proceeding with original image. Error: ${error.message}`);
-        // If watermarking or the first upload attempt fails, just upload the original.
         try {
             const { secure_url, public_id } = await uploadToCloudinary(data.imageUrl, 'articles');
             imageUrl = secure_url;
             imagePath = public_id;
         } catch (uploadError: any) {
             console.error(`Fallback image upload also failed: ${uploadError.message}`);
-            // If the fallback also fails, we proceed without an image.
             imageUrl = null;
             imagePath = '';
         }
@@ -99,31 +98,24 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
     }
   };
 
-  const docRef = await addDoc(articlesCollection, newArticleData).catch((serverError) => {
-    const permissionError = new FirestorePermissionError({
-      path: articlesCollection.path,
-      operation: 'create',
-      requestResourceData: newArticleData,
-    });
-    errorEmitter.emit('permission-error', permissionError);
-    throw permissionError;
-  });
-
+  const docRef = await addDoc(articlesCollection, newArticleData);
   const docSnap = await getDoc(docRef);
   return serializeArticle(docSnap);
 }
 
-// READ (all with pagination and filters)
 export async function getArticles(options?: {
   pageSize?: number;
   startAfterDocId?: string | null;
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
+    if (!db) {
+      console.error("Firestore is not initialized, returning empty articles array.");
+      return { articles: [], lastVisibleDocId: null };
+    }
+    const articlesCollection = collection(db, 'articles');
     const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
     
-    // We will fetch articles in batches until we have enough to satisfy the page size
-    // after client-side filtering. This avoids complex composite indexes in Firestore.
     let lastDoc: DocumentSnapshot | undefined = undefined;
     if (startAfterDocId) {
         const startAfterDocSnap = await getDoc(doc(db, 'articles', startAfterDocId));
@@ -133,11 +125,9 @@ export async function getArticles(options?: {
     }
 
     const articlesToReturn: Article[] = [];
-
-    // Loop to fetch and filter until we have enough articles
     const constraints: QueryConstraint[] = [
         orderBy('publishedAt', 'desc'),
-        limit(25) // Fetch a larger batch to filter from
+        limit(25) 
     ];
 
     if (categorySlug && categorySlug !== 'all') {
@@ -153,15 +143,7 @@ export async function getArticles(options?: {
     }
 
     const q = query(articlesCollection, ...constraints);
-    
-    const snapshot = await getDocs(q).catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-            path: articlesCollection.path,
-            operation: 'list',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw permissionError;
-    });
+    const snapshot = await getDocs(q);
 
     const fetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
 
@@ -188,30 +170,22 @@ export async function getArticles(options?: {
 }
 
 export async function getArticle(id: string): Promise<Article | null> {
+    if (!db) {
+      console.error("Firestore is not initialized, cannot get article.");
+      return null;
+    }
     const isExternalId = id.startsWith('http');
     
     let article: Article | null = null;
 
     if (!isExternalId) {
         const docRef = doc(db, 'articles', id);
-        try {
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                article = await serializeArticle(docSnap);
-                // The view count update should be a non-blocking operation
-                updateDoc(docRef, { views: (article.views || 0) + 1 }).catch(e => console.error("Failed to update view count:", e));
-            }
-        } catch(error: any) {
-            const permissionError = new FirestorePermissionError({
-                path: docRef.path,
-                operation: 'get',
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            throw permissionError;
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            article = await serializeArticle(docSnap);
+            updateDoc(docRef, { views: (article.views || 0) + 1 }).catch(e => console.error("Failed to update view count:", e));
         }
-
     } else {
-        // For external articles, we can fetch them from our newsapi service
         try {
             const externalNews = await getExternalNews();
             article = externalNews.find(a => a.id === id) || null;
@@ -225,9 +199,12 @@ export async function getArticle(id: string): Promise<Article | null> {
 
 
 export async function updateArticle(id: string, data: ArticleFormValues & { categoryIds: string[] }): Promise<Article> {
+  if (!db) {
+    throw new Error('Firestore is not initialized');
+  }
   const docRef = doc(db, 'articles', id);
   let imageUrl = data.imageUrl || null;
-  let imagePath = data.imagePath || ''; // imagePath is the Cloudinary public_id
+  let imagePath = data.imagePath || ''; 
 
   if (data.imageUrl && data.imageUrl.startsWith('data:')) {
     if (imagePath) {
@@ -269,22 +246,16 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
     }
   };
 
-  updateDoc(docRef, updateData)
-    .catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-            path: docRef.path,
-            operation: 'update',
-            requestResourceData: updateData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw permissionError;
-    });
+  await updateDoc(docRef, updateData);
 
   const updatedDoc = await getDoc(docRef);
   return serializeArticle(updatedDoc);
 }
 
 export async function deleteArticle(id: string): Promise<void> {
+    if (!db) {
+        throw new Error('Firestore is not initialized');
+    }
     const docRef = doc(db, 'articles', id);
     const docSnap = await getDoc(docRef);
     const article = docSnap.exists() ? docSnap.data() : null;
@@ -292,42 +263,25 @@ export async function deleteArticle(id: string): Promise<void> {
     if (article?.imagePath) {
         await deleteFromCloudinary(article.imagePath);
     }
-    deleteDoc(docRef)
-    .catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-            path: docRef.path,
-            operation: 'delete',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw permissionError;
-    });
+    await deleteDoc(docRef);
 }
 
 export async function getRelatedArticles(categoryId: string, currentArticleId: string): Promise<Article[]> {
-    if (!categoryId) return [];
+    if (!categoryId || !db) return [];
+    const articlesCollection = collection(db, 'articles');
 
-    try {
-        const q = query(
-            articlesCollection,
-            where('categoryIds', 'array-contains', categoryId),
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc'),
-            limit(5) 
-        );
+    const q = query(
+        articlesCollection,
+        where('categoryIds', 'array-contains', categoryId),
+        where('status', '==', 'published'),
+        orderBy('publishedAt', 'desc'),
+        limit(5) 
+    );
 
-        const snapshot = await getDocs(q);
-        const articles = await Promise.all(snapshot.docs.map(serializeArticle));
+    const snapshot = await getDocs(q);
+    const articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
-        return articles
-            .filter(article => article.id !== currentArticleId)
-            .slice(0, 3);
-
-    } catch (error) {
-        const permissionError = new FirestorePermissionError({
-            path: articlesCollection.path,
-            operation: 'list',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        throw permissionError;
-    }
+    return articles
+        .filter(article => article.id !== currentArticleId)
+        .slice(0, 3);
 }

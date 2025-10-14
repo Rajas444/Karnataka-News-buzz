@@ -12,15 +12,20 @@ import Image from 'next/image';
 export default function ExternalNewsFeed() {
   const [news, setNews] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { onOpen } = useArticleModal();
 
   useEffect(() => {
     async function fetchNews() {
       try {
         const fetchedNews = await getExternalNews();
+        if (fetchedNews.length === 0) {
+          setError("Could not load the live news feed. The API may be misconfigured or returning no articles.");
+        }
         setNews(fetchedNews.slice(0, 5)); // Show top 5
-      } catch (error) {
-        console.error('Failed to fetch external news:', error);
+      } catch (e: any) {
+        console.error('Failed to fetch external news:', e);
+        setError(e.message || "An unknown error occurred while fetching news.");
       } finally {
         setLoading(false);
       }
@@ -42,7 +47,7 @@ export default function ExternalNewsFeed() {
     );
   }
 
-  if (news.length === 0) {
+  if (error || news.length === 0) {
     return (
         <Card>
             <CardHeader>
@@ -50,7 +55,7 @@ export default function ExternalNewsFeed() {
                 <CardDescription>Top headlines from around the web.</CardDescription>
             </CardHeader>
             <CardContent>
-                <p className="text-muted-foreground text-sm">Could not load live news feed. Please ensure the NewsAPI key is correctly configured.</p>
+                <p className="text-muted-foreground text-sm">{error || "Could not load live news feed. Please ensure the NewsAPI key is correctly configured."}</p>
             </CardContent>
         </Card>
     );

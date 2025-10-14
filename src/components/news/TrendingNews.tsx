@@ -11,6 +11,7 @@ import { useArticleModal } from '../providers/article-modal-provider';
 export default function TrendingNews() {
   const [trending, setTrending] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { onOpen } = useArticleModal();
 
   useEffect(() => {
@@ -18,9 +19,13 @@ export default function TrendingNews() {
       try {
         // Fetch top headlines without a specific query to get general trending news
         const articles = await getExternalNews({ type: 'top-headlines' });
+        if (articles.length === 0) {
+          setError("Could not load trending news at this time.");
+        }
         setTrending(articles.slice(0, 5));
       } catch (error) {
         console.error('Failed to fetch trending articles:', error);
+        setError('Failed to fetch trending articles. Please check API key configuration.');
       } finally {
         setLoading(false);
       }
@@ -42,8 +47,18 @@ export default function TrendingNews() {
     );
   }
 
-  if (trending.length === 0) {
-    return null;
+  if (error || trending.length === 0) {
+    return (
+       <Card>
+        <CardHeader>
+            <CardTitle className="flex items-center gap-2 font-kannada"><TrendingUp /> ಟ್ರೆಂಡಿಂಗ್ ನ್ಯೂಸ್</CardTitle>
+            <CardDescription className="font-kannada">ರಾಜ್ಯಾದ್ಯಂತ ಈಗ ಜನಪ್ರಿಯವಾಗಿರುವುದೇನು.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <p className="text-muted-foreground text-sm">Could not load trending news feed.</p>
+        </CardContent>
+    </Card>
+    );
   }
 
   return (

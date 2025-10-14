@@ -30,7 +30,11 @@ async function fetchFromGNewsAPI(options?: { q?: string }): Promise<NewsApiArtic
         const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour
         if (!response.ok) {
             const errorBody = await response.json();
-            console.error(`GNews API request failed with status: ${response.status}`, errorBody);
+            if (response.status === 403) {
+                console.error(`GNews API request failed with status 403 (Forbidden). This usually means your API key is invalid, has expired, or your plan has hit its limit. Please check your GNews dashboard.`);
+            } else {
+                console.error(`GNews API request failed with status: ${response.status}`, errorBody);
+            }
             return [];
         }
         const data = await response.json();

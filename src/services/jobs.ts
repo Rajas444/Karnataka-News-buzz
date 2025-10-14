@@ -3,25 +3,20 @@
 
 import { db } from '@/lib/firebase-admin';
 import type { Job, JobFormValues } from '@/lib/types';
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, Timestamp } from 'firebase/firestore';
-
+import { Timestamp } from 'firebase-admin/firestore';
 
 // CREATE
 export async function createJob(data: JobFormValues): Promise<Job> {
-  if (!db) {
-    throw new Error('Firestore is not initialized');
-  }
-  const jobsCollection = collection(db, 'jobs');
+  const jobsCollection = db.collection('jobs');
   const jobData = {
     ...data,
     lastDateToApply: Timestamp.fromDate(new Date(data.lastDateToApply)),
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
   };
 
-  const docRef = await addDoc(jobsCollection, jobData);
-  
-  const docSnap = await getDoc(docRef);
+  const docRef = await jobsCollection.add(jobData);
+  const docSnap = await docRef.get();
   const newJobData = docSnap.data();
 
   return { 
@@ -35,13 +30,9 @@ export async function createJob(data: JobFormValues): Promise<Job> {
 
 // READ (all)
 export async function getJobs(): Promise<Job[]> {
-    if (!db) {
-      console.error("Firestore is not initialized, returning empty jobs array.");
-      return [];
-    }
-    const jobsCollection = collection(db, 'jobs');
-    const q = query(jobsCollection, orderBy('lastDateToApply', 'desc'));
-    const snapshot = await getDocs(q);
+    const jobsCollection = db.collection('jobs');
+    const q = jobsCollection.orderBy('lastDateToApply', 'desc');
+    const snapshot = await q.get();
     
     return snapshot.docs.map(doc => {
         const data = doc.data();
@@ -57,15 +48,11 @@ export async function getJobs(): Promise<Job[]> {
 
 // READ (one)
 export async function getJob(id: string): Promise<Job | null> {
-  if (!db) {
-    console.error("Firestore is not initialized, cannot get job.");
-    return null;
-  }
-  const docRef = doc(db, 'jobs', id);
-  const docSnap = await getDoc(docRef);
+  const docRef = db.collection('jobs').doc(id);
+  const docSnap = await docRef.get();
 
-  if (docSnap.exists()) {
-      const data = docSnap.data();
+  if (docSnap.exists) {
+      const data = docSnap.data()!;
       return {
           id: docSnap.id,
           ...data,
@@ -80,25 +67,19 @@ export async function getJob(id: string): Promise<Job | null> {
 
 // UPDATE
 export async function updateJob(id: string, data: JobFormValues): Promise<void> {
-  if (!db) {
-    throw new Error('Firestore is not initialized');
-  }
-  const docRef = doc(db, 'jobs', id);
+  const docRef = db.collection('jobs').doc(id);
   const updateData = {
     ...data,
     lastDateToApply: Timestamp.fromDate(new Date(data.lastDateToApply)),
-    updatedAt: serverTimestamp(),
+    updatedAt: Timestamp.now(),
   };
 
-  await updateDoc(docRef, updateData);
+  await docRef.update(updateData);
 }
 
 
 // DELETE
 export async function deleteJob(id: string): Promise<void> {
-  if (!db) {
-    throw new Error('Firestore is not initialized');
-  }
-  const docRef = doc(db, 'jobs', id);
-  await deleteDoc(docRef);
+  const docRef = db.collection('jobs').doc(id);
+  await docRef.delete();
 }

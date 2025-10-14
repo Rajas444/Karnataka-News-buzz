@@ -3,14 +3,11 @@
 
 import { db } from '@/lib/firebase-admin';
 import type { Post, PostFormValues } from '@/lib/types';
-import { collection, addDoc, getDocs, doc, getDoc, serverTimestamp, query, orderBy, limit as firestoreLimit } from 'firebase/firestore';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import { Timestamp } from 'firebase-admin/firestore';
 
 export async function createPost(data: PostFormValues, author: { uid: string, displayName: string | null, photoURL: string | null }): Promise<Post> {
-  if (!db) {
-    throw new Error('Firestore is not initialized');
-  }
-  const postsCollection = collection(db, 'posts');
+  const postsCollection = db.collection('posts');
   let imageUrl = data.imageUrl || null;
   let imagePath = ''; // This will store the Cloudinary public_id
 
@@ -27,28 +24,24 @@ export async function createPost(data: PostFormValues, author: { uid: string, di
     authorId: author.uid,
     authorName: author.displayName || 'Anonymous',
     authorPhotoURL: author.photoURL || '',
-    createdAt: serverTimestamp(),
+    createdAt: Timestamp.now(),
   };
 
-  const docRef = await addDoc(postsCollection, newPost);
-  const docSnap = await getDoc(docRef);
-  const createdData = docSnap.data();
+  const docRef = await postsCollection.add(newPost);
+  const docSnap = await docRef.get();
+  const createdData = docSnap.data()!;
 
   return { 
     id: docRef.id, 
     ...createdData,
-    createdAt: createdData?.createdAt.toDate(),
+    createdAt: createdData.createdAt.toDate(),
    } as Post;
 }
 
 export async function getPosts(): Promise<Post[]> {
-    if (!db) {
-      console.error("Firestore is not initialized, returning empty posts array.");
-      return [];
-    }
-    const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection, orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
+    const postsCollection = db.collection('posts');
+    const q = postsCollection.orderBy('createdAt', 'desc');
+    const snapshot = await q.get();
     
     return snapshot.docs.map(doc => {
         const data = doc.data();
@@ -61,13 +54,9 @@ export async function getPosts(): Promise<Post[]> {
 }
 
 export async function getRecentPosts(count: number): Promise<Post[]> {
-    if (!db) {
-        console.error("Firestore is not initialized, returning empty recent posts array.");
-        return [];
-    }
-    const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection, orderBy('createdAt', 'desc'), firestoreLimit(count));
-    const snapshot = await getDocs(q);
+    const postsCollection = db.collection('posts');
+    const q = postsCollection.orderBy('createdAt', 'desc').limit(count);
+    const snapshot = await q.get();
 
     return snapshot.docs.map(doc => {
         const data = doc.data();

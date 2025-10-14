@@ -1,13 +1,13 @@
 
 'use server';
 
-import { db } from '@/lib/firebase-admin';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
 import type { Job, JobFormValues } from '@/lib/types';
-import { Timestamp } from 'firebase-admin/firestore';
 
 // CREATE
 export async function createJob(data: JobFormValues): Promise<Job> {
-  const jobsCollection = db.collection('jobs');
+  const jobsCollection = collection(db, 'jobs');
   const jobData = {
     ...data,
     lastDateToApply: Timestamp.fromDate(new Date(data.lastDateToApply)),
@@ -15,8 +15,8 @@ export async function createJob(data: JobFormValues): Promise<Job> {
     updatedAt: Timestamp.now(),
   };
 
-  const docRef = await jobsCollection.add(jobData);
-  const docSnap = await docRef.get();
+  const docRef = await addDoc(jobsCollection, jobData);
+  const docSnap = await getDoc(docRef);
   const newJobData = docSnap.data();
 
   return { 
@@ -30,9 +30,9 @@ export async function createJob(data: JobFormValues): Promise<Job> {
 
 // READ (all)
 export async function getJobs(): Promise<Job[]> {
-    const jobsCollection = db.collection('jobs');
-    const q = jobsCollection.orderBy('lastDateToApply', 'desc');
-    const snapshot = await q.get();
+    const jobsCollection = collection(db, 'jobs');
+    const q = query(jobsCollection, orderBy('lastDateToApply', 'desc'));
+    const snapshot = await getDocs(q);
     
     return snapshot.docs.map(doc => {
         const data = doc.data();
@@ -48,10 +48,10 @@ export async function getJobs(): Promise<Job[]> {
 
 // READ (one)
 export async function getJob(id: string): Promise<Job | null> {
-  const docRef = db.collection('jobs').doc(id);
-  const docSnap = await docRef.get();
+  const docRef = doc(db, 'jobs', id);
+  const docSnap = await getDoc(docRef);
 
-  if (docSnap.exists) {
+  if (docSnap.exists()) {
       const data = docSnap.data()!;
       return {
           id: docSnap.id,
@@ -67,19 +67,19 @@ export async function getJob(id: string): Promise<Job | null> {
 
 // UPDATE
 export async function updateJob(id: string, data: JobFormValues): Promise<void> {
-  const docRef = db.collection('jobs').doc(id);
+  const docRef = doc(db, 'jobs', id);
   const updateData = {
     ...data,
     lastDateToApply: Timestamp.fromDate(new Date(data.lastDateToApply)),
     updatedAt: Timestamp.now(),
   };
 
-  await docRef.update(updateData);
+  await updateDoc(docRef, updateData);
 }
 
 
 // DELETE
 export async function deleteJob(id: string): Promise<void> {
-  const docRef = db.collection('jobs').doc(id);
-  await docRef.delete();
+  const docRef = doc(db, 'jobs', id);
+  await deleteDoc(docRef);
 }

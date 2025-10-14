@@ -1,16 +1,16 @@
 
 'use server';
 
-import { db } from '@/lib/firebase-admin';
+import { db } from '@/lib/firebase';
 import type { Article, ArticleFormValues } from '@/lib/types';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, where, Timestamp, limit, startAfter, orderBy, writeBatch } from 'firebase/firestore';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 import { getDistricts } from './districts';
 import { getCategories } from './categories';
 import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
 import { getExternalNews } from './newsapi';
-import { Timestamp } from 'firebase-admin/firestore';
 
-async function serializeArticle(doc: FirebaseFirestore.DocumentSnapshot): Promise<Article> {
+async function serializeArticle(doc: any): Promise<Article> {
     const data = doc.data();
     if (!data) throw new Error("Document data is undefined.");
 
@@ -23,8 +23,8 @@ async function serializeArticle(doc: FirebaseFirestore.DocumentSnapshot): Promis
             console.error("Failed to get districts for article serialization", e);
         }
     }
-
-    return {
+    
+    const plainObject = {
         id: doc.id,
         title: data.title,
         content: data.content,
@@ -43,11 +43,13 @@ async function serializeArticle(doc: FirebaseFirestore.DocumentSnapshot): Promis
         createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate().toISOString() : null,
         updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate().toISOString() : null,
         district: districtName,
-    } as Article;
+    };
+    
+    return plainObject as Article;
 }
 
 export async function createArticle(data: ArticleFormValues & { categoryIds: string[] }): Promise<Article> {
-  const articlesCollection = db.collection('articles');
+  const articlesCollection = collection(db, 'articles');
   
   let imageUrl = data.imageUrl || null;
   let imagePath = ''; // Using imagePath to store the Cloudinary public_id
@@ -83,9 +85,9 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
     imageUrl,
     imagePath,
     status: data.status || 'draft',
-    publishedAt: data.status === 'published' ? Timestamp.now() : (data.publishedAt ? Timestamp.fromDate(new Date(data.publishedAt)) : null),
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now(),
+    publishedAt: data.status === 'published' ? serverTimestamp() : (data.publishedAt ? Timestamp.fromDate(new Date(data.publishedAt)) : null),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
     views: 0,
     author: 'Admin User',
     authorId: 'admin1',
@@ -95,8 +97,8 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
     }
   };
 
-  const docRef = await articlesCollection.add(newArticleData);
-  const docSnap = await docRef.get();
+  const docRef = await addDoc(articlesCollection, newArticleData);
+  const docSnap = await getDoc(docRef);
   return serializeArticle(docSnap);
 }
 
@@ -106,29 +108,32 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
-    const articlesCollection = db.collection('articles');
+    const articlesCollection = collection(db, 'articles');
     const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
     
-    let query: FirebaseFirestore.Query = articlesCollection;
+    const constraints = [];
 
     if (categorySlug && categorySlug !== 'all') {
         const categories = await getCategories();
         const categoryId = categories.find(c => c.slug === categorySlug)?.id;
         if (categoryId) {
-            query = query.where('categoryIds', 'array-contains', categoryId);
+            constraints.push(where('categoryIds', 'array-contains', categoryId));
         }
     }
 
-    query = query.orderBy('publishedAt', 'desc');
+    constraints.push(orderBy('publishedAt', 'desc'));
 
     if (startAfterDocId) {
-        const startAfterDoc = await db.collection('articles').doc(startAfterDocId).get();
-        if (startAfterDoc.exists) {
-            query = query.startAfter(startAfterDoc);
+        const startAfterDoc = await getDoc(doc(db, 'articles', startAfterDocId));
+        if (startAfterDoc.exists()) {
+            constraints.push(startAfter(startAfterDoc));
         }
     }
 
-    const snapshot = await query.limit(25).get();
+    constraints.push(limit(25));
+    
+    const q = query(articlesCollection, ...constraints);
+    const snapshot = await getDocs(q);
 
     const fetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
     
@@ -159,12 +164,12 @@ export async function getArticle(id: string): Promise<Article | null> {
     let article: Article | null = null;
 
     if (!isExternalId) {
-        const docRef = db.collection('articles').doc(id);
-        const docSnap = await docRef.get();
-        if (docSnap.exists) {
+        const docRef = doc(db, 'articles', id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
             article = await serializeArticle(docSnap);
             // Increment view count without waiting
-            docRef.update({ views: (article.views || 0) + 1 }).catch(e => console.error("Failed to update view count:", e));
+            updateDoc(docRef, { views: (article.views || 0) + 1 }).catch(e => console.error("Failed to update view count:", e));
         }
     } else {
         try {
@@ -180,7 +185,7 @@ export async function getArticle(id: string): Promise<Article | null> {
 
 
 export async function updateArticle(id: string, data: ArticleFormValues & { categoryIds: string[] }): Promise<Article> {
-  const docRef = db.collection('articles').doc(id);
+  const docRef = doc(db, 'articles', id);
   let imageUrl = data.imageUrl || null;
   let imagePath = data.imagePath || ''; 
 
@@ -216,42 +221,42 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
     categoryIds: data.categoryIds,
     imageUrl,
     imagePath,
-    publishedAt: data.publishedAt ? Timestamp.fromDate(new Date(data.publishedAt)) : Timestamp.now(),
-    updatedAt: Timestamp.now(),
+    publishedAt: data.publishedAt ? Timestamp.fromDate(new Date(data.publishedAt)) : serverTimestamp(),
+    updatedAt: serverTimestamp(),
      seo: {
       keywords: data.seoKeywords?.split(',').map(k => k.trim()) || [],
       metaDescription: data.seoMetaDescription || '',
     }
   };
 
-  await docRef.update(updateData);
+  await updateDoc(docRef, updateData);
 
-  const updatedDoc = await docRef.get();
+  const updatedDoc = await getDoc(docRef);
   return serializeArticle(updatedDoc);
 }
 
 export async function deleteArticle(id: string): Promise<void> {
-    const docRef = db.collection('articles').doc(id);
-    const docSnap = await docRef.get();
-    const article = docSnap.exists ? docSnap.data() : null;
+    const docRef = doc(db, 'articles', id);
+    const docSnap = await getDoc(docRef);
+    const article = docSnap.exists() ? docSnap.data() : null;
     
     if (article?.imagePath) {
         await deleteFromCloudinary(article.imagePath);
     }
-    await docRef.delete();
+    await deleteDoc(docRef);
 }
 
 export async function getRelatedArticles(categoryId: string, currentArticleId: string): Promise<Article[]> {
     if (!categoryId) return [];
-    const articlesCollection = db.collection('articles');
+    const articlesCollection = collection(db, 'articles');
 
-    const q = articlesCollection
-        .where('categoryIds', 'array-contains', categoryId)
-        .where('status', '==', 'published')
-        .orderBy('publishedAt', 'desc')
-        .limit(5);
+    const q = query(articlesCollection,
+        where('categoryIds', 'array-contains', categoryId),
+        where('status', '==', 'published'),
+        orderBy('publishedAt', 'desc'),
+        limit(5));
 
-    const snapshot = await q.get();
+    const snapshot = await getDocs(q);
     const articles = await Promise.all(snapshot.docs.map(serializeArticle));
 
     return articles

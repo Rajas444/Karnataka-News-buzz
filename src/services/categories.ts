@@ -1,23 +1,24 @@
 
 'use server';
 
-import { db } from '@/lib/firebase-admin';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import type { Category } from '@/lib/types';
 import { placeholderCategories } from '@/lib/placeholder-data';
 
 // CREATE
 export async function createCategory(data: Omit<Category, 'id'>): Promise<Category> {
-  const categoriesCollection = db.collection('categories');
-  const docRef = await categoriesCollection.add(data);
+  const categoriesCollection = collection(db, 'categories');
+  const docRef = await addDoc(categoriesCollection, data);
   return { id: docRef.id, ...data };
 }
 
 // READ (all)
 export async function getCategories(): Promise<Category[]> {
   try {
-      const categoriesCollection = db.collection('categories');
-      const q = categoriesCollection.orderBy('name', 'asc');
-      const snapshot = await q.get();
+      const categoriesCollection = collection(db, 'categories');
+      const q = query(categoriesCollection, orderBy('name', 'asc'));
+      const snapshot = await getDocs(q);
       if (snapshot.empty) {
           // If the collection exists but is empty, return placeholders for a better initial experience.
           return placeholderCategories.sort((a, b) => a.name.localeCompare(b.name));
@@ -32,12 +33,12 @@ export async function getCategories(): Promise<Category[]> {
 
 // UPDATE
 export async function updateCategory(id: string, data: Partial<Omit<Category, 'id'>>): Promise<void> {
-  const docRef = db.collection('categories').doc(id);
-  await docRef.update(data);
+  const docRef = doc(db, 'categories', id);
+  await updateDoc(docRef, data);
 }
 
 // DELETE
 export async function deleteCategory(id: string): Promise<void> {
-  const docRef = db.collection('categories').doc(id);
-  await docRef.delete();
+  const docRef = doc(db, 'categories', id);
+  await deleteDoc(docRef);
 }

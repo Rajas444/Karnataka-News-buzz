@@ -1,13 +1,13 @@
 
 'use server';
 
-import { db } from '@/lib/firebase-admin';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, getDocs, query, orderBy, limit, Timestamp } from 'firebase/firestore';
 import type { Post, PostFormValues } from '@/lib/types';
 import { uploadToCloudinary } from '@/lib/cloudinary';
-import { Timestamp } from 'firebase-admin/firestore';
 
 export async function createPost(data: PostFormValues, author: { uid: string, displayName: string | null, photoURL: string | null }): Promise<Post> {
-  const postsCollection = db.collection('posts');
+  const postsCollection = collection(db, 'posts');
   let imageUrl = data.imageUrl || null;
   let imagePath = ''; // This will store the Cloudinary public_id
 
@@ -27,21 +27,19 @@ export async function createPost(data: PostFormValues, author: { uid: string, di
     createdAt: Timestamp.now(),
   };
 
-  const docRef = await postsCollection.add(newPost);
-  const docSnap = await docRef.get();
-  const createdData = docSnap.data()!;
+  const docRef = await addDoc(postsCollection, newPost);
+  const createdData = { ...newPost, id: docRef.id };
 
   return { 
-    id: docRef.id, 
     ...createdData,
     createdAt: createdData.createdAt.toDate(),
    } as Post;
 }
 
 export async function getPosts(): Promise<Post[]> {
-    const postsCollection = db.collection('posts');
-    const q = postsCollection.orderBy('createdAt', 'desc');
-    const snapshot = await q.get();
+    const postsCollection = collection(db, 'posts');
+    const q = query(postsCollection, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
     
     return snapshot.docs.map(doc => {
         const data = doc.data();
@@ -54,9 +52,9 @@ export async function getPosts(): Promise<Post[]> {
 }
 
 export async function getRecentPosts(count: number): Promise<Post[]> {
-    const postsCollection = db.collection('posts');
-    const q = postsCollection.orderBy('createdAt', 'desc').limit(count);
-    const snapshot = await q.get();
+    const postsCollection = collection(db, 'posts');
+    const q = query(postsCollection, orderBy('createdAt', 'desc'), limit(count));
+    const snapshot = await getDocs(q);
 
     return snapshot.docs.map(doc => {
         const data = doc.data();

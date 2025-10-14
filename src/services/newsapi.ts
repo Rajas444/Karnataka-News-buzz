@@ -3,54 +3,54 @@
 
 import type { Article as NewsApiArticle } from '@/lib/types';
 
-interface GNewsArticle {
+interface NewsDataIOArticle {
+    article_id: string;
     title: string;
+    link: string;
     description: string;
     content: string;
-    url: string;
-    image: string;
-    publishedAt: string;
-    source: {
-        name: string;
-        url: string;
-    };
+    pubDate: string;
+    image_url: string;
+    source_id: string;
+    source_url: string;
+    creator: string[] | null;
 }
 
-async function fetchFromGNewsAPI(options?: { q?: string }): Promise<NewsApiArticle[]> {
-    const apiKey = process.env.NEXT_PUBLIC_GNEWS_API_KEY;
-    if (!apiKey || apiKey === "your_gnews_api_key_here") {
-        console.warn("GNews API key is not configured. External news feed will be empty.");
+async function fetchFromNewsDataAPI(options?: { q?: string }): Promise<NewsApiArticle[]> {
+    const apiKey = process.env.NEXT_PUBLIC_GNEWS_API_KEY; // This now holds the NewsData.io key
+    if (!apiKey || apiKey.includes("your_") || apiKey.length < 20) {
+        console.warn("Newsdata.io API key is not configured correctly. External news feed will be empty.");
         return [];
     }
     
     const query = options?.q || 'karnataka';
-    const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=kn&country=in&apikey=${apiKey}`;
+    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&q=${encodeURIComponent(query)}&language=kn&country=in`;
 
     try {
         const response = await fetch(url, { next: { revalidate: 3600 } }); // Cache for 1 hour
         if (!response.ok) {
             const errorBody = await response.json();
-            if (response.status === 403) {
-                console.error(`GNews API request failed with status 403 (Forbidden). This usually means your API key is invalid, has expired, or your plan has hit its limit. Please check your GNews dashboard.`);
+             if (response.status === 403) {
+                console.error(`Newsdata.io API request failed with status 403 (Forbidden). This usually means your API key is invalid, has expired, or your plan has hit its limit. Please check your Newsdata.io dashboard.`);
             } else {
-                console.error(`GNews API request failed with status: ${response.status}`, errorBody);
+                console.error(`Newsdata.io API request failed with status: ${response.status}`, errorBody);
             }
             return [];
         }
         const data = await response.json();
         
-        if (!data.articles) return [];
+        if (!data.results || data.results.length === 0) return [];
 
-        return data.articles.map((article: GNewsArticle): NewsApiArticle => ({
-            id: article.url, 
+        return data.results.map((article: NewsDataIOArticle): NewsApiArticle => ({
+            id: article.link, // Use link as a unique ID
             title: article.title,
             content: article.description || article.content || '',
-            imageUrl: article.image,
-            author: article.source.name,
-            publishedAt: article.publishedAt,
-            source: article.source.name,
-            sourceUrl: article.url,
-            authorId: 'gnews-api',
+            imageUrl: article.image_url,
+            author: article.creator?.[0] || article.source_id,
+            publishedAt: article.pubDate,
+            source: article.source_id,
+            sourceUrl: article.link,
+            authorId: 'newsdataio-api',
             categoryIds: ['external'],
             status: 'published',
             seo: { keywords: [], metaDescription: article.description || '' },
@@ -59,11 +59,12 @@ async function fetchFromGNewsAPI(options?: { q?: string }): Promise<NewsApiArtic
             updatedAt: new Date().toISOString(),
         }));
     } catch (error) {
-        console.error("Failed to fetch from GNews API:", error);
+        console.error("Failed to fetch from Newsdata.io API:", error);
         return [];
     }
 }
 
 export async function getExternalNews(options?: { type?: 'everything' | 'top-headlines', q?: string }): Promise<NewsApiArticle[]> {
-    return await fetchFromGNewsAPI({ q: options?.q });
+    // The 'type' option is maintained for compatibility but not used by the new provider.
+    return await fetchFromNewsDataAPI({ q: options?.q });
 }

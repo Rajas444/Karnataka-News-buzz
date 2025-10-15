@@ -37,8 +37,8 @@ export default function AdminLoginPage() {
   const [resetEmail, setResetEmail] = useState('');
 
   useEffect(() => {
-    if (!authLoading && user && userRole === 'admin') {
-        router.replace('/admin/dashboard');
+    if (!authLoading && user) {
+        router.replace('/');
     }
   }, [user, userRole, authLoading, router]);
 
@@ -49,8 +49,8 @@ export default function AdminLoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      toast({ title: 'Login Successful', description: 'Redirecting to dashboard...' });
-      router.replace('/admin/dashboard');
+      toast({ title: 'Login Successful', description: 'Redirecting...' });
+      router.replace('/');
     } catch (error: any) {
       console.error("Login failed:", error);
       const errorCode = error.code || '';
@@ -61,8 +61,7 @@ export default function AdminLoginPage() {
       } else {
         setAuthError(error.message || 'An unknown error occurred.');
       }
-    } finally {
-        setLoading(false);
+       setLoading(false);
     }
   };
 
@@ -82,7 +81,7 @@ export default function AdminLoginPage() {
     }
   }
   
-    if (authLoading) {
+    if (authLoading || user) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <div className="flex flex-col items-center gap-4">

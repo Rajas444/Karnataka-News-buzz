@@ -56,7 +56,7 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
       // On success, the root page's useEffect will handle redirection.
       toast({ title: 'Login Successful', description: 'Redirecting...' });
-      // No need to manually push router here.
+      router.replace('/'); // Go to root page to be redirected
     } catch (error: any) {
       console.error(error);
       const errorCode = error.code || '';

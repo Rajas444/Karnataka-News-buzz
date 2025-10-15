@@ -47,17 +47,17 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     }
     fetchInitialData();
     
+    // **Fix:** Reset articles when filters change
     setArticles(initialArticles);
     
-    // Determine the last visible document ID from the initial server-side rendered articles
     if (initialArticles.length > 0) {
         const lastInitialArticle = initialArticles[initialArticles.length - 1];
-        if (lastInitialArticle && !lastInitialArticle.id.startsWith('http')) {
+        if (lastInitialArticle && lastInitialArticle.id && !lastInitialArticle.id.startsWith('http')) {
             setLastVisibleDocId(lastInitialArticle.id);
         } else {
             setLastVisibleDocId(null);
         }
-        setHasMore(true); // Assume there might be more to load
+        setHasMore(true); 
     } else {
         setLastVisibleDocId(null);
         setHasMore(false);
@@ -112,11 +112,16 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
         pageSize: 10,
         startAfterDocId: lastVisibleDocId,
         categorySlug,
-        districtId, // Pass the districtId to the fetch function
+        districtId,
       });
       
       if (newArticles.length > 0) {
-        setArticles(prev => [...prev, ...newArticles]);
+        // **Fix:** Prevent adding duplicates
+        setArticles(prev => {
+            const existingIds = new Set(prev.map(a => a.id));
+            const uniqueNewArticles = newArticles.filter(a => !existingIds.has(a.id));
+            return [...prev, ...uniqueNewArticles];
+        });
         setLastVisibleDocId(newLastVisibleDocId);
         setHasMore(newLastVisibleDocId !== null);
       } else {

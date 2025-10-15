@@ -39,10 +39,10 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState('');
 
   useEffect(() => {
-    // If the user is already logged in, the root page.tsx will handle redirection.
-    // This page only needs to prevent showing the login form to an already logged-in user.
+    // If a user is already logged in, the root page will handle the redirect.
+    // This prevents this page from being shown to an authenticated user.
     if (!authLoading && user) {
-      router.replace('/home'); // Or a loading/splash screen while root page redirects
+      router.replace('/'); 
     }
   }, [user, authLoading, router]);
 
@@ -54,9 +54,9 @@ export default function LoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // The useEffect in the root page will now handle redirection
+      // On success, the root page's useEffect will handle redirection.
       toast({ title: 'Login Successful', description: 'Redirecting...' });
-      // We don't need to manually push here anymore.
+      // No need to manually push router here.
     } catch (error: any) {
       console.error(error);
       const errorCode = error.code || '';
@@ -71,7 +71,6 @@ export default function LoginPage() {
       }
       setLoading(false);
     } 
-    // Do not set loading to false in the success case, to allow time for redirection
   };
 
   const handlePasswordReset = async () => {
@@ -90,6 +89,7 @@ export default function LoginPage() {
     }
   }
   
+    // Show loading screen while auth state is being determined, or if user is already logged in and waiting for redirect.
     if (authLoading || user) {
         return (
             <div className="flex h-screen items-center justify-center">

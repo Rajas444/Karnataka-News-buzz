@@ -1,123 +1,165 @@
-
 {
   "entities": {
-    "UserProfile": {
-      "title": "User Profile",
-      "description": "Stores public information about a user.",
+    "NewsArticle": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "NewsArticle",
       "type": "object",
+      "description": "Represents a news article.",
       "properties": {
-        "uid": { "type": "string", "description": "The user's unique ID." },
-        "displayName": { "type": "string", "description": "The user's display name." },
-        "email": { "type": "string", "format": "email", "description": "The user's email address." },
-        "photoURL": { "type": "string", "format": "uri", "description": "URL of the user's profile picture." },
-        "role": { "type": "string", "enum": ["admin", "editor", "user"], "description": "The user's role in the system." },
-        "phoneNumber": { "type": "string", "description": "The user's phone number." }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the news article."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the news article."
+        },
+        "content": {
+          "type": "string",
+          "description": "The main content of the news article."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the image associated with the news article.",
+          "format": "uri"
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to Category. (Relationship: Category 1:N NewsArticle)"
+        },
+        "district": {
+          "type": "string",
+          "description": "The district to which the news article belongs."
+        },
+        "publicationDate": {
+          "type": "string",
+          "description": "Date and time when the news article was published.",
+          "format": "date-time"
+        },
+        "isPublished": {
+          "type": "boolean",
+          "description": "Indicates whether the news article is published or not."
+        }
       },
-      "required": ["uid", "email", "role"]
-    },
-    "Article": {
-      "title": "News Article",
-      "description": "Represents a single news article in the portal.",
-      "type": "object",
-      "properties": {
-        "title": { "type": "string" },
-        "content": { "type": "string" },
-        "imageUrl": { "type": "string", "format": "uri" },
-        "author": { "type": "string" },
-        "authorId": { "type": "string" },
-        "categoryIds": { "type": "array", "items": { "type": "string" } },
-        "status": { "type": "string", "enum": ["published", "draft", "scheduled", "archived"] },
-        "publishedAt": { "type": "string", "format": "date-time" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" },
-        "source": { "type": "string" },
-        "sourceUrl": { "type": "string", "format": "uri" },
-        "views": { "type": "number" },
-        "districtId": { "type": "string" }
-      },
-      "required": ["title", "content", "authorId", "status", "createdAt"]
+      "required": [
+        "id",
+        "title",
+        "content",
+        "categoryId",
+        "district",
+        "publicationDate",
+        "isPublished"
+      ]
     },
     "Category": {
-      "title": "News Category",
-      "description": "A category for organizing news articles.",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
       "type": "object",
+      "description": "Represents a category for news articles.",
       "properties": {
-        "name": { "type": "string" },
-        "slug": { "type": "string" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the category."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the category (e.g., Politics, Sports)."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the category."
+        }
       },
-      "required": ["name", "slug"]
+      "required": [
+        "id",
+        "name",
+        "description"
+      ]
     },
-    "District": {
-      "title": "District",
-      "description": "A district in Karnataka.",
+    "AdminUser": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AdminUser",
       "type": "object",
+      "description": "Represents an administrator user.",
       "properties": {
-        "name": { "type": "string" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the admin user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the admin user.",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The display name of the admin user."
+        }
       },
-      "required": ["name"]
-    },
-    "Job": {
-        "title": "Job Posting",
-        "description": "Represents a job opportunity.",
-        "type": "object",
-        "properties": {
-            "title": { "type": "string" },
-            "company": { "type": "string" },
-            "location": { "type": "string" },
-            "qualification": { "type": "string" },
-            "description": { "type": "string" },
-            "applyLink": { "type": "string", "format": "uri" },
-            "jobType": { "type": "string", "enum": ["Government", "Private", "Fresher", "Internship"] },
-            "lastDateToApply": { "type": "string", "format": "date-time" },
-            "createdAt": { "type": "string", "format": "date-time" }
-        },
-        "required": ["title", "company", "location", "applyLink", "lastDateToApply"]
-    },
-    "Post": {
-        "title": "Community Post",
-        "description": "A post created by a community member.",
-        "type": "object",
-        "properties": {
-            "title": { "type": "string" },
-            "description": { "type": "string" },
-            "category": { "type": "string" },
-            "location": { "type": "string" },
-            "imageUrl": { "type": "string", "format": "uri" },
-            "authorId": { "type": "string" },
-            "authorName": { "type": "string" },
-            "authorPhotoURL": { "type": "string", "format": "uri" },
-            "createdAt": { "type": "string", "format": "date-time" }
-        },
-        "required": ["title", "description", "authorId", "createdAt"]
+      "required": [
+        "id",
+        "email",
+        "displayName"
+      ]
     }
   },
   "auth": {
-    "providers": ["password", "google.com"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": { "$ref": "#/entities/UserProfile" },
-      "description": "Stores user profile information."
-    },
-    "/articles/{articleId}": {
-      "schema": { "$ref": "#/entities/Article" },
-      "description": "Stores individual news articles."
-    },
-    "/categories/{categoryId}": {
-      "schema": { "$ref": "#/entities/Category" },
-      "description": "Stores news categories."
-    },
-     "/districts/{districtId}": {
-      "schema": { "$ref": "#/entities/District" },
-      "description": "Stores the list of districts."
-    },
-    "/jobs/{jobId}": {
-        "schema": { "$ref": "#/entities/Job" },
-        "description": "Stores job postings."
-    },
-    "/posts/{postId}": {
-        "schema": { "$ref": "#/entities/Post" },
-        "description": "Stores community-generated posts."
-    }
+    "structure": [
+      {
+        "path": "/news_articles/{newsArticleId}",
+        "definition": {
+          "entityName": "NewsArticle",
+          "schema": {
+            "$ref": "#/backend/entities/NewsArticle"
+          },
+          "description": "Stores news articles. Includes denormalized 'categoryId' and 'district' fields for filtering and querying.",
+          "params": [
+            {
+              "name": "newsArticleId",
+              "description": "Unique identifier for the news article."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Stores news categories.",
+          "params": [
+            {
+              "name": "categoryId",
+              "description": "Unique identifier for the category."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{adminUserId}",
+        "definition": {
+          "entityName": "AdminUser",
+          "schema": {
+            "$ref": "#/backend/entities/AdminUser"
+          },
+          "description": "Documents in this collection indicate admin privileges. Existence of a document for a user ID grants admin access.",
+          "params": [
+            {
+              "name": "adminUserId",
+              "description": "The Firebase UID of the admin user."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the 'Karnataka News Pulse' application, focusing on admin-managed news articles, categories, and user roles. Authorization Independence is achieved by using dedicated collections for admin roles (`/roles_admin/{uid}`) and path-based ownership for user-related data. Segregation of data is applied by separating news articles and categories into distinct collections, with news articles further segmented by district. The `NewsArticle` documents denormalize the `categoryId` and `district` to enable efficient filtering and querying.  This structure facilitates simple, robust, and easily debuggable security rules, ensuring only authorized admins can manage news articles and categories while supporting district-specific filtering for news display."
   }
 }

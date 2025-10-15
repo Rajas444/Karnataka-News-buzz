@@ -1,176 +1,102 @@
+/**
+ * @fileoverview Firestore Security Rules for the 'Karnataka News Pulse' application.
+ *
+ * Core Philosophy:
+ * This ruleset implements a role-based access control system, primarily focused on
+ * securing news articles and categories managed by administrators. A dedicated
+ * collection (`/roles_admin/{uid}`) determines administrative privileges.
+ *
+ * Data Structure:
+ * - /news_articles/{newsArticleId}: Stores news articles, publicly readable but
+ *   writable only by admins.
+ * - /categories/{categoryId}: Stores news categories, publicly readable but
+ *   writable only by admins.
+ * - /roles_admin/{adminUserId}: Indicates admin privileges. The existence of a
+ *   document for a user ID grants admin access.
+ *
+ * Key Security Decisions:
+ * - Public Read Access: News articles and categories are publicly readable to
+ *   allow broad access to content.
+ * - Admin-Only Writes: Only users with admin privileges (as determined by their
+ *   presence in the `/roles_admin` collection) can create, update, or delete
+ *   news articles and categories.
+ * - No User Listing: Listing users is explicitly denied to protect user privacy.
+ *
+ * Denormalization for Authorization:
+ * - Admin Role: The existence of a document in the `/roles_admin/{uid}` collection
+ *   is used as the primary indicator of admin privileges. This avoids the need
+ *   for complex queries or joins to determine admin status.
+ *
+ * Structural Segregation:
+ * - Clear separation of news articles, categories, and admin roles into distinct
+ *   collections simplifies the security rules and improves maintainability.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
-     * @path /users/{userId}
-     * @allow (create) User with UID 'user123' can create their own profile at /users/user123.
-     * @allow (get) User with UID 'user123' can read their own profile at /users/user123.
-     * @allow (update) User with UID 'user123' can update their own profile at /users/user123.
-     * @allow (delete) User with UID 'user123' can delete their own profile at /users/user123.
-     * @deny (create) User with UID 'user123' cannot create a profile at /users/user456 (different UID).
-     * @deny (get) User with UID 'user123' cannot read the profile of user 'user456' at /users/user456.
-     * @principle Enforces document ownership for all operations.
+     * @description Checks if the current user is signed in.
+     * @return {boolean} True if the user is signed in, false otherwise.
      */
-    match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(resource);
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && isExistingOwner(userId);
-      allow delete: if isOwner(userId) && isExistingOwner(userId);
+    function isSignedIn() {
+      return request.auth != null;
     }
 
     /**
-     * @description Controls access to news article documents.
-     * @path /articles/{articleId}
-     * @allow (get) Any user can read an article.
-     * @allow (list) Any user can list articles.
-     * @allow (create) User with UID 'user123' can create an article with authorId 'user123'.
-     * @allow (update) User with UID 'user123' can update an article with authorId 'user123'.
-     * @allow (delete) User with UID 'user123' can delete an article with authorId 'user123'.
-     * @deny (create) User with UID 'user123' cannot create an article with authorId 'user456' (mismatched authorId).
-     * @deny (update) User with UID 'user123' cannot update an article with authorId 'user456' (not the author).
-     * @principle Allows public reads but restricts writes to the document owner.
+     * @description Checks if the user is an admin by verifying the existence of
+     *              a document in the `/roles_admin/{uid}` collection.
+     * @return {boolean} True if the user is an admin, false otherwise.
      */
-    match /articles/{articleId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner() {
-        return isSignedIn() && request.auth.uid == resource.data.authorId;
-      }
-      function isExistingOwner() {
-        return isSignedIn() && request.auth.uid == resource.data.authorId && exists(resource);
-      }
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
 
+    /**
+     * @description Rules for the /news_articles collection.
+     * @path /news_articles/{newsArticleId}
+     * @allow (get, list): Any user can read news articles.
+     * @allow (create, update, delete): Only admins can create, update, or delete news articles.
+     * @deny (create, update, delete): Non-admins cannot create, update, or delete news articles.
+     * @principle Public read access with admin-only writes.
+     */
+    match /news_articles/{newsArticleId} {
       allow get, list: if true;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.authorId;
-      allow update: if isSignedIn() && isExistingOwner();
-      allow delete: if isSignedIn() && isExistingOwner();
+      allow create, update, delete: if isAdmin();
     }
 
     /**
-     * @description Controls access to category documents.
+     * @description Rules for the /categories collection.
      * @path /categories/{categoryId}
-     * @allow (get) Any user can read a category.
-     * @allow (list) Any user can list categories.
-     * @allow (create) User with UID 'user123' can create a category.
-     * @allow (update) User with UID 'user123' can update a category if they are the owner.
-     * @allow (delete) User with UID 'user123' can delete a category if they are the owner.
-     * @deny (create) User without authentication cannot create a category.
-     * @deny (update) User without authentication cannot update a category.
-     * @principle Allows public reads but restricts writes to the document owner.
+     * @allow (get, list): Any user can read categories.
+     * @allow (create, update, delete): Only admins can create, update, or delete categories.
+     * @deny (create, update, delete): Non-admins cannot create, update, or delete categories.
+     * @principle Public read access with admin-only writes.
      */
     match /categories/{categoryId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner() {
-        return isSignedIn() && request.auth.uid == resource.data.authorId;
-      }
-      function isExistingOwner() {
-        return isSignedIn() && request.auth.uid == resource.data.authorId && exists(resource);
-      }
-
-        allow get, list: if true;
-        allow create: if isSignedIn();
-        allow update: if isSignedIn() && isExistingOwner();
-        allow delete: if isSignedIn() && isExistingOwner();
-    }
-
-    /**
-     * @description Controls access to district documents.
-     * @path /districts/{districtId}
-     * @allow (get) Any user can read a district.
-     * @allow (list) Any user can list districts.
-     * @allow (create) User with UID 'user123' can create a district.
-     * @allow (update) User with UID 'user123' can update a district if they are the owner.
-     * @allow (delete) User with UID 'user123' can delete a district if they are the owner.
-     * @deny (create) User without authentication cannot create a district.
-     * @deny (update) User without authentication cannot update a district.
-     * @principle Allows public reads but restricts writes to the document owner.
-     */
-    match /districts/{districtId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner() {
-        return isSignedIn() && request.auth.uid == resource.data.authorId;
-      }
-      function isExistingOwner() {
-        return isSignedIn() && request.auth.uid == resource.data.authorId && exists(resource);
-      }
-
       allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && isExistingOwner();
-      allow delete: if isSignedIn() && isExistingOwner();
+      allow create, update, delete: if isAdmin();
     }
 
     /**
-     * @description Controls access to job posting documents.
-     * @path /jobs/{jobId}
-     * @allow (get) Any user can read a job posting.
-     * @allow (list) Any user can list job postings.
-     * @allow (create) User with UID 'user123' can create a job posting.
-     * @allow (update) User with UID 'user123' can update a job posting if they are the owner.
-     * @allow (delete) User with UID 'user123' can delete a job posting if they are the owner.
-     * @deny (create) User without authentication cannot create a job posting.
-     * @deny (update) User without authentication cannot update a job posting.
-     * @principle Allows public reads but restricts writes to the document owner.
+     * @description Rules for the /roles_admin collection.
+     * @path /roles_admin/{adminUserId}
+     * @allow create: Only the user themselves can create their admin role document. This allows a user to self-declare as admin (assuming appropriate backend logic enables this).  The ID in the path must match the authenticated user's ID.
+     * @allow get: Only the user themselves can read their admin role document.
+     * @allow delete: Only the user themselves can delete their admin role document.
+     * @deny update: Admin role documents cannot be updated.
+     * @deny list: Listing admin roles is not allowed.
+     * @deny create: if request.auth.uid != adminUserId;
+     * @deny get: if request.auth.uid != adminUserId;
+     * @deny delete: if request.auth.uid != adminUserId;
+     * @principle Self-creation with ID validation.
      */
-    match /jobs/{jobId} {
-        function isSignedIn() {
-            return request.auth != null;
-        }
-        function isOwner() {
-          return isSignedIn() && request.auth.uid == resource.data.authorId;
-        }
-        function isExistingOwner() {
-          return isSignedIn() && request.auth.uid == resource.data.authorId && exists(resource);
-        }
-
-        allow get, list: if true;
-        allow create: if isSignedIn();
-        allow update: if isSignedIn() && isExistingOwner();
-        allow delete: if isSignedIn() && isExistingOwner();
-    }
-
-    /**
-     * @description Controls access to community post documents.
-     * @path /posts/{postId}
-     * @allow (get) Any user can read a community post.
-     * @allow (list) Any user can list community posts.
-     * @allow (create) User with UID 'user123' can create a community post with authorId 'user123'.
-     * @allow (update) User with UID 'user123' can update a community post with authorId 'user123'.
-     * @allow (delete) User with UID 'user123' can delete a community post with authorId 'user123'.
-     * @deny (create) User with UID 'user123' cannot create a community post with authorId 'user456' (mismatched authorId).
-     * @deny (update) User with UID 'user123' cannot update a community post with authorId 'user456' (not the author).
-     * @principle Allows public reads but restricts writes to the document owner.
-     */
-    match /posts/{postId} {
-        function isSignedIn() {
-            return request.auth != null;
-        }
-        function isOwner() {
-          return isSignedIn() && request.auth.uid == resource.data.authorId;
-        }
-        function isExistingOwner() {
-          return isSignedIn() && request.auth.uid == resource.data.authorId && exists(resource);
-        }
-
-        allow get, list: if true;
-        allow create: if isSignedIn() && request.auth.uid == request.resource.data.authorId;
-        allow update: if isSignedIn() && isExistingOwner();
-        allow delete: if isSignedIn() && isExistingOwner();
+    match /roles_admin/{adminUserId} {
+        allow create: if isSignedIn() && request.auth.uid == adminUserId;
+        allow get: if isSignedIn() && request.auth.uid == adminUserId;
+        allow update: if false;
+        allow delete: if isSignedIn() && request.auth.uid == adminUserId;
+        allow list: if false;
     }
   }
 }

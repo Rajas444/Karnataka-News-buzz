@@ -27,22 +27,17 @@ const requiredEnvVars = [
 const missingVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
 let app;
-let auth;
-let db;
-let storage;
 
 if (missingVars.length > 0) {
-  console.warn(`Firebase config is missing the following environment variables: ${missingVars.join(', ')}. Firebase will not be initialized.`);
-  // In this case, services will be null and dependent parts of the app will fail gracefully.
-  app = null;
-  auth = null;
-  db = null;
-  storage = null;
+  console.warn(`Firebase config is missing the following environment variables: ${missingVars.join(', ')}. Using placeholder config.`);
+  // Use a placeholder config if env vars are missing
+  app = getApps().length ? getApp() : initializeApp({});
 } else {
     app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-    storage = getStorage(app);
 }
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
 export { app, auth, db, storage };

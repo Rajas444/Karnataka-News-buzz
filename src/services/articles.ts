@@ -119,9 +119,9 @@ export async function getArticles(options?: {
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
     try {
         const articlesCollection = collection(db, 'articles');
-        const { pageSize = 20, startAfterDocId, categorySlug, districtId } = options || {};
+        const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
         
-        const constraints = [];
+        let constraints = [];
         
         if (districtId && districtId !== 'all') {
             constraints.push(where('districtId', '==', districtId));
@@ -152,7 +152,8 @@ export async function getArticles(options?: {
 
         if (snapshot.empty && !startAfterDocId) {
             console.log("Firestore is empty or returned no results for the query. Falling back to placeholders.");
-            return { articles: placeholderArticles, lastVisibleDocId: null };
+            const filteredPlaceholders = placeholderArticles.filter(p => !districtId || districtId === 'all' || p.districtId === districtId);
+            return { articles: filteredPlaceholders.slice(0, pageSize), lastVisibleDocId: null };
         }
 
         const fetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
@@ -169,7 +170,9 @@ export async function getArticles(options?: {
         };
     } catch(error) {
         console.warn("Failed to fetch articles from Firestore, using placeholder data as a fallback. Error:", error);
-        return { articles: placeholderArticles, lastVisibleDocId: null };
+        const { districtId, pageSize = 10 } = options || {};
+        const filteredPlaceholders = placeholderArticles.filter(p => !districtId || districtId === 'all' || p.districtId === districtId);
+        return { articles: filteredPlaceholders.slice(0, pageSize), lastVisibleDocId: null };
     }
 }
 

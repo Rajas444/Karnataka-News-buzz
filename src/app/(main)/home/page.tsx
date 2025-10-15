@@ -31,7 +31,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     // Fetch districts for the filter controls.
     districts = await getDistricts();
     
-    // The getArticles service now handles all fallback logic internally.
+    // The getArticles service now handles all fallback logic and filtering.
     const { articles } = await getArticles({
       pageSize: 11, // Fetch one extra for the top article
       categorySlug,

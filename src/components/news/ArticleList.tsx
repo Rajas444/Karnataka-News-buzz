@@ -16,8 +16,6 @@ import {
   orderBy,
   Timestamp,
   where,
-  getDocs,
-  doc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -35,7 +33,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
   const [hasMore, setHasMore] = useState(initialArticles.length > 0);
   const { toast } = useToast();
   
-  // This effect sets up the component state based on initial props.
   useEffect(() => {
     async function fetchInitialData() {
       try {
@@ -56,7 +53,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
         } else {
             setLastVisibleDocId(null);
         }
-        // Assume there might be more if the initial fetch was full.
         setHasMore(initialArticles.length >= 10); 
     } else {
         setLastVisibleDocId(null);
@@ -65,34 +61,47 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
   }, [initialArticles]);
 
 
-  // This effect handles real-time updates for new articles.
   useEffect(() => {
     if (!db) return;
 
-    const newestArticleTimestamp = articles.length > 0 && articles[0].publishedAt 
-        ? Timestamp.fromDate(new Date(articles[0].publishedAt))
-        : Timestamp.now();
-
-    const constraints = [
-        where('publishedAt', '>=', newestArticleTimestamp),
-        orderBy('publishedAt', 'desc')
+    let constraints = [
+        orderBy('publishedAt', 'desc'),
     ];
+
+    if (articles.length > 0 && articles[0].publishedAt) {
+      constraints.push(where('publishedAt', '>=', Timestamp.fromDate(new Date(articles[0].publishedAt))));
+    } else {
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      constraints.push(where('publishedAt', '>=', Timestamp.fromDate(oneMonthAgo)));
+    }
+    
+    if (districtId && districtId !== 'all') {
+      constraints.push(where('districtId', '==', districtId));
+    }
     
     const q = query(collection(db, 'articles'), ...constraints);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
+        snapshot.docChanges().forEach(async (change) => {
             if (change.type === 'added') {
-                const newArticle = { id: change.doc.id, ...change.doc.data() } as Article;
-                 if (newArticle.publishedAt) {
-                  newArticle.publishedAt = (newArticle.publishedAt as any).toDate().toISOString();
-                }
-                setArticles(prev => {
-                    const shouldShow = 
-                        (!categorySlug || newArticle.categoryIds?.includes(categorySlug)) &&
-                        (!districtId || districtId === 'all' || newArticle.districtId === districtId);
+                const docData = change.doc.data();
+                const newArticle = { 
+                    id: change.doc.id, 
+                    ...docData,
+                    publishedAt: docData.publishedAt?.toDate().toISOString(),
+                    createdAt: docData.createdAt?.toDate().toISOString(),
+                    updatedAt: docData.updatedAt?.toDate().toISOString(),
+                } as Article;
 
-                    if (shouldShow && !prev.some(a => a.id === newArticle.id)) {
+                const districts = await getDistricts();
+                const district = districts.find(d => d.id === newArticle.districtId);
+                if (district) {
+                    newArticle.district = district.name;
+                }
+
+                setArticles(prev => {
+                    if (!prev.some(a => a.id === newArticle.id)) {
                         const newArticles = [newArticle, ...prev];
                         newArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
                         return newArticles;
@@ -109,17 +118,12 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
   }, [articles, categorySlug, districtId]);
 
   const handleLoadMore = useCallback(async () => {
-    if (!hasMore || loadingMore || !lastVisibleDocId) return;
+    if (!hasMore || loadingMore) return;
 
     setLoadingMore(true);
     try {
-      let startAfterSnapshot;
-      if (lastVisibleDocId) {
-        startAfterSnapshot = await getDoc(doc(db, "articles", lastVisibleDocId));
-      }
-
       const { articles: newArticles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
-        pageSize: 20,
+        pageSize: 10,
         startAfterDocId: lastVisibleDocId,
         categorySlug,
         districtId,

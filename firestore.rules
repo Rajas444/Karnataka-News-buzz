@@ -1,43 +1,136 @@
-
+/**
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a hybrid security model, balancing public readability with owner-only write access for certain collections.
+ *
+ * Data Structure:
+ * - `/users/{userId}`: Stores user profile information, accessible only to the user themselves.
+ * - `/articles/{articleId}`: Stores news articles, publicly readable but writable only by the article's author.
+ * - `/categories/{categoryId}`: Stores news categories, publicly readable. Writes are not permitted through security rules.
+ * - `/districts/{districtId}`: Stores the list of districts, publicly readable. Writes are not permitted through security rules.
+ * - `/jobs/{jobId}`: Stores job postings, publicly readable. Writes are not permitted through security rules.
+ * - `/posts/{postId}`: Stores community posts, publicly readable but writable only by the post's author.
+ *
+ * Key Security Decisions:
+ * - Users can only read and write their own profile data.
+ * - Articles and posts are publicly readable, but only the author can modify or delete them. The author is determined by the `authorId` field.
+ * - Listing users is disallowed for privacy.
+ * - The `categories` and `districts` collections are publicly readable, but not writable through the client.
+ *
+ * Denormalization for Authorization:
+ * - The `articles` and `posts` collections rely on the `authorId` field within each document to determine ownership for write operations.
+ *
+ * Structural Segregation:
+ * - Publicly readable content (articles, categories, districts, posts, jobs) is stored in top-level collections.
+ */
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // HELPER FUNCTIONS
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-      // Check if the user is authenticated and their user document has the 'admin' role.
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
-    // USER PROFILES
+    /**
+     * @description Manages user profile data. Users can only access their own profile.
+     * @path /users/{userId}
+     * @allow (create) - User 'abc' can create their profile if request.auth.uid == 'abc'.
+     * @allow (get, update, delete) - User 'abc' can get, update, and delete their profile if request.auth.uid == 'abc'.
+     * @deny (create) - User 'def' cannot create a profile with ID 'abc'.
+     * @deny (update, delete) - User 'def' cannot update or delete user 'abc' profile.
+     * @principle Enforces document ownership for all operations.
+     */
     match /users/{userId} {
-      // Admins can read any user profile.
-      // A user can read their own profile.
-      allow read: if isAdmin() || isOwner(userId);
-      
-      // Admins can update any user profile (e.g., change roles).
-      // A user can update their own profile.
-      allow write: if isAdmin() || isOwner(userId);
-    }
-    
-    // Rule to allow admins to list all users (for the dashboard stats)
-    match /users/{userId=**} {
-        allow list: if isAdmin();
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.uid == request.auth.uid;
+      allow update: if isOwner(userId) && request.resource.data.uid == request.auth.uid;
+      allow delete: if isOwner(userId) && request.resource.data.uid == request.auth.uid;
     }
 
-    // PUBLIC COLLECTIONS
-    // Articles, categories, jobs, etc., should be publicly readable.
-    match /{publicCollection}/{docId} where publicCollection in ['articles', 'categories', 'districts', 'jobs', 'posts'] {
-      // Anyone can read (get individual docs or list multiple docs).
+    /**
+     * @description Manages news articles. Articles are publicly readable, but only the author can modify or delete them.
+     * @path /articles/{articleId}
+     * @allow (get, list) - Any user can read the article.
+     * @allow (create) - User 'abc' can create an article if request.resource.data.authorId == 'abc'.
+     * @allow (update, delete) - User 'abc' can update/delete the article if they are the author (resource.data.authorId == 'abc').
+     * @deny (create) - User 'def' cannot create an article with authorId 'abc'.
+     * @deny (update, delete) - User 'def' cannot update/delete an article authored by 'abc'.
+     * @principle Public read, owner-only writes.  Enforces document ownership for write operations.
+     */
+    match /articles/{articleId} {
+      function isOwner(authorId) {
+        return request.auth.uid == authorId;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
       allow get, list: if true;
-      
-      // Only admins can create, update, or delete.
-      allow write: if isAdmin();
+      allow create: if isSignedIn() && isOwner(request.resource.data.authorId);
+      allow update: if isSignedIn() && isOwner(resource.data.authorId);
+      allow delete: if isSignedIn() && isOwner(resource.data.authorId);
+    }
+
+    /**
+     * @description Manages news categories. Categories are publicly readable.
+     * @path /categories/{categoryId}
+     * @allow (get, list) - Any user can read the category.
+     * @deny (create, update, delete) - No one can create, update, or delete categories via client-side rules.
+     * @principle Public read, no client-side writes.
+     */
+    match /categories/{categoryId} {
+      allow get, list: if true;
+    }
+
+       /**
+     * @description Manages districts. Districts are publicly readable.
+     * @path /districts/{districtId}
+     * @allow (get, list) - Any user can read the district.
+     * @deny (create, update, delete) - No one can create, update, or delete districts via client-side rules.
+     * @principle Public read, no client-side writes.
+     */
+    match /districts/{districtId} {
+      allow get, list: if true;
+    }
+
+    /**
+     * @description Manages job postings. Job postings are publicly readable.
+     * @path /jobs/{jobId}
+     * @allow (get, list) - Any user can read a job posting.
+     * @deny (create, update, delete) - No one can create, update, or delete jobs via client-side rules.
+     * @principle Public read, no client-side writes.
+     */
+    match /jobs/{jobId} {
+        allow get, list: if true;
+    }
+
+    /**
+     * @description Manages community posts. Posts are publicly readable, but only the author can modify or delete them.
+     * @path /posts/{postId}
+     * @allow (get, list) - Any user can read a post.
+     * @allow (create) - User 'abc' can create a post if request.resource.data.authorId == 'abc'.
+     * @allow (update, delete) - User 'abc' can update/delete the post if they are the author (resource.data.authorId == 'abc').
+     * @deny (create) - User 'def' cannot create a post with authorId 'abc'.
+     * @deny (update, delete) - User 'def' cannot update/delete a post authored by 'abc'.
+     * @principle Public read, owner-only writes.  Enforces document ownership for write operations.
+     */
+    match /posts/{postId} {
+        function isOwner(authorId) {
+            return request.auth.uid == authorId;
+        }
+
+        function isSignedIn() {
+            return request.auth != null;
+        }
+
+        allow get, list: if true;
+        allow create: if isSignedIn() && isOwner(request.resource.data.authorId);
+        allow update: if isSignedIn() && isOwner(resource.data.authorId);
+        allow delete: if isSignedIn() && isOwner(resource.data.authorId);
     }
   }
 }

@@ -49,26 +49,4 @@ export const placeholderCategories: Category[] = [
     { id: 'ganesh-chaturthi', name: 'ಗಣೇಶ ಚತುರ್ಥಿ', slug: 'ganesh-chaturthi' },
 ];
 
-export const placeholderArticles: Article[] = [
-  {
-    id: 'karnataka-caste-census-2025',
-    title: 'Karnataka Kicks Off Social and Educational Survey for 2025',
-    content: `The Karnataka State Backward Classes Commission has officially launched its comprehensive Social and Educational Survey for 2025. Commonly referred to as the caste census, the massive data collection drive has begun with its initial house-listing phase across the state, marking a significant step towards understanding the socio-economic landscape of Karnataka.\n\nEnumerators have started visiting households to issue a Unique Household ID (UHID) by affixing a sticker, a process already underway in several parts of Bengaluru and other districts. These stickers prominently display the UHID, a survey ID, a QR code for digital tracking, and a dedicated helpline number (8050770004) for any public queries. Officials have urged residents not to remove the stickers to ensure a seamless and accurate data collection process over the coming months.\n\nThe survey is designed to gather detailed, up-to-date information on the social, educational, and economic status of all communities residing in Karnataka. This data will be critical for evaluating the effectiveness of current reservation policies and for making informed decisions on future welfare programs and resource allocation.\n\nThe commission has emphasized its commitment to a transparent and thorough process. The findings of this census are expected to have far-reaching implications, potentially leading to a recalibration of reservation quotas and the introduction of new schemes aimed at uplifting marginalized communities. The final report is anticipated to be a foundational document for governance in the state for years to come.`,
-    imageUrl: 'https://static.langimg.com/vk/thumb/124031211/caste-census-begins-in-karnataka-decision-made-to-collect-data-in-3-ways-submission-of-these-2-documents-is-mandatory.jpg?height=900&imgsize=66932&resizemode=75&width=1600',
-    "data-ai-hint": 'census survey',
-    author: 'KNP Staff Reporter',
-    authorId: 'staff-1',
-    categoryIds: ['general', 'politics'],
-    status: 'published',
-    publishedAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    seo: {
-      keywords: ['caste census', 'Karnataka', 'survey', 'Backward Classes Commission', '2025'],
-      metaDescription: 'The Karnataka State Backward Classes Commission has begun its 2025 Social and Educational Survey, with the house-listing phase now underway to collect data for future policies.',
-    },
-    views: 2840,
-    districtId: 'bengaluru-urban',
-    district: 'Bengaluru Urban',
-  },
-];
+export const placeholderArticles: Article[] = [];

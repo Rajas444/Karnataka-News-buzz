@@ -71,25 +71,4 @@ export const placeholderArticles: Article[] = [
     districtId: 'bengaluru-urban',
     district: 'Bengaluru Urban',
   },
-  {
-    id: 'world-aids-day-rally-udupi',
-    title: 'World AIDS Day: Awareness Rally Held in Udupi to Promote HIV Prevention',
-    content: `On the occasion of World AIDS Day, an awareness rally was organized in Udupi by the District Health and Family Welfare Department in collaboration with various non-governmental organizations. The rally, which saw participation from healthcare workers, students, and the general public, was flagged off from the District Hospital premises.\n\nParticipants marched through the city, holding placards and banners with slogans emphasizing the importance of HIV testing, safe practices, and the elimination of stigma and discrimination against people living with HIV. The event aimed to reinforce the message that with advancements in treatment, HIV is a manageable health condition and that community support is crucial.\n\nSpeaking at the event, the District Health Officer highlighted the progress made in HIV prevention and care but stressed the need for continued vigilance. "Our goal is to create a future where new HIV infections are a thing of the past. Events like these are vital to keep the conversation alive and ensure everyone has access to the information and services they need," he said.`,
-    imageUrl: 'https://picsum.photos/seed/udupi-rally/800/600',
-    "data-ai-hint": 'HIV awareness rally',
-    author: 'KNP Staff Reporter',
-    authorId: 'staff-1',
-    categoryIds: ['health-lifestyle', 'society-community'],
-    status: 'published',
-    publishedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    seo: {
-      keywords: ['HIV', 'AIDS', 'World AIDS Day', 'Udupi', 'Health'],
-      metaDescription: 'An awareness rally was held in Udupi on World AIDS Day to promote HIV prevention, testing, and community support, with healthcare workers and the public participating.',
-    },
-    views: 1250,
-    districtId: 'udupi',
-    district: 'Udupi',
-  }
 ];

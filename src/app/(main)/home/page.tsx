@@ -63,7 +63,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       if (fallbackNews.length > 0) {
         topArticle = fallbackNews[0] ?? null;
         if (initialArticles.length === 0) {
-          initialArticles = fallbackNews.slice(1, 10);
+            // Ensure no duplicates are added if topArticle is also in the fallback list
+            const existingIds = new Set(initialArticles.map(a => a.id));
+            const articlesToAdd = fallbackNews.slice(1, 10).filter(a => !existingIds.has(a.id));
+            initialArticles.push(...articlesToAdd);
         }
       }
     }

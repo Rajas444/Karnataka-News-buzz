@@ -25,6 +25,14 @@ async function serializeArticle(doc: any): Promise<Article> {
         }
     }
     
+    // Ensure Timestamps are converted to serializable ISO strings
+    const toISOString = (date: any) => {
+        if (!date) return null;
+        if (date instanceof Timestamp) return date.toDate().toISOString();
+        if (date instanceof Date) return date.toISOString();
+        return date;
+    }
+
     const plainObject = {
         id: doc.id,
         title: data.title,
@@ -40,9 +48,9 @@ async function serializeArticle(doc: any): Promise<Article> {
         source: data.source,
         sourceUrl: data.sourceUrl,
         districtId: data.districtId,
-        publishedAt: data.publishedAt ? (data.publishedAt as Timestamp).toDate().toISOString() : null,
-        createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate().toISOString() : null,
-        updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate().toISOString() : null,
+        publishedAt: toISOString(data.publishedAt),
+        createdAt: toISOString(data.createdAt),
+        updatedAt: toISOString(data.updatedAt),
         district: districtName,
     };
     
@@ -115,7 +123,10 @@ export async function getArticles(options?: {
         
         const constraints = [];
 
-        // Apply filters only if they are provided and not 'all'
+        if (districtId && districtId !== 'all') {
+            constraints.push(where('districtId', '==', districtId));
+        }
+
         if (categorySlug && categorySlug !== 'all') {
             const categories = await getCategories();
             const categoryId = categories.find(c => c.slug === categorySlug)?.id;
@@ -124,10 +135,6 @@ export async function getArticles(options?: {
             }
         }
         
-        if (districtId && districtId !== 'all') {
-            constraints.push(where('districtId', '==', districtId));
-        }
-
         constraints.push(where('status', '==', 'published'));
         constraints.push(orderBy('publishedAt', 'desc'));
 
@@ -143,9 +150,6 @@ export async function getArticles(options?: {
         const q = query(articlesCollection, ...constraints);
         const snapshot = await getDocs(q);
 
-        // *** CENTRALIZED FALLBACK LOGIC ***
-        // If the very first query for a page returns nothing, use placeholders.
-        // This avoids complex logic in the page component.
         if (snapshot.empty && !startAfterDocId) {
             console.log("Firestore is empty or returned no results for the query. Falling back to placeholders.");
             return { articles: placeholderArticles, lastVisibleDocId: null };
@@ -154,7 +158,6 @@ export async function getArticles(options?: {
         const fetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
         
         let newLastVisibleDocId: string | null = null;
-        // Determine if there are more articles to load for pagination.
         if (snapshot.docs.length === pageSize) {
             const lastVisible = snapshot.docs[snapshot.docs.length - 1];
             newLastVisibleDocId = lastVisible.id;
@@ -166,7 +169,6 @@ export async function getArticles(options?: {
         };
     } catch(error) {
         console.warn("Failed to fetch articles from Firestore, using placeholder data as a fallback. Error:", error);
-        // If any error occurs during the process, fall back to placeholders.
         return { articles: placeholderArticles, lastVisibleDocId: null };
     }
 }

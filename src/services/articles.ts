@@ -122,6 +122,10 @@ export async function getArticles(options?: {
                 constraints.push(where('categoryIds', 'array-contains', categoryId));
             }
         }
+        
+        if (districtId && districtId !== 'all') {
+            constraints.push(where('districtId', '==', districtId));
+        }
 
         constraints.push(orderBy('publishedAt', 'desc'));
 
@@ -132,7 +136,7 @@ export async function getArticles(options?: {
             }
         }
 
-        constraints.push(limit(25));
+        constraints.push(limit(pageSize));
         
         const q = query(articlesCollection, ...constraints);
         const snapshot = await getDocs(q);
@@ -144,22 +148,14 @@ export async function getArticles(options?: {
 
         const fetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
         
-        const filteredArticles = districtId && districtId !== 'all'
-            ? fetchedArticles.filter(a => a.districtId === districtId)
-            : fetchedArticles;
-        
-        const finalArticles = filteredArticles.slice(0, pageSize);
         let newLastVisibleDocId: string | null = null;
-
-        if (snapshot.docs.length > 0) {
-            const lastVisibleDocInBatch = snapshot.docs[snapshot.docs.length - 1];
-            if (finalArticles.length > 0 && lastVisibleDocInBatch) {
-                newLastVisibleDocId = lastVisibleDocInBatch.id;
-            }
+        if (snapshot.docs.length === pageSize) {
+            const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+            newLastVisibleDocId = lastVisible.id;
         }
     
         return {
-            articles: finalArticles,
+            articles: fetchedArticles,
             lastVisibleDocId: newLastVisibleDocId
         };
     } catch(error) {

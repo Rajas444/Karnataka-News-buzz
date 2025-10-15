@@ -33,8 +33,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
   const [hasMore, setHasMore] = useState(initialArticles.length > 0);
   const { toast } = useToast();
   
-  const loadTime = useRef(new Date());
-
   // This effect sets up the component state based on initial props.
   useEffect(() => {
     async function fetchInitialData() {
@@ -69,8 +67,13 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
   useEffect(() => {
     if (!db) return; // Ensure db is initialized
 
+    // Determine the timestamp of the newest article to listen from that point.
+    const newestArticleTimestamp = articles.length > 0 && articles[0].publishedAt 
+        ? Timestamp.fromMillis(new Date(articles[0].publishedAt).getTime() + 1)
+        : Timestamp.now();
+
     const constraints = [
-        where('publishedAt', '>', Timestamp.fromDate(loadTime.current)),
+        where('publishedAt', '>', newestArticleTimestamp),
         orderBy('publishedAt', 'desc')
     ];
     
@@ -101,7 +104,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     });
 
     return () => unsubscribe();
-  }, [categorySlug, districtId]);
+  }, [articles, categorySlug, districtId]);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !lastVisibleDocId) return;

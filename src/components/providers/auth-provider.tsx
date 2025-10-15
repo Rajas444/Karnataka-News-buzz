@@ -4,8 +4,8 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
+import { getUser } from '@/services/users';
 import type { UserProfile, UserRole } from '@/lib/types';
 
 interface AuthContextType {
@@ -33,24 +33,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       if (user) {
         setUser(user);
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          const profile = userDoc.data() as UserProfile;
-          setUserProfile(profile);
-          setUserRole(profile.role);
-        } else {
-          // For this scaffold, we assume a default role of 'user' if no profile exists.
-          // In a real app, you might want to create a profile here or handle it differently.
-          const defaultProfile: UserProfile = {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            role: 'user',
-          };
-          setUserProfile(defaultProfile);
-          setUserRole('user');
+        try {
+          const profile = await getUser(user.uid);
+          if (profile) {
+            setUserProfile(profile);
+            setUserRole(profile.role);
+          } else {
+            const defaultProfile: UserProfile = {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              role: 'user',
+            };
+            setUserProfile(defaultProfile);
+            setUserRole('user');
+          }
+        } catch (error) {
+           console.error("AuthProvider: Failed to get user profile", error);
+           // Setting user to null to force re-authentication or error state
+           setUser(null);
+           setUserProfile(null);
+           setUserRole(null);
         }
+
       } else {
         setUser(null);
         setUserProfile(null);

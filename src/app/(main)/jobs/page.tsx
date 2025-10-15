@@ -33,7 +33,7 @@ export default function JobsPage() {
       }
     }
     fetchJobs();
-  }, [toast]);
+  }, []);
 
   const filteredJobs = jobs.filter(job => {
     const isExpired = new Date(job.lastDateToApply) < new Date();

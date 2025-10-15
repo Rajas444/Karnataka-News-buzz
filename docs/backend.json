@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "NewsArticle": {
@@ -6,50 +7,16 @@
       "type": "object",
       "description": "Represents a news article.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the news article."
-        },
-        "title": {
-          "type": "string",
-          "description": "The title of the news article."
-        },
-        "content": {
-          "type": "string",
-          "description": "The main content of the news article."
-        },
-        "imageUrl": {
-          "type": "string",
-          "description": "URL of the image associated with the news article.",
-          "format": "uri"
-        },
-        "categoryId": {
-          "type": "string",
-          "description": "Reference to Category. (Relationship: Category 1:N NewsArticle)"
-        },
-        "district": {
-          "type": "string",
-          "description": "The district to which the news article belongs."
-        },
-        "publicationDate": {
-          "type": "string",
-          "description": "Date and time when the news article was published.",
-          "format": "date-time"
-        },
-        "isPublished": {
-          "type": "boolean",
-          "description": "Indicates whether the news article is published or not."
-        }
+        "id": { "type": "string", "description": "Unique identifier for the news article." },
+        "title": { "type": "string", "description": "The title of the news article." },
+        "content": { "type": "string", "description": "The main content of the news article." },
+        "imageUrl": { "type": "string", "description": "URL of the image associated with the news article.", "format": "uri" },
+        "categoryIds": { "type": "array", "items": { "type": "string" }, "description": "Array of category IDs." },
+        "districtId": { "type": "string", "description": "The district ID to which the news article belongs." },
+        "publishedAt": { "type": "string", "description": "Date and time when the news article was published.", "format": "date-time" },
+        "status": { "type": "string", "enum": ["published", "draft", "scheduled", "archived"], "description": "Publication status." }
       },
-      "required": [
-        "id",
-        "title",
-        "content",
-        "categoryId",
-        "district",
-        "publicationDate",
-        "isPublished"
-      ]
+      "required": ["title", "content", "categoryIds", "publishedAt", "status"]
     },
     "Category": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -57,24 +24,11 @@
       "type": "object",
       "description": "Represents a category for news articles.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the category."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the category (e.g., Politics, Sports)."
-        },
-        "description": {
-          "type": "string",
-          "description": "A description of the category."
-        }
+        "id": { "type": "string", "description": "Unique identifier for the category." },
+        "name": { "type": "string", "description": "The name of the category (e.g., Politics, Sports)." },
+        "slug": { "type": "string", "description": "URL-friendly slug for the category." }
       },
-      "required": [
-        "id",
-        "name",
-        "description"
-      ]
+      "required": ["name", "slug"]
     },
     "AdminUser": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -82,84 +36,30 @@
       "type": "object",
       "description": "Represents an administrator user.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the admin user."
-        },
-        "email": {
-          "type": "string",
-          "description": "The email address of the admin user.",
-          "format": "email"
-        },
-        "displayName": {
-          "type": "string",
-          "description": "The display name of the admin user."
-        }
+        "uid": { "type": "string", "description": "The Firebase UID of the admin user." },
+        "role": { "type": "string", "enum": ["admin"], "description": "The role of the user, which must be 'admin'." }
       },
-      "required": [
-        "id",
-        "email",
-        "displayName"
-      ]
+      "required": ["uid", "role"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
     "structure": [
       {
         "path": "/news_articles/{newsArticleId}",
-        "definition": {
-          "entityName": "NewsArticle",
-          "schema": {
-            "$ref": "#/backend/entities/NewsArticle"
-          },
-          "description": "Stores news articles. Includes denormalized 'categoryId' and 'district' fields for filtering and querying.",
-          "params": [
-            {
-              "name": "newsArticleId",
-              "description": "Unique identifier for the news article."
-            }
-          ]
-        }
+        "definition": { "entityName": "NewsArticle", "schema": { "$ref": "#/entities/NewsArticle" } }
       },
       {
         "path": "/categories/{categoryId}",
-        "definition": {
-          "entityName": "Category",
-          "schema": {
-            "$ref": "#/backend/entities/Category"
-          },
-          "description": "Stores news categories.",
-          "params": [
-            {
-              "name": "categoryId",
-              "description": "Unique identifier for the category."
-            }
-          ]
-        }
+        "definition": { "entityName": "Category", "schema": { "$ref": "#/entities/Category" } }
       },
       {
         "path": "/roles_admin/{adminUserId}",
-        "definition": {
-          "entityName": "AdminUser",
-          "schema": {
-            "$ref": "#/backend/entities/AdminUser"
-          },
-          "description": "Documents in this collection indicate admin privileges. Existence of a document for a user ID grants admin access.",
-          "params": [
-            {
-              "name": "adminUserId",
-              "description": "The Firebase UID of the admin user."
-            }
-          ]
-        }
+        "definition": { "entityName": "AdminUser", "schema": { "$ref": "#/entities/AdminUser" } }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the 'Karnataka News Pulse' application, focusing on admin-managed news articles, categories, and user roles. Authorization Independence is achieved by using dedicated collections for admin roles (`/roles_admin/{uid}`) and path-based ownership for user-related data. Segregation of data is applied by separating news articles and categories into distinct collections, with news articles further segmented by district. The `NewsArticle` documents denormalize the `categoryId` and `district` to enable efficient filtering and querying.  This structure facilitates simple, robust, and easily debuggable security rules, ensuring only authorized admins can manage news articles and categories while supporting district-specific filtering for news display."
+    "reasoning": "The Firestore structure is designed to support the news portal application. 'news_articles' and 'categories' are top-level collections for content. A dedicated '/roles_admin/{uid}' collection manages admin privileges securely. Each document in '/roles_admin' confirms a user's admin status. This design enables clear and robust security rules, allowing public read access to articles and categories while restricting write access to authenticated admins."
   }
 }

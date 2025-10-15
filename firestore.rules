@@ -1,102 +1,44 @@
-/**
- * @fileoverview Firestore Security Rules for the 'Karnataka News Pulse' application.
- *
- * Core Philosophy:
- * This ruleset implements a role-based access control system, primarily focused on
- * securing news articles and categories managed by administrators. A dedicated
- * collection (`/roles_admin/{uid}`) determines administrative privileges.
- *
- * Data Structure:
- * - /news_articles/{newsArticleId}: Stores news articles, publicly readable but
- *   writable only by admins.
- * - /categories/{categoryId}: Stores news categories, publicly readable but
- *   writable only by admins.
- * - /roles_admin/{adminUserId}: Indicates admin privileges. The existence of a
- *   document for a user ID grants admin access.
- *
- * Key Security Decisions:
- * - Public Read Access: News articles and categories are publicly readable to
- *   allow broad access to content.
- * - Admin-Only Writes: Only users with admin privileges (as determined by their
- *   presence in the `/roles_admin` collection) can create, update, or delete
- *   news articles and categories.
- * - No User Listing: Listing users is explicitly denied to protect user privacy.
- *
- * Denormalization for Authorization:
- * - Admin Role: The existence of a document in the `/roles_admin/{uid}` collection
- *   is used as the primary indicator of admin privileges. This avoids the need
- *   for complex queries or joins to determine admin status.
- *
- * Structural Segregation:
- * - Clear separation of news articles, categories, and admin roles into distinct
- *   collections simplifies the security rules and improves maintainability.
- */
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * @description Checks if the current user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the user is an admin by verifying the existence of
-     *              a document in the `/roles_admin/{uid}` collection.
-     * @return {boolean} True if the user is an admin, false otherwise.
-     */
-    function isAdmin() {
-      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-    }
-
-    /**
-     * @description Rules for the /news_articles collection.
-     * @path /news_articles/{newsArticleId}
-     * @allow (get, list): Any user can read news articles.
-     * @allow (create, update, delete): Only admins can create, update, or delete news articles.
-     * @deny (create, update, delete): Non-admins cannot create, update, or delete news articles.
-     * @principle Public read access with admin-only writes.
-     */
     match /news_articles/{newsArticleId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+      allow read: if true;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data.role == 'admin';
     }
 
-    /**
-     * @description Rules for the /categories collection.
-     * @path /categories/{categoryId}
-     * @allow (get, list): Any user can read categories.
-     * @allow (create, update, delete): Only admins can create, update, or delete categories.
-     * @deny (create, update, delete): Non-admins cannot create, update, or delete categories.
-     * @principle Public read access with admin-only writes.
-     */
     match /categories/{categoryId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+      allow read: if true;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data.role == 'admin';
     }
 
-    /**
-     * @description Rules for the /roles_admin collection.
-     * @path /roles_admin/{adminUserId}
-     * @allow create: Only the user themselves can create their admin role document. This allows a user to self-declare as admin (assuming appropriate backend logic enables this).  The ID in the path must match the authenticated user's ID.
-     * @allow get: Only the user themselves can read their admin role document.
-     * @allow delete: Only the user themselves can delete their admin role document.
-     * @deny update: Admin role documents cannot be updated.
-     * @deny list: Listing admin roles is not allowed.
-     * @deny create: if request.auth.uid != adminUserId;
-     * @deny get: if request.auth.uid != adminUserId;
-     * @deny delete: if request.auth.uid != adminUserId;
-     * @principle Self-creation with ID validation.
-     */
-    match /roles_admin/{adminUserId} {
-        allow create: if isSignedIn() && request.auth.uid == adminUserId;
-        allow get: if isSignedIn() && request.auth.uid == adminUserId;
-        allow update: if false;
-        allow delete: if isSignedIn() && request.auth.uid == adminUserId;
-        allow list: if false;
+    match /roles_admin/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false; // Only manageable from Firebase Console
+    }
+    
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false; // Deletions should be handled by an admin process
+    }
+
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+    }
+
+    match /jobs/{jobId} {
+      allow read: if true;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    match /districts/{districtId} {
+      allow read: if true;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data.role == 'admin';
     }
   }
 }

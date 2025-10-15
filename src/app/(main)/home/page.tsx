@@ -10,8 +10,6 @@ import CommunityHighlights from '@/components/posts/CommunityHighlights';
 import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
-import { getExternalNews } from '@/services/newsapi';
-import { placeholderArticles } from '@/lib/placeholder-data';
 
 type HomePageProps = {
   searchParams: {
@@ -26,56 +24,32 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   let districts = [];
   let initialArticles: Article[] = [];
-  let error: string | null = null;
   let topArticle: Article | null = null;
-  
+  let error: string | null = null;
+
   try {
+    // Fetch districts for the filter controls.
     districts = await getDistricts();
-  } catch (e) {
-    console.error("Failed to fetch filters data", e);
-  }
-
-  try {
+    
+    // The getArticles service now handles all fallback logic internally.
     const { articles } = await getArticles({
-      pageSize: 11,
+      pageSize: 11, // Fetch one extra for the top article
       categorySlug,
-      districtId
+      districtId,
     });
-    
-    let articlesToDisplay = articles;
 
-    // If Firestore returns no articles, use external news as a fallback.
-    if (articlesToDisplay.length === 0) {
-      try {
-        const externalArticles = await getExternalNews();
-        if (externalArticles.length > 0) {
-          articlesToDisplay = externalArticles;
-        } else {
-          // If both Firestore and external news are empty, use placeholders.
-          articlesToDisplay = placeholderArticles;
-        }
-      } catch (e) {
-        console.error("Failed to fetch external news, using placeholders.", e);
-        articlesToDisplay = placeholderArticles;
-      }
-    }
-    
-    // Now that we have a definitive list, separate the top article and the rest.
-    if (articlesToDisplay.length > 0) {
-      topArticle = articlesToDisplay[0];
-      initialArticles = articlesToDisplay.slice(1);
+    if (articles.length > 0) {
+      topArticle = articles[0];
+      initialArticles = articles.slice(1);
     }
 
   } catch (e: any) {
-    error = e.message || 'An unknown error occurred while fetching articles from the database.';
-    console.error("Error fetching initial articles:", error);
-    // Fallback to placeholders on database error
-    if (placeholderArticles.length > 0) {
-      topArticle = placeholderArticles[0];
-      initialArticles = placeholderArticles.slice(1);
-    }
+    error = e.message || 'An unknown error occurred while fetching articles.';
+    console.error("Error on HomePage:", error);
+    // In case of a catastrophic error, we can still try to render something.
+    initialArticles = [];
+    topArticle = null;
   }
-  
 
   const renderErrorState = () => (
     <div className="text-center bg-card p-8 rounded-lg">

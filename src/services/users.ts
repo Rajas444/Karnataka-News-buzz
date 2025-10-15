@@ -11,23 +11,13 @@ import { FirestorePermissionError } from '@/firebase/errors';
 // READ (one user)
 export async function getUser(uid: string): Promise<UserProfile | null> {
     const docRef = doc(db, 'users', uid);
-    try {
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            return docSnap.data() as UserProfile;
-        }
-        return null;
-    } catch (error: any) {
-         if (error.code === 'permission-denied') {
-            const permissionError = new FirestorePermissionError({
-                path: docRef.path,
-                operation: 'get',
-            });
-            errorEmitter.emit('permission-error', permissionError);
-         }
-         // Re-throw the original error to be handled by the calling code
-         throw error;
+    // This function can be called from Server Components, so we cannot use the client-side error emitter here.
+    // The permission error will be caught by the AuthProvider on the client side.
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return docSnap.data() as UserProfile;
     }
+    return null;
 }
 
 

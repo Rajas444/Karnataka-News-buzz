@@ -152,7 +152,7 @@ export async function getArticles(options?: {
 
         if (snapshot.empty && !startAfterDocId) {
             console.log("Firestore is empty or returned no results for the query. Falling back to placeholders.");
-            const filteredPlaceholders = placeholderArticles.filter(p => !districtId || districtId === 'all' || p.districtId === districtId);
+            const filteredPlaceholders = placeholderArticles.filter(p => (!districtId || districtId === 'all' || p.districtId === districtId) && (!categorySlug || categorySlug === 'all' || p.categoryIds.includes(categorySlug)));
             return { articles: filteredPlaceholders.slice(0, pageSize), lastVisibleDocId: null };
         }
 
@@ -170,9 +170,19 @@ export async function getArticles(options?: {
         };
     } catch(error) {
         console.warn("Failed to fetch articles from Firestore, using placeholder data as a fallback. Error:", error);
-        const { districtId, pageSize = 10 } = options || {};
-        const filteredPlaceholders = placeholderArticles.filter(p => !districtId || districtId === 'all' || p.districtId === districtId);
-        return { articles: filteredPlaceholders.slice(0, pageSize), lastVisibleDocId: null };
+        const { districtId, categorySlug, pageSize = 10, startAfterDocId } = options || {};
+        
+        const startIndex = startAfterDocId ? placeholderArticles.findIndex(p => p.id === startAfterDocId) + 1 : 0;
+
+        const filteredPlaceholders = placeholderArticles.filter(p => 
+            (!districtId || districtId === 'all' || p.districtId === districtId) && 
+            (!categorySlug || categorySlug === 'all' || p.categoryIds.includes(categorySlug))
+        );
+
+        const newArticles = filteredPlaceholders.slice(startIndex, startIndex + pageSize);
+        const newLastVisibleDocId = (startIndex + pageSize < filteredPlaceholders.length) ? newArticles[newArticles.length - 1]?.id : null;
+        
+        return { articles: newArticles, lastVisibleDocId: newLastVisibleDocId };
     }
 }
 

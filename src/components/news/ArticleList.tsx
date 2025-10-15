@@ -80,7 +80,14 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
       constraints.push(where('districtId', '==', districtId));
     }
     
-    const q = query(collection(db, 'articles'), ...constraints);
+    if(categorySlug && categorySlug !== 'all') {
+      const categoryId = allCategories.find(c => c.slug === categorySlug)?.id;
+      if (categoryId) {
+        constraints.push(where('categoryIds', 'array-contains', categoryId));
+      }
+    }
+    
+    const q = query(collection(db, 'articles'), ...constraints as any);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         snapshot.docChanges().forEach(async (change) => {
@@ -115,7 +122,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     });
 
     return () => unsubscribe();
-  }, [articles, categorySlug, districtId]);
+  }, [articles, categorySlug, districtId, allCategories]);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;

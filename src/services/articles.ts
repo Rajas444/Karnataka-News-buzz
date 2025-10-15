@@ -123,6 +123,11 @@ export async function getArticles(options?: {
         
         const constraints = [];
 
+        // Filter for articles published in the last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        constraints.push(where('publishedAt', '>=', thirtyDaysAgo));
+
         if (districtId && districtId !== 'all') {
             constraints.push(where('districtId', '==', districtId));
         }

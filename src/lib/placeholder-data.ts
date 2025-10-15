@@ -82,8 +82,8 @@ export const placeholderArticles: Article[] = [
     },
     {
         id: 'mysuru-dasara-preparations-2',
-        title: 'ಮೈಸೂರು ದಸರಾ 2024: ዝግጅቱ ಭರದಿಂದ ಸಾಗಿದೆ',
-        content: 'ಪ್ರಸಿದ್ಧ ಮೈಸೂರು ದಸರಾ ಮಹೋತ್ಸವದ ಸಿದ್ಧತೆಗಳು ಭರದಿಂದ ಸಾಗುತ್ತಿವೆ. ಅರಮನೆ ನಗರಿಯು ಪ್ರವಾಸಿಗರನ್ನು ಸ್ವಾಗತಿಸಲು ಸಜ್ಜಾಗುತ್ತಿದೆ, ಸಾಂಸ್ಕೃತಿಕ ಕಾರ್ಯಕ್ರಮಗಳು ಮತ್ತು ዝግጅቱಗಳು ಯೋಜನೆಯಲ್ಲಿವೆ.',
+        title: 'ಮೈಸೂರು ದಸರಾ 2024: ಸಿದ್ಧತೆಗಳು ಭರದಿಂದ ಸಾಗಿವೆ',
+        content: 'ಪ್ರಸಿದ್ಧ ಮೈಸೂರು ದಸರಾ ಮಹೋತ್ಸವದ ಸಿದ್ಧತೆಗಳು ಭರದಿಂದ ಸಾಗುತ್ತಿವೆ. ಅರಮನೆ ನಗರಿಯು ಪ್ರವಾಸಿಗರನ್ನು ಸ್ವಾಗತಿಸಲು ಸಜ್ಜಾಗುತ್ತಿದೆ, ಸಾಂಸ್ಕೃತಿಕ ಕಾರ್ಯಕ್ರಮಗಳು ಮತ್ತು ಕಾರ್ಯಕ್ರಮಗಳು ಯೋಜನೆಯಲ್ಲಿವೆ.',
         imageUrl: 'https://picsum.photos/seed/dasara/800/600',
         "data-ai-hint": "festival palace",
         author: 'Prajavani',
@@ -104,8 +104,8 @@ export const placeholderArticles: Article[] = [
     },
     {
         id: 'bengaluru-fc-new-signing-3',
-        title: 'ಬೆಂಗಳೂರು ಎಫ್‌ಸಿ ಹೊಸ ವಿದೇಶಿ ಸ್ಟ್ರೈಕರ್‌ನನ್ನು ಮಾಡಿಕೊಂಡಿದೆ',
-        content: 'ಇಂಡಿಯನ್ சூப்பர் ಲೀಗ್ (ISL) ಋತುವಿಗಾಗಿ ಬೆಂಗಳೂರು ಎಫ್‌ಸಿ ತಂಡವು ಸ್ಪಾನಿಷ್ ಸ್ಟ್ರೈಕರ್‌ನನ್ನು अपने ತಂಡಕ್ಕೆ ಸೇರಿಸಿಕೊಂಡಿದೆ. ಈ ಹೊಸ ஒப்பந்தವು ತಂಡದ ಆಕ್ರಮಣಕಾರಿ ಸಾಮर्थ್ಯವನ್ನು ಹೆಚ್ಚಿಸುವ ನಿರೀಕ್ಷೆಯಿದೆ.',
+        title: 'ಬೆಂಗಳೂರು ಎಫ್‌ಸಿ ಹೊಸ ವಿದೇಶಿ ಸ್ಟ್ರೈಕರ್‌ನನ್ನು ತನ್ನ ತಂಡಕ್ಕೆ ಸೇರಿಸಿಕೊಂಡಿದೆ',
+        content: 'ಇಂಡಿಯನ್ ಸೂಪರ್ ಲೀಗ್ (ISL) ಋತುವಿಗಾಗಿ ಬೆಂಗಳೂರು ಎಫ್‌ಸಿ ತಂಡವು ಸ್ಪಾನಿಷ್ ಸ್ಟ್ರೈಕರ್‌ನನ್ನು अपने ತಂಡಕ್ಕೆ ಸೇರಿಸಿಕೊಂಡಿದೆ. ಈ ಹೊಸ ಒಪ್ಪಂದವು ತಂಡದ ಆಕ್ರಮಣಕಾರಿ ಸಾಮರ್ಥ್ಯವನ್ನು ಹೆಚ್ಚಿಸುವ ನಿರೀಕ್ಷೆಯಿದೆ.',
         imageUrl: 'https://picsum.photos/seed/football/800/600',
         "data-ai-hint": "soccer player",
         author: 'ESPN',
@@ -126,7 +126,7 @@ export const placeholderArticles: Article[] = [
     {
         id: 'monsoon-relief-kodagu-4',
         title: 'ಕೊಡಗಿನಲ್ಲಿ ಮುಂಗಾರು ಮಳೆ: ಪರಿಹಾರ ಕಾರ್ಯಗಳು ಚುರುಕು',
-        content: 'ಕೊಡಗು ಜಿಲ್ಲೆಯಲ್ಲಿ ಭಾರಿ ಮಳೆಯಿಂದಾಗಿ ಉಂಟಾದ ಪ್ರವಾಹ ಪರಿಸ್ಥಿತியை ನಿಭಾಯಿಸಲು ಸರ್ಕಾರವು ಪರಿಹಾರ ಕಾರ್ಯಗಳನ್ನು ಚುರುಕುಗೊಳಿಸಿದೆ. ಸಂತ್ರಸ್ತರಿಗೆ ಸಹಾಯ ಮಾಡಲು ರಾಷ್ಟ್ರೀಯ ವಿಪತ್ತು ನಿರ್ವಹಣಾ ಪಡೆ (NDRF) ತಂಡಗಳನ್ನು ನಿಯೋಜಿಸಲಾಗಿದೆ.',
+        content: 'ಕೊಡಗು ಜಿಲ್ಲೆಯಲ್ಲಿ ಭಾರಿ ಮಳೆಯಿಂದಾಗಿ ಉಂಟಾದ ಪ್ರವಾಹ ಪರಿಸ್ಥಿತಿಯನ್ನು ನಿಭಾಯಿಸಲು ಸರ್ಕಾರವು ಪರಿಹಾರ ಕಾರ್ಯಗಳನ್ನು ಚುರುಕುಗೊಳಿಸಿದೆ. ಸಂತ್ರಸ್ತರಿಗೆ ಸಹಾಯ ಮಾಡಲು ರಾಷ್ಟ್ರೀಯ ವಿಪತ್ತು ನಿರ್ವಹಣಾ ಪಡೆ (NDRF) ತಂಡಗಳನ್ನು ನಿಯೋಜಿಸಲಾಗಿದೆ.',
         imageUrl: 'https://picsum.photos/seed/monsoon/800/600',
         "data-ai-hint": "heavy rain",
         author: 'The Hindu',
@@ -142,6 +142,132 @@ export const placeholderArticles: Article[] = [
         seo: {
             metaDescription: 'Relief operations are underway in Kodagu district following heavy monsoon rains and flooding. NDRF teams have been deployed.',
             keywords: ['Kodagu', 'Monsoon', 'Rain', 'Flood Relief']
+        }
+    },
+    {
+        id: 'ganesh-chaturthi-celebrations-5',
+        title: 'ರಾಜ್ಯಾದ್ಯಂತ ಗಣೇಶ ಚತುರ್ಥಿ ಸಂಭ್ರಮ',
+        content: 'ನಾಡಿನಾದ್ಯಂತ ಗಣೇಶ ಚತುರ್ಥಿ ಹಬ್ಬವನ್ನು ಶ್ರದ್ಧಾಭಕ್ತಿಯಿಂದ ಆಚರಿಸಲಾಗುತ್ತಿದೆ. ಬೆಂಗಳೂರು, ಮೈಸೂರು, ಹುಬ್ಬಳ್ಳಿ ಸೇರಿದಂತೆ ಹಲವು ನಗರಗಳಲ್ಲಿ ಬೃಹತ್ ಗಣೇಶ ಪೆಂಡಾಲ್‌ಗಳು ಎಲ್ಲರ ಗಮನ ಸೆಳೆಯುತ್ತಿವೆ.',
+        imageUrl: 'https://picsum.photos/seed/ganesha/800/600',
+        "data-ai-hint": "hindu festival",
+        author: 'KNP Staff',
+        authorId: 'admin',
+        categoryIds: ['society-community', 'ganesh-chaturthi'],
+        status: 'published',
+        publishedAt: getYesterday().toISOString(),
+        createdAt: getYesterday().toISOString(),
+        updatedAt: getYesterday().toISOString(),
+        source: 'KNP Internal',
+        views: 3200,
+        districtId: 'bengaluru-urban',
+        seo: {
+            metaDescription: 'Ganesh Chaturthi is being celebrated with great fervor across Karnataka, with large pandals attracting devotees in major cities.',
+            keywords: ['Ganesh Chaturthi', 'Karnataka Festivals', 'Bangalore']
+        }
+    },
+    {
+        id: 'new-kannada-film-release-6',
+        title: 'ಹೊಸ ಕನ್ನಡ ಚಲನಚಿತ್ರ "ಬಯಲುಸೀಮೆ" ಚಿತ್ರಮಂದಿರಗಳಲ್ಲಿ ಬಿಡುಗಡೆ',
+        content: 'ನಟ ರಮೇಶ್ ಅರವಿಂದ್ ಅಭಿನಯದ, ಬಹುನಿರೀಕ್ಷಿತ ಕನ್ನಡ ಚಲನಚಿತ್ರ "ಬಯಲುಸೀಮೆ" ಇಂದು ರಾಜ್ಯಾದ್ಯಂತ ಬಿಡುಗಡೆಯಾಗಿದೆ. ಚಿತ್ರವು ವಿಮರ್ಶಕರಿಂದ ಉತ್ತಮ ಪ್ರತಿಕ್ರಿಯೆ ಪಡೆದಿದೆ.',
+        imageUrl: 'https://picsum.photos/seed/movie/800/600',
+        "data-ai-hint": "movie cinema",
+        author: 'Times of India',
+        authorId: 'toi-reporter',
+        categoryIds: ['entertainment'],
+        status: 'published',
+        publishedAt: getYesterday().toISOString(),
+        createdAt: getYesterday().toISOString(),
+        updatedAt: getYesterday().toISOString(),
+        source: 'Times of India',
+        views: 950,
+        districtId: 'bengaluru-urban',
+        seo: {
+            metaDescription: 'The highly anticipated Kannada movie "Bayaluseeme", starring Ramesh Aravind, has been released in theatres today.',
+            keywords: ['Kannada Cinema', 'Sandalwood', 'Ramesh Aravind']
+        }
+    },
+    {
+        id: 'belagavi-politics-update-7',
+        title: 'ಬೆಳಗಾವಿ ರಾಜಕೀಯ: ಸ್ಥಳೀಯ ಸಂಸ್ಥೆಗಳ ಚುನಾವಣೆ ಕಾವು',
+        content: 'ಬೆಳಗಾವಿಯಲ್ಲಿ ಮುಂಬರುವ ಸ್ಥಳೀಯ ಸಂಸ್ಥೆಗಳ ಚುನಾವಣೆಯ ಕಾವು ಹೆಚ್ಚಾಗುತ್ತಿದೆ. ಪ್ರಮುಖ ರಾಜಕೀಯ ಪಕ್ಷಗಳು ತಮ್ಮ ಅಭ್ಯರ್ಥಿಗಳನ್ನು ಅಂತಿಮಗೊಳಿಸುವಲ್ಲಿ ನಿರತವಾಗಿವೆ.',
+        imageUrl: 'https://picsum.photos/seed/politics/800/600',
+        "data-ai-hint": "election politics",
+        author: 'Vijaya Karnataka',
+        authorId: 'vk-reporter',
+        categoryIds: ['politics'],
+        status: 'published',
+        publishedAt: getYesterday().toISOString(),
+        createdAt: getYesterday().toISOString(),
+        updatedAt: getYesterday().toISOString(),
+        source: 'Vijaya Karnataka',
+        views: 700,
+        districtId: 'belagavi',
+        seo: {
+            metaDescription: 'Political activity heats up in Belagavi ahead of the upcoming local body elections, with major parties finalizing candidates.',
+            keywords: ['Belagavi', 'Karnataka Politics', 'Elections']
+        }
+    },
+    {
+        id: 'startup-funding-bangalore-8',
+        title: 'ಬೆಂಗಳೂರಿನ ಆರೋಗ್ಯ ತಂತ್ರಜ್ಞಾನ ಸ್ಟಾರ್ಟ್‌ಅಪ್‌ಗೆ $5 ಮಿಲಿಯನ್ ಹೂಡಿಕೆ',
+        content: 'ಬೆಂಗಳೂರು ಮೂಲದ ಆರೋಗ್ಯ ತಂತ್ರಜ್ಞಾನ ಸ್ಟಾರ್ಟ್‌ಅಪ್ "ಆರೋಗ್ಯಸೇತು" ಸೀರೀಸ್ ಎ ಫಂಡಿಂಗ್‌ನಲ್ಲಿ $5 ಮಿಲಿಯನ್ ಹೂಡಿಕೆ ಪಡೆದಿದೆ. ಈ ಹಣವನ್ನು ತಮ್ಮ ತಂತ್ರಜ್ಞಾನವನ್ನು ವಿಸ್ತರಿಸಲು ಬಳಸುವುದಾಗಿ ಕಂಪನಿ ಹೇಳಿದೆ.',
+        imageUrl: 'https://picsum.photos/seed/startup/800/600',
+        "data-ai-hint": "startup meeting",
+        author: 'YourStory',
+        authorId: 'ys-reporter',
+        categoryIds: ['business-startups', 'technology', 'health-lifestyle'],
+        status: 'published',
+        publishedAt: getYesterday().toISOString(),
+        createdAt: getYesterday().toISOString(),
+        updatedAt: getYesterday().toISOString(),
+        source: 'YourStory',
+        views: 1800,
+        districtId: 'bengaluru-urban',
+        seo: {
+            metaDescription: 'Bangalore-based health-tech startup AarogyaSetu has raised $5 million in Series A funding to expand its technology platform.',
+            keywords: ['Startup', 'Funding', 'Bangalore', 'Health Tech']
+        }
+    },
+    {
+        id: 'hampi-utsav-announcement-9',
+        title: 'ಹಂಪಿ ಉತ್ಸವ ದಿನಾಂಕ ಪ್ರಕಟ: ಪ್ರವಾಸೋದ್ಯಮಕ್ಕೆ ಉತ್ತೇಜನ',
+        content: 'ವಿಶ್ವಪ್ರಸಿದ್ಧ ಹಂಪಿ ಉತ್ಸವದ ದಿನಾಂಕಗಳನ್ನು ಕರ್ನಾಟಕ ಸರ್ಕಾರ ಪ್ರಕಟಿಸಿದೆ. ಈ ವರ್ಷದ ಉತ್ಸವವು ವಿಜಯನಗರ ಜಿಲ್ಲೆಯ ಪ್ರವಾಸೋದ್ಯಮಕ್ಕೆ ದೊಡ್ಡ ಉತ್ತೇಜನ ನೀಡುವ ನಿರೀಕ್ಷೆಯಿದೆ.',
+        imageUrl: 'https://picsum.photos/seed/hampi/800/600',
+        "data-ai-hint": "historic ruins",
+        author: 'KNP Staff',
+        authorId: 'admin',
+        categoryIds: ['society-community', 'entertainment'],
+        status: 'published',
+        publishedAt: getYesterday().toISOString(),
+        createdAt: getYesterday().toISOString(),
+        updatedAt: getYesterday().toISOString(),
+        source: 'KNP Internal',
+        views: 2100,
+        districtId: 'vijayanagara',
+        seo: {
+            metaDescription: 'The dates for the world-famous Hampi Utsav have been announced by the Karnataka government, expected to boost tourism.',
+            keywords: ['Hampi Utsav', 'Vijayanagara', 'Karnataka Tourism']
+        }
+    },
+    {
+        id: 'udupi-beach-cleanup-10',
+        title: 'ಉಡುಪಿಯ ಮಲ್ಪೆ ಕಡಲತೀರದಲ್ಲಿ ಸ್ವಚ್ಛತಾ ಅಭಿಯಾನ',
+        content: 'ಸ್ಥಳೀಯ ಎನ್‌ಜಿಒ ಮತ್ತು ಸ್ವಯಂಸೇವಕರು ಉಡುಪಿಯ ಮಲ್ಪೆ ಕಡಲತೀರದಲ್ಲಿ ಬೃಹತ್ ಸ್ವಚ್ಛತಾ ಅಭಿಯಾನವನ್ನು ನಡೆಸಿದರು. ಈ ಕಾರ್ಯಕ್ರಮವು ಕಡಲತೀರದ ಪರಿಸರ ಸಂರಕ್ಷಣೆಯ ಬಗ್ಗೆ ಜಾಗೃತಿ ಮೂಡಿಸಿತು.',
+        imageUrl: 'https://picsum.photos/seed/beach/800/600',
+        "data-ai-hint": "beach clean",
+        author: 'Udayavani',
+        authorId: 'udayavani-reporter',
+        categoryIds: ['weather-environment', 'society-community'],
+        status: 'published',
+        publishedAt: getYesterday().toISOString(),
+        createdAt: getYesterday().toISOString(),
+        updatedAt: getYesterday().toISOString(),
+        source: 'Udayavani',
+        views: 1100,
+        districtId: 'udupi',
+        seo: {
+            metaDescription: 'A massive cleanliness drive was conducted at Malpe beach in Udupi by a local NGO and volunteers to promote coastal conservation.',
+            keywords: ['Udupi', 'Malpe Beach', 'Environment', 'Cleanliness Drive']
         }
     }
 ];

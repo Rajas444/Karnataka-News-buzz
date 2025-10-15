@@ -42,38 +42,38 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       districtId
     });
     
-    initialArticles = articles;
+    let articlesToDisplay = articles;
 
-    if (initialArticles.length > 0) {
-      topArticle = initialArticles.shift() ?? null;
-    } else {
-      // Fallback logic when local articles are empty
-      let fallbackNews: Article[] = [];
+    // If Firestore returns no articles, use external news as a fallback.
+    if (articlesToDisplay.length === 0) {
       try {
-        fallbackNews = await getExternalNews();
-      } catch(e) {
-        console.error("Failed to fetch external news, using placeholders as fallback.", e);
-      }
-      
-      if (fallbackNews.length === 0) {
-        // If external news also fails or is empty, use placeholders
-        fallbackNews = placeholderArticles;
-      }
-        
-      if (fallbackNews.length > 0) {
-        topArticle = fallbackNews[0] ?? null;
-        if (initialArticles.length === 0) {
-            // Ensure no duplicates are added if topArticle is also in the fallback list
-            const existingIds = new Set(initialArticles.map(a => a.id));
-            const articlesToAdd = fallbackNews.slice(1, 10).filter(a => !existingIds.has(a.id));
-            initialArticles.push(...articlesToAdd);
+        const externalArticles = await getExternalNews();
+        if (externalArticles.length > 0) {
+          articlesToDisplay = externalArticles;
+        } else {
+          // If both Firestore and external news are empty, use placeholders.
+          articlesToDisplay = placeholderArticles;
         }
+      } catch (e) {
+        console.error("Failed to fetch external news, using placeholders.", e);
+        articlesToDisplay = placeholderArticles;
       }
+    }
+    
+    // Now that we have a definitive list, separate the top article and the rest.
+    if (articlesToDisplay.length > 0) {
+      topArticle = articlesToDisplay[0];
+      initialArticles = articlesToDisplay.slice(1);
     }
 
   } catch (e: any) {
     error = e.message || 'An unknown error occurred while fetching articles from the database.';
     console.error("Error fetching initial articles:", error);
+    // Fallback to placeholders on database error
+    if (placeholderArticles.length > 0) {
+      topArticle = placeholderArticles[0];
+      initialArticles = placeholderArticles.slice(1);
+    }
   }
   
 

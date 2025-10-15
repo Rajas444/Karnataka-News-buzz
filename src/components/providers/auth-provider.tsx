@@ -54,6 +54,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
            // The error is now handled by the emitter in getUserProfile,
            // but we still need to handle the state in the provider.
            console.error("AuthProvider: Failed to get user profile", error);
+           // Sign out the user if their profile is inaccessible to prevent being stuck.
+           auth.signOut(); 
            setUser(null);
            setUserProfile(null);
            setUserRole(null);

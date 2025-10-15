@@ -11,21 +11,6 @@ import { FirebaseError } from 'firebase/app';
 
 
 /**
- * Fetches a user profile from the server. This function should only be used in
- * Server Components or Server Actions where client-side error handling is not available.
- * @param uid The user's unique ID.
- * @returns The user profile or null if not found.
- */
-export async function getUser(uid: string): Promise<UserProfile | null> {
-    const docRef = doc(db, 'users', uid);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-        return docSnap.data() as UserProfile;
-    }
-    return null;
-}
-
-/**
  * Fetches a user profile from the client, with detailed error handling for permission issues.
  * This should be called from client components.
  * @param uid The user's unique ID.

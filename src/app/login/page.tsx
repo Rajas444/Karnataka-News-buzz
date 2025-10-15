@@ -30,7 +30,7 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, userProfile, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,14 +39,12 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState('');
 
   useEffect(() => {
+    // If the user is already logged in, the root page.tsx will handle redirection.
+    // This page only needs to prevent showing the login form to an already logged-in user.
     if (!authLoading && user) {
-        if (userProfile?.role === 'admin') {
-            router.replace('/admin');
-        } else {
-            router.replace('/home');
-        }
+      router.replace('/home'); // Or a loading/splash screen while root page redirects
     }
-  }, [user, userProfile, authLoading, router]);
+  }, [user, authLoading, router]);
 
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -55,24 +53,10 @@ export default function LoginPage() {
     setAuthError(null);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const firestoreUser = userCredential.user;
-      
-      const userDocRef = doc(db, 'users', firestoreUser.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (userDoc.exists()) {
-        const profile = userDoc.data();
-         if (profile.role === 'admin') {
-            toast({ title: 'Admin Login Detected', description: 'Redirecting to admin dashboard...' });
-            router.push('/admin');
-            return;
-        }
-      }
-      
+      await signInWithEmailAndPassword(auth, email, password);
+      // The useEffect in the root page will now handle redirection
       toast({ title: 'Login Successful', description: 'Redirecting...' });
-      router.push('/home');
-
+      // We don't need to manually push here anymore.
     } catch (error: any) {
       console.error(error);
       const errorCode = error.code || '';
@@ -85,9 +69,9 @@ export default function LoginPage() {
       } else {
         setAuthError(error.message || 'An unknown error occurred.');
       }
-    } finally {
       setLoading(false);
-    }
+    } 
+    // Do not set loading to false in the success case, to allow time for redirection
   };
 
   const handlePasswordReset = async () => {

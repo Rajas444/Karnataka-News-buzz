@@ -5,33 +5,31 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Newspaper } from 'lucide-react';
-import { redirect } from 'next/navigation';
 
-
-export default function LoginPage() {
+export default function LandingPage() {
+  const { user, loading, userRole } = useAuth();
   const router = useRouter();
-  const { user, userProfile, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (!authLoading) {
+    if (!loading) {
       if (user) {
-        if (userProfile?.role === 'admin') {
-            redirect('/admin');
+        if (userRole === 'admin') {
+          router.replace('/admin');
         } else {
-            redirect('/home');
+          router.replace('/home');
         }
       } else {
-        redirect('/login');
+        router.replace('/login');
       }
     }
-  }, [user, userProfile, authLoading, router]);
+  }, [user, loading, userRole, router]);
 
-    return (
-        <div className="flex h-screen items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-                <Newspaper className="h-12 w-12 text-primary animate-pulse" />
-                <p className="text-muted-foreground">Loading...</p>
-            </div>
-        </div>
-    );
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <Newspaper className="h-12 w-12 text-primary animate-pulse" />
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
 }

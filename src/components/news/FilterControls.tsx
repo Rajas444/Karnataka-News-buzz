@@ -2,7 +2,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { Category, District } from '@/lib/types';
+import type { District } from '@/lib/types';
 import { Filter } from 'lucide-react';
 import {
   Select,
@@ -39,8 +39,7 @@ export default function FilterControls({ districts }: FilterControlsProps) {
   )
 
   const handleFilterChange = (type: 'district', value: string) => {
-    const newQueryString = createQueryString(type, value);
-    router.push(`/home?${newQueryString}`);
+    router.push(`/home?${createQueryString(type, value)}`);
   };
 
   const allDistricts = [{ id: 'all', name: 'ಎಲ್ಲಾ ಜಿಲ್ಲೆಗಳು' }, ...districts];
@@ -53,14 +52,14 @@ export default function FilterControls({ districts }: FilterControlsProps) {
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
              <div className="md:col-start-2 lg:col-start-2">
-                 <label className="text-sm font-medium mb-2 block">ಜಿಲ್ಲೆ</label>
+                 <label className="text-sm font-medium mb-2 block font-kannada">ಜಿಲ್ಲೆ</label>
                 <Select onValueChange={(value) => handleFilterChange('district', value)} value={selectedDistrictId}>
-                    <SelectTrigger>
+                    <SelectTrigger className="font-kannada">
                         <SelectValue placeholder="Select District" />
                     </SelectTrigger>
                     <SelectContent>
                         {allDistricts.map((district) => (
-                            <SelectItem key={district.id} value={district.id}>
+                            <SelectItem key={district.id} value={district.id} className="font-kannada">
                                 {district.name}
                             </SelectItem>
                         ))}

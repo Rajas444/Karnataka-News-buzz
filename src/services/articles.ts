@@ -119,7 +119,7 @@ export async function getArticles(options?: {
 }): Promise<{ articles: Article[]; lastVisibleDocId: string | null }> {
     try {
         const articlesCollection = collection(db, 'articles');
-        const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
+        const { pageSize = 20, startAfterDocId, categorySlug, districtId } = options || {};
         
         const constraints = [];
         

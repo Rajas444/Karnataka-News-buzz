@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
 import { Loader2 } from 'lucide-react';
 import type { Article, Category } from '@/lib/types';
@@ -16,6 +16,8 @@ import {
   orderBy,
   Timestamp,
   where,
+  getDocs,
+  doc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -45,7 +47,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     }
     fetchInitialData();
     
-    // **Fix:** Reset articles when filters change
     setArticles(initialArticles);
     
     if (initialArticles.length > 0) {
@@ -55,7 +56,8 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
         } else {
             setLastVisibleDocId(null);
         }
-        setHasMore(true); 
+        // Assume there might be more if the initial fetch was full.
+        setHasMore(initialArticles.length >= 10); 
     } else {
         setLastVisibleDocId(null);
         setHasMore(false);
@@ -65,15 +67,14 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
 
   // This effect handles real-time updates for new articles.
   useEffect(() => {
-    if (!db) return; // Ensure db is initialized
+    if (!db) return;
 
-    // Determine the timestamp of the newest article to listen from that point.
     const newestArticleTimestamp = articles.length > 0 && articles[0].publishedAt 
-        ? Timestamp.fromMillis(new Date(articles[0].publishedAt).getTime() + 1)
+        ? Timestamp.fromDate(new Date(articles[0].publishedAt))
         : Timestamp.now();
 
     const constraints = [
-        where('publishedAt', '>', newestArticleTimestamp),
+        where('publishedAt', '>=', newestArticleTimestamp),
         orderBy('publishedAt', 'desc')
     ];
     
@@ -86,14 +87,15 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
                  if (newArticle.publishedAt) {
                   newArticle.publishedAt = (newArticle.publishedAt as any).toDate().toISOString();
                 }
-                // Prepend the new article to the list, applying current filters
                 setArticles(prev => {
                     const shouldShow = 
                         (!categorySlug || newArticle.categoryIds?.includes(categorySlug)) &&
                         (!districtId || districtId === 'all' || newArticle.districtId === districtId);
 
                     if (shouldShow && !prev.some(a => a.id === newArticle.id)) {
-                        return [newArticle, ...prev];
+                        const newArticles = [newArticle, ...prev];
+                        newArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+                        return newArticles;
                     }
                     return prev;
                 });
@@ -111,15 +113,19 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
 
     setLoadingMore(true);
     try {
+      let startAfterSnapshot;
+      if (lastVisibleDocId) {
+        startAfterSnapshot = await getDoc(doc(db, "articles", lastVisibleDocId));
+      }
+
       const { articles: newArticles, lastVisibleDocId: newLastVisibleDocId } = await getArticles({
-        pageSize: 10,
+        pageSize: 20,
         startAfterDocId: lastVisibleDocId,
         categorySlug,
         districtId,
       });
       
       if (newArticles.length > 0) {
-        // **Fix:** Prevent adding duplicates
         setArticles(prev => {
             const existingIds = new Set(prev.map(a => a.id));
             const uniqueNewArticles = newArticles.filter(a => !existingIds.has(a.id));

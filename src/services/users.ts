@@ -7,17 +7,50 @@ import type { UserProfile } from '@/lib/types';
 import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { FirebaseError } from 'firebase/app';
 
-// READ (one user)
+
+/**
+ * Fetches a user profile from the server. This function should only be used in
+ * Server Components or Server Actions where client-side error handling is not available.
+ * @param uid The user's unique ID.
+ * @returns The user profile or null if not found.
+ */
 export async function getUser(uid: string): Promise<UserProfile | null> {
     const docRef = doc(db, 'users', uid);
-    // This function can be called from Server Components, so we cannot use the client-side error emitter here.
-    // The permission error will be caught by the AuthProvider on the client side.
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
         return docSnap.data() as UserProfile;
     }
     return null;
+}
+
+/**
+ * Fetches a user profile from the client, with detailed error handling for permission issues.
+ * This should be called from client components.
+ * @param uid The user's unique ID.
+ * @returns The user profile or null if not found.
+ */
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+    'use client';
+    const docRef = doc(db, 'users', uid);
+    try {
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            return docSnap.data() as UserProfile;
+        }
+        return null;
+    } catch (error) {
+        if (error instanceof FirebaseError && error.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'get',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        }
+        // Re-throw the error to be caught by the calling function's catch block
+        throw error;
+    }
 }
 
 

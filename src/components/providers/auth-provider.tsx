@@ -5,7 +5,7 @@ import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getUser } from '@/services/users';
+import { getUserProfile } from '@/services/users';
 import type { UserProfile, UserRole } from '@/lib/types';
 
 interface AuthContextType {
@@ -34,11 +34,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (user) {
         setUser(user);
         try {
-          const profile = await getUser(user.uid);
+          // Use the new client-side function
+          const profile = await getUserProfile(user.uid);
           if (profile) {
             setUserProfile(profile);
             setUserRole(profile.role);
           } else {
+            // This case might happen if the user document hasn't been created yet.
             const defaultProfile: UserProfile = {
               uid: user.uid,
               email: user.email,
@@ -49,8 +51,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUserRole('user');
           }
         } catch (error) {
+           // The error is now handled by the emitter in getUserProfile,
+           // but we still need to handle the state in the provider.
            console.error("AuthProvider: Failed to get user profile", error);
-           // Setting user to null to force re-authentication or error state
            setUser(null);
            setUserProfile(null);
            setUserRole(null);

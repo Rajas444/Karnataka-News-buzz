@@ -1,53 +1,56 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
     
+    // Helper function to check for admin role
     function isAdmin() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Publicly readable collections
+    // Articles are public to read, but only admins can write.
     match /articles/{articleId} {
       allow read: if true;
       allow write: if isAdmin();
     }
-    
+
+    // Categories are public to read, but only admins can write.
     match /categories/{categoryId} {
       allow read: if true;
       allow write: if isAdmin();
     }
-
+    
+    // Districts are public to read, but only admins can write.
     match /districts/{districtId} {
-        allow read: if true;
-        allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
+    // Jobs are public to read, but only admins can write.
     match /jobs/{jobId} {
-        allow read: if true;
-        allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isAdmin();
     }
     
+    // Community posts can be read by anyone.
+    // They can be created by any authenticated user.
+    // They can only be updated/deleted by the author or an admin.
     match /posts/{postId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update, delete: if isOwner(resource.data.authorId) || isAdmin();
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth.uid == resource.data.authorId || isAdmin();
     }
 
-    // User profiles can be read by anyone, but only the owner can write to their own profile.
-    // Admins can write to any profile.
+    // User profiles can be read by anyone.
+    // A user can create their own profile upon registration.
+    // A user can only update or delete their own profile. Admins can also manage users.
     match /users/{userId} {
-      allow read: if true;
-      allow write: if isOwner(userId) || isAdmin();
+      allow get: if true;
+      allow list: if isAdmin(); // Only admins can list all users.
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId || isAdmin();
+      allow delete: if isAdmin();
     }
   }
 }

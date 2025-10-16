@@ -21,13 +21,13 @@ export async function getCategories(): Promise<Category[]> {
       const snapshot = await getDocs(q);
       if (snapshot.empty) {
           // If the collection exists but is empty, return placeholders for a better initial experience.
-          return placeholderCategories.sort((a, b) => a.name.localeCompare(b.name));
+          return placeholderCategories.map(c => ({...c, name: c.name.split(' & ')[0]})).sort((a, b) => a.name.localeCompare(b.name));
       }
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
   } catch (error) {
       console.warn("Failed to fetch categories from Firestore, returning placeholders. Error:", error);
       // Fallback to placeholder data if any error occurs (e.g., permissions, not found)
-      return placeholderCategories.sort((a, b) => a.name.localeCompare(b.name));
+      return placeholderCategories.map(c => ({...c, name: c.name.split(' & ')[0]})).sort((a, b) => a.name.localeCompare(b.name));
   }
 }
 
@@ -42,3 +42,5 @@ export async function deleteCategory(id: string): Promise<void> {
   const docRef = doc(db, 'categories', id);
   await deleteDoc(docRef);
 }
+
+    

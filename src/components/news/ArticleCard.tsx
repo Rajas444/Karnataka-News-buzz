@@ -61,10 +61,10 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
       <CardContent className="flex-grow p-4">
         {categories.length > 0 && 
             <div className="flex flex-wrap gap-2 mb-2">
-               {categories.map(cat => <Badge key={cat} variant="secondary">{cat}</Badge>)}
+               {categories.map(cat => <Badge key={cat} variant="secondary" className="font-kannada">{cat}</Badge>)}
             </div>
         }
-        <CardTitle className="mb-2 text-xl leading-tight font-headline font-kannada">
+        <CardTitle className="mb-2 text-xl leading-tight font-kannada">
             {article.title}
         </CardTitle>
         <p className="text-muted-foreground text-sm font-kannada">
@@ -118,10 +118,10 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
         <CardContent className="flex-grow p-4">
             {categories.length > 0 && 
                 <div className="flex flex-wrap gap-2 mb-2">
-                {categories.map(cat => <Badge key={cat} variant="secondary">{cat}</Badge>)}
+                {categories.map(cat => <Badge key={cat} variant="secondary" className="font-kannada">{cat}</Badge>)}
                 </div>
             }
-            <CardTitle className="mb-2 text-xl leading-tight font-headline font-kannada">
+            <CardTitle className="mb-2 text-xl leading-tight font-kannada">
                 {article.title}
             </CardTitle>
         </CardContent>
@@ -134,7 +134,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
                     </div>
                 )}
                  {article.source && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 font-kannada">
                         <span>{article.source}</span>
                     </div>
                 )}
@@ -147,3 +147,5 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
     </div>
   );
 }
+
+    

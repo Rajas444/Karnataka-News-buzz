@@ -118,7 +118,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         {(topArticle.seo?.metaDescription || topArticle.content || '').substring(0, 150)}...
                       </p>
                       <Button asChild size="lg">
-                      <Link href={`/article/${topArticle.id}`}>
+                      <Link href={`/article/${topArticle.id}`} className="font-kannada">
                           ಮುಂದೆ ಓದಿ <ArrowRight className="ml-2 h-5 w-5" />
                       </Link>
                       </Button>
@@ -129,7 +129,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
               <div className="lg:col-span-2 space-y-6">
-                  <h2 className="font-headline text-3xl font-bold">
+                  <h2 className="font-headline text-3xl font-bold font-kannada">
                     ಇತ್ತೀಚಿನ ಸುದ್ದಿ
                   </h2>
                   <section>
@@ -157,3 +157,5 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     </div>
   );
 }
+
+    

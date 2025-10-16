@@ -61,7 +61,7 @@ export default function TrendingNews() {
             <CardDescription className="font-kannada">ರಾಜ್ಯಾದ್ಯಂತ ಈಗ ಜನಪ್ರಿಯವಾಗಿರುವುದೇನು.</CardDescription>
         </CardHeader>
         <CardContent>
-            <p className="text-muted-foreground text-sm">{error || "Could not load trending news feed."}</p>
+            <p className="text-muted-foreground text-sm font-kannada">{error || "Could not load trending news feed."}</p>
         </CardContent>
     </Card>
     );
@@ -88,7 +88,7 @@ export default function TrendingNews() {
                         <p className="font-semibold leading-tight group-hover:underline font-kannada">
                             {article.title}
                         </p>
-                         <p className="text-xs text-muted-foreground">{article.source || article.author}</p>
+                         <p className="text-xs text-muted-foreground font-kannada">{article.source || article.author}</p>
                     </div>
                 </li>
             ))}
@@ -97,3 +97,5 @@ export default function TrendingNews() {
     </Card>
   );
 }
+
+    

@@ -1,6 +1,6 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
+import { firebaseConfig as config } from '@/lib/firebase';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
@@ -11,7 +11,7 @@ export function initializeFirebase() {
     // The automatic initialization with initializeApp() can fail in some development
     // environments due to permissions issues with the App Hosting backend.
     // By explicitly passing the firebaseConfig, we ensure a reliable connection.
-    const firebaseApp = initializeApp(firebaseConfig);
+    const firebaseApp = initializeApp(config);
     return getSdks(firebaseApp);
   }
 

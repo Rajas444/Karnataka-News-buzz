@@ -70,12 +70,15 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
   }, [categorySlug, allCategories]);
 
   useEffect(() => {
-    if (!db) return;
+    if (!db || articles.length === 0) return;
+
+    const latestArticle = articles[0];
+    if (!latestArticle || !latestArticle.publishedAt) return;
 
     let constraints = [
-      where('status', '==', 'published'),
-      orderBy('publishedAt', 'desc'),
-      firestoreLimit(10) // Listen to more than just the latest one
+        where('status', '==', 'published'),
+        where('publishedAt', '>', Timestamp.fromDate(new Date(latestArticle.publishedAt))),
+        orderBy('publishedAt', 'desc'),
     ];
 
     if (districtId && districtId !== 'all') {
@@ -89,54 +92,46 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     const q = query(collection(db, 'articles'), ...constraints as any);
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-        const districts = await getDistricts();
+        if (snapshot.empty) return;
         
-        snapshot.docChanges().forEach(async (change) => {
-            const docData = change.doc.data();
-            const changedArticle: Article = {
-              id: change.doc.id,
-              title: docData.title,
-              content: docData.content,
-              imageUrl: docData.imageUrl,
-              author: docData.author,
-              authorId: docData.authorId,
-              categoryIds: docData.categoryIds,
-              status: docData.status,
-              publishedAt: (docData.publishedAt.toDate() as Date).toISOString(),
-              createdAt: (docData.createdAt.toDate() as Date).toISOString(),
-              updatedAt: (docData.updatedAt.toDate() as Date).toISOString(),
-              source: docData.source,
-              sourceUrl: docData.sourceUrl,
-              seo: docData.seo,
-              views: docData.views,
-              districtId: docData.districtId,
-              district: districts.find(d => d.id === docData.districtId)?.name,
-            };
+        const districts = await getDistricts();
+        const newArticles: Article[] = [];
 
+        snapshot.docChanges().forEach((change) => {
             if (change.type === 'added') {
-                setArticles(prev => {
-                    if (!prev.some(a => a.id === changedArticle.id)) {
-                        const newArticles = [changedArticle, ...prev];
-                        newArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-                        return newArticles;
-                    }
-                    return prev;
-                });
-            }
-             if (change.type === 'modified') {
-                setArticles(prev => {
-                    const newArticles = prev.map(a => a.id === changedArticle.id ? changedArticle : a);
-                    newArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-                    return newArticles;
-                });
+                const docData = change.doc.data();
+                const changedArticle: Article = {
+                  id: change.doc.id,
+                  title: docData.title,
+                  content: docData.content,
+                  imageUrl: docData.imageUrl,
+                  author: docData.author,
+                  authorId: docData.authorId,
+                  categoryIds: docData.categoryIds,
+                  status: docData.status,
+                  publishedAt: (docData.publishedAt.toDate() as Date).toISOString(),
+                  createdAt: (docData.createdAt.toDate() as Date).toISOString(),
+                  updatedAt: (docData.updatedAt.toDate() as Date).toISOString(),
+                  source: docData.source,
+                  sourceUrl: docData.sourceUrl,
+                  seo: docData.seo,
+                  views: docData.views,
+                  districtId: docData.districtId,
+                  district: districts.find(d => d.id === docData.districtId)?.name,
+                };
+                newArticles.push(changedArticle);
             }
         });
+
+        if (newArticles.length > 0) {
+            setArticles(prev => [...newArticles, ...prev]);
+        }
     }, (error) => {
         console.error("Real-time update failed:", error);
     });
 
     return () => unsubscribe();
-  }, [districtId, categoryId]);
+  }, [districtId, categoryId, articles]);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;

@@ -50,5 +50,21 @@
     "bengaluru-mysuru-expressway-tolls-13": {
         "seed": "expressway",
         "hint": "highway traffic"
+    },
+    "mandya-sugarcane-farmers-protest-14": {
+        "seed": "farmers",
+        "hint": "agriculture protest"
+    },
+    "uttara-kannada-new-bridge-15": {
+        "seed": "bridge",
+        "hint": "river bridge"
+    },
+    "chikkamagaluru-folk-art-festival-16": {
+        "seed": "festival",
+        "hint": "folk dance"
+    },
+    "tumakuru-industrial-area-17": {
+        "seed": "factory",
+        "hint": "industrial area"
     }
 }

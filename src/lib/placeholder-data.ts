@@ -83,6 +83,14 @@ function getThreeDaysAgo(): Date {
     return threeDaysAgo;
 }
 
+function getFourDaysAgo(): Date {
+    const today = new Date();
+    const fourDaysAgo = new Date(today);
+    fourDaysAgo.setDate(today.getDate() - 4);
+    fourDaysAgo.setHours(11, 0, 0, 0);
+    return fourDaysAgo;
+}
+
 export const placeholderArticles: Article[] = [
     {
         id: 'new-tech-park-hubballi-1',
@@ -235,7 +243,7 @@ export const placeholderArticles: Article[] = [
     {
         id: 'startup-funding-bangalore-8',
         title: 'ಬೆಂಗಳೂರಿನ ಆರೋಗ್ಯ ತಂತ್ರಜ್ಞಾನ ಸ್ಟಾರ್ಟ್‌ಅಪ್‌ಗೆ $5 ಮಿಲಿಯನ್ ಹೂಡಿಕೆ',
-        content: 'ಬೆಂಗಳೂರು ಮೂಲದ ಆರೋಗ್ಯ ತಂತ್ರಜ್ಞಾನ ಸ್ಟಾರ್ಟ್‌ಅಪ್ "ಆರೋಗ್ಯಸೇತು" ಸೀರೀస్ ಎ ಫಂಡಿಂಗ್‌ನಲ್ಲಿ $5 ಮಿಲಿಯನ್ ಹೂಡಿಕೆ ಪಡೆದಿದೆ. ಈ ಹಣವನ್ನು ತಮ್ಮ ತಂತ್ರಜ್ಞಾನವನ್ನು ವಿಸ್ತರಿಸಲು ಬಳಸುವುದಾಗಿ ಕಂಪನಿ ಹೇಳಿದೆ.',
+        content: 'ಬೆಂಗಳೂರು ಮೂಲದ ಆರೋಗ್ಯ ತಂತ್ರಜ್ಞಾನ ಸ್ಟಾರ್ಟ್‌ಅಪ್ "ಆರೋಗ್ಯಸೇತು" ಸೀರೀస్ ಎ ಫಂಡಿಂಗ್‌ನಲ್ಲಿ $5 ಮಿಲಿಯನ್ ಹೂಡಿಕೆ ಪಡೆದಿದೆ. ಈ ಹಣವನ್ನು ತಮ್ಮ ತಂತ್ರಜ್ಞานವನ್ನು ವಿಸ್ತರಿಸಲು ಬಳಸುವುದಾಗಿ ಕಂಪನಿ ಹೇಳಿದೆ.',
         imageUrl: `https://picsum.photos/seed/${typedImageData['startup-funding-bangalore-8'].seed}/800/600`,
         "data-ai-hint": typedImageData['startup-funding-bangalore-8'].hint,
         author: 'YourStory',
@@ -356,6 +364,90 @@ export const placeholderArticles: Article[] = [
         seo: {
             metaDescription: 'Toll rates on the Bengaluru-Mysuru expressway have been revised by the National Highways Authority of India (NHAI).',
             keywords: ['Bengaluru-Mysuru Expressway', 'Toll', 'NHAI', 'Travel']
+        }
+    },
+    {
+        id: 'mandya-sugarcane-farmers-protest-14',
+        title: 'ಮಂಡ್ಯದಲ್ಲಿ ಕಬ್ಬು ಬೆಳೆಗಾರರ ಪ್ರತಿಭಟನೆ, ಸರ್ಕಾರಕ್ಕೆ ಎಚ್ಚರಿಕೆ',
+        content: 'ಮಂಡ್ಯದಲ್ಲಿ ಕಬ್ಬು ಬೆಳೆಗಾರರು ತಮ್ಮ ಬೇಡಿಕೆಗಳ ಈಡೇರಿಕೆಗೆ ಆಗ್ರಹಿಸಿ ಬೃಹತ್ ಪ್ರತಿಭಟನೆ ನಡೆಸಿದರು. ನ್ಯಾಯಯುತ ಬೆಲೆ ನಿಗದಿ ಮಾಡುವಂತೆ ಸರ್ಕಾರಕ್ಕೆ ಮನವಿ ಸಲ್ಲಿಸಿದರು.',
+        imageUrl: `https://picsum.photos/seed/${typedImageData['mandya-sugarcane-farmers-protest-14'].seed}/800/600`,
+        "data-ai-hint": typedImageData['mandya-sugarcane-farmers-protest-14'].hint,
+        author: 'Suvarna News',
+        authorId: 'suvarna-reporter',
+        categoryIds: ['politics', 'society-community'],
+        status: 'published',
+        publishedAt: getFourDaysAgo().toISOString(),
+        createdAt: getFourDaysAgo().toISOString(),
+        updatedAt: getFourDaysAgo().toISOString(),
+        source: 'Suvarna News',
+        views: 1300,
+        districtId: 'mandya',
+        seo: {
+            metaDescription: 'Sugarcane farmers in Mandya held a major protest demanding fair prices and submitted a memorandum to the government.',
+            keywords: ['Mandya', 'Farmers Protest', 'Sugarcane', 'Agriculture']
+        }
+    },
+    {
+        id: 'uttara-kannada-new-bridge-15',
+        title: 'ಉತ್ತರ ಕನ್ನಡ: ಕಾಳಿ ನದಿಗೆ ಹೊಸ ಸೇತುವೆ ನಿರ್ಮಾಣಕ್ಕೆ ಚಾಲನೆ',
+        content: 'ಉತ್ತರ ಕನ್ನಡ ಜಿಲ್ಲೆಯ ಪ್ರಮುಖ ಸಂಪರ್ಕ ಕೊಂಡಿಯಾಗಿರುವ ಕಾಳಿ ನದಿಗೆ ಹೊಸ ಸೇತುವೆ ನಿರ್ಮಾಣಕ್ಕೆ ಕೇಂದ್ರ ಸರ್ಕಾರ ಚಾಲನೆ ನೀಡಿದೆ. ಇದರಿಂದಾಗಿ ಸಂಚಾರ ದಟ್ಟಣೆ ಕಡಿಮೆಯಾಗಲಿದೆ.',
+        imageUrl: `https://picsum.photos/seed/${typedImageData['uttara-kannada-new-bridge-15'].seed}/800/600`,
+        "data-ai-hint": typedImageData['uttara-kannada-new-bridge-15'].hint,
+        author: 'Public TV',
+        authorId: 'public-tv-reporter',
+        categoryIds: ['society-community', 'business-startups'],
+        status: 'published',
+        publishedAt: getFourDaysAgo().toISOString(),
+        createdAt: getFourDaysAgo().toISOString(),
+        updatedAt: getFourDaysAgo().toISOString(),
+        source: 'Public TV',
+        views: 980,
+        districtId: 'uttara-kannada',
+        seo: {
+            metaDescription: 'The central government has initiated the construction of a new bridge over the Kali river in Uttara Kannada to ease traffic congestion.',
+            keywords: ['Uttara Kannada', 'Bridge', 'Infrastructure', 'Kali River']
+        }
+    },
+    {
+        id: 'chikkamagaluru-folk-art-festival-16',
+        title: 'ಚಿಕ್ಕಮಗಳೂರಿನಲ್ಲಿ ಜನಪದ ಕಲಾ ಉತ್ಸವಕ್ಕೆ ಅದ್ದೂರಿ ಚಾಲನೆ',
+        content: 'ಚಿಕ್ಕಮಗಳೂರಿನಲ್ಲಿ ಮೂರು ದಿನಗಳ ಕಾಲ ನಡೆಯುವ ಜನಪದ ಕಲಾ ಉತ್ಸವಕ್ಕೆ ಇಂದು ಅದ್ದೂರಿಯಾಗಿ ಚಾಲನೆ ದೊರೆಯಿತು. ರಾಜ್ಯದ ವಿವಿಧ ಭಾಗಗಳಿಂದ ಕಲಾವಿದರು ಇದರಲ್ಲಿ ಭಾಗವಹಿಸಿದ್ದಾರೆ.',
+        imageUrl: `https://picsum.photos/seed/${typedImageData['chikkamagaluru-folk-art-festival-16'].seed}/800/600`,
+        "data-ai-hint": typedImageData['chikkamagaluru-folk-art-festival-16'].hint,
+        author: 'TV9 Kannada',
+        authorId: 'tv9-reporter',
+        categoryIds: ['entertainment', 'society-community'],
+        status: 'published',
+        publishedAt: getFourDaysAgo().toISOString(),
+        createdAt: getFourDaysAgo().toISOString(),
+        updatedAt: getFourDaysAgo().toISOString(),
+        source: 'TV9 Kannada',
+        views: 1550,
+        districtId: 'chikkamagaluru',
+        seo: {
+            metaDescription: 'A three-day folk art festival has grandly commenced in Chikkamagaluru, with artists from various parts of the state participating.',
+            keywords: ['Chikkamagaluru', 'Folk Art', 'Festival', 'Culture']
+        }
+    },
+    {
+        id: 'tumakuru-industrial-area-17',
+        title: 'ತುಮಕೂರಿನಲ್ಲಿ ಹೊಸ ಕೈಗಾರಿಕಾ ಪ್ರದೇಶ: 10,000 ಉದ್ಯೋಗ ಸೃಷ್ಟಿ ನಿರೀಕ್ಷೆ',
+        content: 'ತುಮಕೂರು ಬಳಿ ಹೊಸ ಕೈಗಾರಿಕಾ ಪ್ರದೇಶವನ್ನು ಸ್ಥಾಪಿಸಲು ಸರ್ಕಾರ ಅನುಮೋದನೆ ನೀಡಿದೆ. ಇದರಿಂದ ಸುಮಾರು 10,000 ನೇರ ಹಾಗೂ ಪರೋಕ್ಷ ಉದ್ಯೋಗಗಳು ಸೃಷ್ಟಿಯಾಗುವ ನಿರೀಕ್ಷೆಯಿದೆ.',
+        imageUrl: `https://picsum.photos/seed/${typedImageData['tumakuru-industrial-area-17'].seed}/800/600`,
+        "data-ai-hint": typedImageData['tumakuru-industrial-area-17'].hint,
+        author: 'ETV Bharat Kannada',
+        authorId: 'etv-reporter',
+        categoryIds: ['business-startups', 'jobs-career'],
+        status: 'published',
+        publishedAt: getFourDaysAgo().toISOString(),
+        createdAt: getFourDaysAgo().toISOString(),
+        updatedAt: getFourDaysAgo().toISOString(),
+        source: 'ETV Bharat Kannada',
+        views: 2200,
+        districtId: 'tumakuru',
+        seo: {
+            metaDescription: 'The government has approved a new industrial area near Tumakuru, which is expected to create around 10,000 direct and indirect jobs.',
+            keywords: ['Tumakuru', 'Industrial Area', 'Jobs', 'Investment']
         }
     }
 ];

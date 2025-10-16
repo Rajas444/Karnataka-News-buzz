@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Newspaper, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { doc, getDoc } from 'firebase/firestore';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/components/providers/auth-provider';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   AlertDialog,

@@ -1,9 +1,10 @@
+
 'use client';
 
 import Header from '@/components/shared/Header';
 import Footer from '@/components/shared/Footer';
 import AIChatWidget from '@/components/shared/AIChatWidget';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/components/providers/auth-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Newspaper } from 'lucide-react';

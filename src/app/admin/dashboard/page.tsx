@@ -7,6 +7,7 @@ import AiAssistant from "@/components/admin/AIAssistant";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import ExternalNewsFeed from "@/components/admin/ExternalNewsFeed";
+import SeedDatabase from "@/components/admin/SeedDatabase";
 
 const features = [
   {
@@ -61,6 +62,8 @@ export default function AdminDashboardPage() {
       </div>
 
       <DashboardStats />
+      
+      <SeedDatabase />
 
       <Card>
         <CardHeader>

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
 import { Loader2 } from 'lucide-react';
 import type { Article, Category } from '@/lib/types';
@@ -63,54 +63,71 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
   }, [initialArticles]);
 
 
+  const categoryId = useMemo(() => {
+      if (!categorySlug || categorySlug === 'all') return null;
+      const category = allCategories.find(c => c.slug === categorySlug);
+      return category?.id || null;
+  }, [categorySlug, allCategories]);
+
   useEffect(() => {
     if (!db) return;
 
     let constraints = [
+      where('status', '==', 'published'),
       orderBy('publishedAt', 'desc'),
-      firestoreLimit(1) // We only care about the latest document for the listener
+      firestoreLimit(10) // Listen to more than just the latest one
     ];
+
+    if (districtId && districtId !== 'all') {
+      constraints.push(where('districtId', '==', districtId));
+    }
+
+    if (categoryId) {
+      constraints.push(where('categoryIds', 'array-contains', categoryId));
+    }
 
     const q = query(collection(db, 'articles'), ...constraints as any);
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
         const districts = await getDistricts();
-        const categories = await getCategories();
-
+        
         snapshot.docChanges().forEach(async (change) => {
+            const docData = change.doc.data();
+            const changedArticle: Article = {
+              id: change.doc.id,
+              title: docData.title,
+              content: docData.content,
+              imageUrl: docData.imageUrl,
+              author: docData.author,
+              authorId: docData.authorId,
+              categoryIds: docData.categoryIds,
+              status: docData.status,
+              publishedAt: (docData.publishedAt.toDate() as Date).toISOString(),
+              createdAt: (docData.createdAt.toDate() as Date).toISOString(),
+              updatedAt: (docData.updatedAt.toDate() as Date).toISOString(),
+              source: docData.source,
+              sourceUrl: docData.sourceUrl,
+              seo: docData.seo,
+              views: docData.views,
+              districtId: docData.districtId,
+              district: districts.find(d => d.id === docData.districtId)?.name,
+            };
+
             if (change.type === 'added') {
-                const docData = change.doc.data();
-                
-                // Convert to plain object to avoid non-serializable data issues
-                const newArticle: Article = {
-                  id: change.doc.id,
-                  title: docData.title,
-                  content: docData.content,
-                  imageUrl: docData.imageUrl,
-                  author: docData.author,
-                  authorId: docData.authorId,
-                  categoryIds: docData.categoryIds,
-                  status: docData.status,
-                  publishedAt: docData.publishedAt.toDate().toISOString(),
-                  createdAt: docData.createdAt.toDate().toISOString(),
-                  updatedAt: docData.updatedAt.toDate().toISOString(),
-                  source: docData.source,
-                  sourceUrl: docData.sourceUrl,
-                  seo: docData.seo,
-                  views: docData.views,
-                  districtId: docData.districtId,
-                  district: districts.find(d => d.id === docData.districtId)?.name,
-                };
-                
-                // Only add the new article if it's not already in the list
                 setArticles(prev => {
-                    if (!prev.some(a => a.id === newArticle.id)) {
-                        const newArticles = [newArticle, ...prev];
-                        // Re-sort to be sure
+                    if (!prev.some(a => a.id === changedArticle.id)) {
+                        const newArticles = [changedArticle, ...prev];
                         newArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
                         return newArticles;
                     }
                     return prev;
+                });
+            }
+             if (change.type === 'modified') {
+                setArticles(prev => {
+                    const newArticles = prev.map(a => a.id === changedArticle.id ? changedArticle : a);
+                    newArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+                    return newArticles;
                 });
             }
         });
@@ -119,10 +136,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     });
 
     return () => unsubscribe();
-  // We remove dependencies here to set up the listener only once
-  // and avoid re-subscribing on every state change.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [districtId, categoryId]);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;

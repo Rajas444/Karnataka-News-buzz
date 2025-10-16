@@ -151,9 +151,8 @@ export async function getArticles(options?: {
         const snapshot = await getDocs(q);
 
         if (snapshot.empty && !startAfterDocId) {
-            console.log("Firestore is empty or returned no results for the query. Falling back to placeholders.");
             // This is a controlled fallback, so we throw an error to enter the catch block.
-            throw new Error("Fallback to placeholder data");
+            throw new Error("Firestore is empty or returned no results for the query. Falling back to placeholders.");
         }
 
         const fetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
@@ -175,7 +174,8 @@ export async function getArticles(options?: {
         const filteredPlaceholders = placeholderArticles.filter(p => 
             (!districtId || districtId === 'all' || p.districtId === districtId) && 
             (!categorySlug || categorySlug === 'all' || p.categoryIds.includes(categorySlug))
-        );
+        ).sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
 
         const startIndex = startAfterDocId
             ? filteredPlaceholders.findIndex(p => p.id === startAfterDocId) + 1
@@ -308,3 +308,6 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         .slice(0, 3);
 }
 
+
+
+    

@@ -181,15 +181,12 @@ export async function getArticles(options?: {
             ? filteredPlaceholders.findIndex(p => p.id === startAfterDocId) + 1
             : 0;
 
-        if (startIndex === 0 && !startAfterDocId) {
-            // This is the initial load for placeholders
-            const newArticles = filteredPlaceholders.slice(0, pageSize);
-            const newLastVisibleDocId = (newArticles.length < filteredPlaceholders.length) ? newArticles[newArticles.length - 1]?.id : null;
-            return { articles: newArticles, lastVisibleDocId: newLastVisibleDocId };
-        }
-        
         const newArticles = filteredPlaceholders.slice(startIndex, startIndex + pageSize);
-        const newLastVisibleDocId = (startIndex + pageSize < filteredPlaceholders.length) ? newArticles[newArticles.length - 1]?.id : null;
+        
+        const newLastVisibleDocId =
+            startIndex + newArticles.length < filteredPlaceholders.length
+                ? newArticles[newArticles.length - 1]?.id ?? null
+                : null;
         
         return { articles: newArticles, lastVisibleDocId: newLastVisibleDocId };
     }

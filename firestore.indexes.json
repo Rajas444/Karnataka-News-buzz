@@ -10,10 +10,6 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
           "fieldPath": "publishedAt",
           "order": "DESCENDING"
         }
@@ -25,6 +21,10 @@
       "fields": [
         {
           "fieldPath": "districtId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
           "order": "ASCENDING"
         },
         {

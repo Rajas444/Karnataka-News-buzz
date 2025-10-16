@@ -1,0 +1,54 @@
+{
+    "new-tech-park-hubballi-1": {
+        "seed": "techpark",
+        "hint": "technology office"
+    },
+    "mysuru-dasara-preparations-2": {
+        "seed": "dasara",
+        "hint": "festival palace"
+    },
+    "bengaluru-fc-new-signing-3": {
+        "seed": "football",
+        "hint": "soccer player"
+    },
+    "monsoon-relief-kodagu-4": {
+        "seed": "monsoon",
+        "hint": "heavy rain"
+    },
+    "ganesh-chaturthi-celebrations-5": {
+        "seed": "ganesha",
+        "hint": "hindu festival"
+    },
+    "new-kannada-film-release-6": {
+        "seed": "movie",
+        "hint": "movie cinema"
+    },
+    "belagavi-politics-update-7": {
+        "seed": "politics",
+        "hint": "election politics"
+    },
+    "startup-funding-bangalore-8": {
+        "seed": "startup",
+        "hint": "startup meeting"
+    },
+    "hampi-utsav-announcement-9": {
+        "seed": "hampi",
+        "hint": "historic ruins"
+    },
+    "udupi-beach-cleanup-10": {
+        "seed": "beach",
+        "hint": "beach clean"
+    },
+    "bengaluru-suburban-rail-update-11": {
+        "seed": "train",
+        "hint": "city train"
+    },
+    "kannada-unicode-font-release-12": {
+        "seed": "font",
+        "hint": "typography design"
+    },
+    "bengaluru-mysuru-expressway-tolls-13": {
+        "seed": "expressway",
+        "hint": "highway traffic"
+    }
+}

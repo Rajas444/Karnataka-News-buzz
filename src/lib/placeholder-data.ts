@@ -57,6 +57,21 @@ function getYesterday(): Date {
     return yesterday;
 }
 
+function getTwoDaysAgo(): Date {
+    const today = new Date();
+    const twoDaysAgo = new Date(today);
+    twoDaysAgo.setDate(today.getDate() - 2);
+    twoDaysAgo.setHours(10, 0, 0, 0);
+    return twoDaysAgo;
+}
+
+function getThreeDaysAgo(): Date {
+    const today = new Date();
+    const threeDaysAgo = new Date(today);
+    threeDaysAgo.setDate(today.getDate() - 3);
+    threeDaysAgo.setHours(18, 0, 0, 0);
+    return threeDaysAgo;
+}
 
 export const placeholderArticles: Article[] = [
     {
@@ -105,7 +120,7 @@ export const placeholderArticles: Article[] = [
     {
         id: 'bengaluru-fc-new-signing-3',
         title: 'ಬೆಂಗಳೂರು ಎಫ್‌ಸಿ ಹೊಸ ವಿದೇಶಿ ಸ್ಟ್ರೈಕರ್‌ನನ್ನು ತನ್ನ ತಂಡಕ್ಕೆ ಸೇರಿಸಿಕೊಂಡಿದೆ',
-        content: 'ಇಂಡಿಯನ್ ಸೂಪರ್ ಲೀಗ್ (ISL) ಋತುವಿಗಾಗಿ ಬೆಂಗಳೂರು ಎಫ್‌ಸಿ ತಂಡವು ಸ್ಪಾನಿಷ್ ಸ್ಟ್ರೈಕರ್‌ನನ್ನು अपने ತಂಡಕ್ಕೆ ಸೇರಿಸಿಕೊಂಡಿದೆ. ಈ ಹೊಸ ಒಪ್ಪಂದವು ತಂಡದ ಆಕ್ರಮಣಕಾರಿ ಸಾಮರ್ಥ್ಯವನ್ನು ಹೆಚ್ಚಿಸುವ ನಿರೀಕ್ಷೆಯಿದೆ.',
+        content: 'ಇಂಡಿಯನ್ ಸೂಪರ್ ಲీగ్ (ISL) ಋತುವಿಗಾಗಿ ಬೆಂಗಳೂರು ಎಫ್‌ಸಿ ತಂಡವು ಸ್ಪಾನಿಷ್ ಸ್ಟ್ರೈಕರ್‌ನನ್ನು ਆਪਣੇ ತಂಡಕ್ಕೆ ಸೇರಿಸಿಕೊಂಡಿದೆ. ಈ ಹೊಸ ಒಪ್ಪಂದವು ತಂಡದ ಆಕ್ರಮಣಕಾರಿ ಸಾಮರ್ಥ್ಯವನ್ನು ಹೆಚ್ಚಿಸುವ ನಿರೀಕ್ಷೆಯಿದೆ.',
         imageUrl: 'https://picsum.photos/seed/football/800/600',
         "data-ai-hint": "soccer player",
         author: 'ESPN',
@@ -231,7 +246,7 @@ export const placeholderArticles: Article[] = [
     {
         id: 'hampi-utsav-announcement-9',
         title: 'ಹಂಪಿ ಉತ್ಸವ ದಿನಾಂಕ ಪ್ರಕಟ: ಪ್ರವಾಸೋದ್ಯಮಕ್ಕೆ ಉತ್ತೇಜನ',
-        content: 'ವಿಶ್ವಪ್ರಸಿದ್ಧ ಹಂಪಿ ಉತ್ಸವದ ದಿನಾಂಕಗಳನ್ನು ಕರ್ನಾಟಕ ಸರ್ಕಾರ ಪ್ರಕಟಿಸಿದೆ. ಈ ವರ್ಷದ ಉತ್ಸವವು ವಿಜಯನಗರ ಜಿಲ್ಲೆಯ ಪ್ರವಾಸೋದ್ಯಮಕ್ಕೆ ದೊಡ್ಡ ಉತ್ತೇಜನ ನೀಡುವ ನಿರೀಕ್ಷೆಯಿದೆ.',
+        content: 'ವಿಶ್ವಪ್ರಸಿದ್ಧ ಹಂಪಿ ಉತ್ಸavದ ದಿನಾಂಕಗಳನ್ನು ಕರ್ನಾಟಕ ಸರ್ಕಾರ ಪ್ರಕಟಿಸಿದೆ. ಈ ವರ್ಷದ ಉತ್ಸವವು ವಿಜಯನಗರ ಜಿಲ್ಲೆಯ ಪ್ರವಾಸೋದ್ಯಮಕ್ಕೆ ದೊಡ್ಡ ಉತ್ತೇಜನ ನೀಡುವ ನಿರೀಕ್ಷೆಯಿದೆ.',
         imageUrl: 'https://picsum.photos/seed/hampi/800/600',
         "data-ai-hint": "historic ruins",
         author: 'KNP Staff',
@@ -268,6 +283,69 @@ export const placeholderArticles: Article[] = [
         seo: {
             metaDescription: 'A massive cleanliness drive was conducted at Malpe beach in Udupi by a local NGO and volunteers to promote coastal conservation.',
             keywords: ['Udupi', 'Malpe Beach', 'Environment', 'Cleanliness Drive']
+        }
+    },
+    {
+        id: 'bengaluru-suburban-rail-update-11',
+        title: 'ಬೆಂಗಳೂರು ಉಪನಗರ ರೈಲು ಯೋಜನೆ: ಮೊದಲ ಹಂತದ ಕಾಮಗಾರಿ ಚುರುಕು',
+        content: 'ಬೆಂಗಳೂರಿನ ಸಂಚಾರ ದಟ್ಟಣೆಯನ್ನು ಕಡಿಮೆ ಮಾಡುವ ಗುರಿ ಹೊಂದಿರುವ ಉಪನಗರ ರೈಲು ಯೋಜನೆಯ ಮೊದಲ ಹಂತದ ಕಾಮಗಾರಿಗಳು ವೇಗ ಪಡೆದುಕೊಂಡಿವೆ. ಈ ಯೋಜನೆಯು ನಗರದ ವಿವಿಧ ಭಾಗಗಳಿಗೆ ತ್ವರಿತ ಸಂಪರ್ಕವನ್ನು ಒದಗಿಸಲಿದೆ.',
+        imageUrl: 'https://picsum.photos/seed/train/800/600',
+        "data-ai-hint": "city train",
+        author: 'Deccan Herald',
+        authorId: 'dh-reporter',
+        categoryIds: ['society-community', 'business-startups'],
+        status: 'published',
+        publishedAt: getTwoDaysAgo().toISOString(),
+        createdAt: getTwoDaysAgo().toISOString(),
+        updatedAt: getTwoDaysAgo().toISOString(),
+        source: 'Deccan Herald',
+        views: 1950,
+        districtId: 'bengaluru-urban',
+        seo: {
+            metaDescription: 'Work on the first phase of the Bengaluru suburban rail project, aimed at easing traffic congestion, has gained momentum.',
+            keywords: ['Bengaluru', 'Suburban Rail', 'Infrastructure', 'Traffic']
+        }
+    },
+    {
+        id: 'kannada-unicode-font-release-12',
+        title: 'ಹೊಸ ಕನ್ನಡ ಯೂನಿಕೋಡ್ ಫಾಂಟ್ ಬಿಡುಗಡೆ',
+        content: 'ಕನ್ನಡ ಭಾಷೆಯ ಡಿಜಿಟಲ್ ಬಳಕೆಯನ್ನು ಉತ್ತೇಜಿಸಲು, ಕರ್ನಾಟಕ ಸರ್ಕಾರವು ಹೊಸ ಯೂನಿಕೋಡ್ ಫಾಂಟ್ ಅನ್ನು ಬಿಡುಗಡೆ ಮಾಡಿದೆ. ಇದು ಸುಲಭವಾಗಿ ಲಭ್ಯವಿದ್ದು, ವಿವಿಧ ಡಿಜಿಟಲ್ ವೇದಿಕೆಗಳಲ್ಲಿ ಬಳಸಬಹುದಾಗಿದೆ.',
+        imageUrl: 'https://picsum.photos/seed/font/800/600',
+        "data-ai-hint": "typography design",
+        author: 'KNP Staff',
+        authorId: 'admin',
+        categoryIds: ['technology', 'society-community'],
+        status: 'published',
+        publishedAt: getTwoDaysAgo().toISOString(),
+        createdAt: getTwoDaysAgo().toISOString(),
+        updatedAt: getTwoDaysAgo().toISOString(),
+        source: 'KNP Internal',
+        views: 650,
+        districtId: 'bengaluru-urban',
+        seo: {
+            metaDescription: 'The Karnataka government has released a new Kannada Unicode font to promote the digital usage of the Kannada language.',
+            keywords: ['Kannada', 'Unicode', 'Font', 'Technology', 'Language']
+        }
+    },
+    {
+        id: 'bengaluru-mysuru-expressway-tolls-13',
+        title: 'ಬೆಂಗಳೂರು-ಮೈಸೂರು ಎಕ್ಸ್‌ಪ್ರೆಸ್‌ವೇ: ಟೋಲ್ ದರ ಪರಿಷ್ಕರಣೆ',
+        content: 'ಬೆಂಗಳೂರು-ಮೈಸೂರು ಎಕ್ಸ್‌ಪ್ರೆಸ್‌ವೇಯಲ್ಲಿನ ಟೋಲ್ ದರಗಳನ್ನು ಪರಿಷ್ಕರಿಸಲಾಗಿದೆ. ರಾಷ್ಟ್ರೀಯ ಹೆದ್ದಾರಿ ಪ್ರಾಧಿಕಾರವು ಹೊಸ ದರಗಳನ್ನು ಪ್ರಕಟಿಸಿದ್ದು, ಇದು ಪ್ರಯಾಣಿಕರ ಮೇಲೆ ಪರಿಣಾಮ ಬೀರಲಿದೆ.',
+        imageUrl: 'https://picsum.photos/seed/expressway/800/600',
+        "data-ai-hint": "highway traffic",
+        author: 'Prajavani',
+        authorId: 'prajavani-reporter',
+        categoryIds: ['society-community', 'politics'],
+        status: 'published',
+        publishedAt: getThreeDaysAgo().toISOString(),
+        createdAt: getThreeDaysAgo().toISOString(),
+        updatedAt: getThreeDaysAgo().toISOString(),
+        source: 'Prajavani',
+        views: 2800,
+        districtId: 'ramanagara',
+        seo: {
+            metaDescription: 'Toll rates on the Bengaluru-Mysuru expressway have been revised by the National Highways Authority of India (NHAI).',
+            keywords: ['Bengaluru-Mysuru Expressway', 'Toll', 'NHAI', 'Travel']
         }
     }
 ];

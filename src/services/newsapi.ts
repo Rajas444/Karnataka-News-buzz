@@ -23,7 +23,8 @@ async function fetchFromNewsDataAPI(options?: { q?: string }): Promise<NewsApiAr
         return [];
     }
     
-    const query = options?.q || 'karnataka';
+    // Hardcode query to always search for Karnataka news
+    const query = 'karnataka';
     const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&q=${encodeURIComponent(query)}&language=kn&country=in`;
 
     try {
@@ -65,6 +66,6 @@ async function fetchFromNewsDataAPI(options?: { q?: string }): Promise<NewsApiAr
 }
 
 export async function getExternalNews(options?: { type?: 'everything' | 'top-headlines', q?: string }): Promise<NewsApiArticle[]> {
-    // The 'type' option is maintained for compatibility but not used by the new provider.
-    return await fetchFromNewsDataAPI({ q: options?.q });
+    // The 'type' and 'q' options are maintained for compatibility but the query is now fixed.
+    return await fetchFromNewsDataAPI();
 }

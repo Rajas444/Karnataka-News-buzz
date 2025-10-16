@@ -16,8 +16,10 @@ import {
   orderBy,
   Timestamp,
   where,
+  limit as firestoreLimit,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { getDistricts } from '@/services/districts';
 
 interface ArticleListProps {
   initialArticles: Article[];
@@ -65,51 +67,46 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     if (!db) return;
 
     let constraints = [
-        orderBy('publishedAt', 'desc'),
+      orderBy('publishedAt', 'desc'),
+      firestoreLimit(1) // We only care about the latest document for the listener
     ];
 
-    if (articles.length > 0 && articles[0].publishedAt) {
-      constraints.push(where('publishedAt', '>=', Timestamp.fromDate(new Date(articles[0].publishedAt))));
-    } else {
-      const oneMonthAgo = new Date();
-      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-      constraints.push(where('publishedAt', '>=', Timestamp.fromDate(oneMonthAgo)));
-    }
-    
-    if (districtId && districtId !== 'all') {
-      constraints.push(where('districtId', '==', districtId));
-    }
-    
-    if(categorySlug && categorySlug !== 'all') {
-      const categoryId = allCategories.find(c => c.slug === categorySlug)?.id;
-      if (categoryId) {
-        constraints.push(where('categoryIds', 'array-contains', categoryId));
-      }
-    }
-    
     const q = query(collection(db, 'articles'), ...constraints as any);
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+        const districts = await getDistricts();
+        const categories = await getCategories();
+
         snapshot.docChanges().forEach(async (change) => {
             if (change.type === 'added') {
                 const docData = change.doc.data();
-                const newArticle = { 
-                    id: change.doc.id, 
-                    ...docData,
-                    publishedAt: docData.publishedAt?.toDate().toISOString(),
-                    createdAt: docData.createdAt?.toDate().toISOString(),
-                    updatedAt: docData.updatedAt?.toDate().toISOString(),
-                } as Article;
-
-                const districts = await getDistricts();
-                const district = districts.find(d => d.id === newArticle.districtId);
-                if (district) {
-                    newArticle.district = district.name;
-                }
-
+                
+                // Convert to plain object to avoid non-serializable data issues
+                const newArticle: Article = {
+                  id: change.doc.id,
+                  title: docData.title,
+                  content: docData.content,
+                  imageUrl: docData.imageUrl,
+                  author: docData.author,
+                  authorId: docData.authorId,
+                  categoryIds: docData.categoryIds,
+                  status: docData.status,
+                  publishedAt: docData.publishedAt.toDate().toISOString(),
+                  createdAt: docData.createdAt.toDate().toISOString(),
+                  updatedAt: docData.updatedAt.toDate().toISOString(),
+                  source: docData.source,
+                  sourceUrl: docData.sourceUrl,
+                  seo: docData.seo,
+                  views: docData.views,
+                  districtId: docData.districtId,
+                  district: districts.find(d => d.id === docData.districtId)?.name,
+                };
+                
+                // Only add the new article if it's not already in the list
                 setArticles(prev => {
                     if (!prev.some(a => a.id === newArticle.id)) {
                         const newArticles = [newArticle, ...prev];
+                        // Re-sort to be sure
                         newArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
                         return newArticles;
                     }
@@ -122,7 +119,10 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     });
 
     return () => unsubscribe();
-  }, [articles, categorySlug, districtId, allCategories]);
+  // We remove dependencies here to set up the listener only once
+  // and avoid re-subscribing on every state change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;

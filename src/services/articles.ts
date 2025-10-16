@@ -33,7 +33,7 @@ async function serializeArticle(doc: any): Promise<Article> {
         return date;
     }
 
-    const plainObject = {
+    const plainObject: Partial<Article> = {
         id: doc.id,
         title: data.title,
         content: data.content,

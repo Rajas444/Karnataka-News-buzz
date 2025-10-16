@@ -17,7 +17,7 @@ interface NewsDataIOArticle {
 }
 
 async function fetchFromNewsDataAPI(options?: { q?: string }): Promise<NewsApiArticle[]> {
-    const apiKey = process.env.NEXT_PUBLIC_GNEWS_API_KEY; // This now holds the NewsData.io key
+    const apiKey = process.env.NEXT_PUBLIC_NEWSDATA_API_KEY;
     if (!apiKey || apiKey.includes("your_") || apiKey.length < 20) {
         console.warn("Newsdata.io API key is not configured correctly. External news feed will be empty.");
         return [];

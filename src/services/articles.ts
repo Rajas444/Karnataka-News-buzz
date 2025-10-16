@@ -152,8 +152,8 @@ export async function getArticles(options?: {
 
         if (snapshot.empty && !startAfterDocId) {
             console.log("Firestore is empty or returned no results for the query. Falling back to placeholders.");
-            const filteredPlaceholders = placeholderArticles.filter(p => (!districtId || districtId === 'all' || p.districtId === districtId) && (!categorySlug || categorySlug === 'all' || p.categoryIds.includes(categorySlug)));
-            return { articles: filteredPlaceholders.slice(0, pageSize), lastVisibleDocId: null };
+            // This is a controlled fallback, so we throw an error to enter the catch block.
+            throw new Error("Fallback to placeholder data");
         }
 
         const fetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
@@ -169,16 +169,25 @@ export async function getArticles(options?: {
             lastVisibleDocId: newLastVisibleDocId
         };
     } catch(error) {
-        console.warn("Failed to fetch articles from Firestore, using placeholder data as a fallback. Error:", error);
+        console.warn("Using placeholder data as a fallback. Error:", (error as Error).message);
         const { districtId, categorySlug, pageSize = 10, startAfterDocId } = options || {};
         
-        const startIndex = startAfterDocId ? placeholderArticles.findIndex(p => p.id === startAfterDocId) + 1 : 0;
-
         const filteredPlaceholders = placeholderArticles.filter(p => 
             (!districtId || districtId === 'all' || p.districtId === districtId) && 
             (!categorySlug || categorySlug === 'all' || p.categoryIds.includes(categorySlug))
         );
 
+        const startIndex = startAfterDocId
+            ? filteredPlaceholders.findIndex(p => p.id === startAfterDocId) + 1
+            : 0;
+
+        if (startIndex === 0 && !startAfterDocId) {
+            // This is the initial load for placeholders
+            const newArticles = filteredPlaceholders.slice(0, pageSize);
+            const newLastVisibleDocId = (newArticles.length < filteredPlaceholders.length) ? newArticles[newArticles.length - 1]?.id : null;
+            return { articles: newArticles, lastVisibleDocId: newLastVisibleDocId };
+        }
+        
         const newArticles = filteredPlaceholders.slice(startIndex, startIndex + pageSize);
         const newLastVisibleDocId = (startIndex + pageSize < filteredPlaceholders.length) ? newArticles[newArticles.length - 1]?.id : null;
         
@@ -193,12 +202,16 @@ export async function getArticle(id: string): Promise<Article | null> {
     let article: Article | null = null;
 
     if (!isExternalId) {
-        const docRef = doc(db, 'articles', id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            article = await serializeArticle(docSnap);
-            // Increment view count without waiting
-            updateDoc(docRef, { views: (article.views || 0) + 1 }).catch(e => console.error("Failed to update view count:", e));
+        try {
+            const docRef = doc(db, 'articles', id);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                article = await serializeArticle(docSnap);
+                // Increment view count without waiting
+                updateDoc(docRef, { views: (article.views || 0) + 1 }).catch(e => console.error("Failed to update view count:", e));
+            }
+        } catch (e) {
+            // Firestore might not be available, fallback to placeholders below
         }
     } else {
         try {
@@ -208,11 +221,11 @@ export async function getArticle(id: string): Promise<Article | null> {
             throw new Error(`Failed to fetch external news article: ${error.message}`);
         }
     }
-
+    
+    // If no article was found in Firestore or external API, check placeholders
     if (!article && placeholderArticles.some(p => p.id === id)) {
         article = placeholderArticles.find(p => p.id === id) || null;
     }
-
 
     return article;
 }
@@ -297,3 +310,4 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         .filter(article => article.id !== currentArticleId)
         .slice(0, 3);
 }
+

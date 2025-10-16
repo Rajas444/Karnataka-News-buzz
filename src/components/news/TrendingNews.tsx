@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getExternalNews } from '@/services/newsapi';
+import { getArticles } from '@/services/articles';
 import type { Article } from '@/lib/types';
 import { Loader2, TrendingUp } from 'lucide-react';
 import { useArticleModal } from '../providers/article-modal-provider';
@@ -17,15 +17,21 @@ export default function TrendingNews() {
   useEffect(() => {
     async function fetchTrending() {
       try {
-        // Fetch top headlines without a specific query to get general trending news
-        const articles = await getExternalNews({ type: 'top-headlines' });
-        if (articles.length === 0) {
+        // Fetch top 5 most viewed articles from Firestore
+        const { articles } = await getArticles({ pageSize: 5 }); // This will be sorted by publishedAt
+        
+        // To properly get "trending", we should ideally sort by views.
+        // For now, we'll simulate this by taking the latest and assuming they have views.
+        // A proper implementation would require a query sorted by 'views'.
+        const sortedByViews = articles.sort((a, b) => (b.views || 0) - (a.views || 0));
+
+        if (sortedByViews.length === 0) {
           setError("Could not load trending news at this time.");
         }
-        setTrending(articles.slice(0, 5));
-      } catch (error) {
-        console.error('Failed to fetch trending articles:', error);
-        setError('Failed to fetch trending articles. Please check API key configuration.');
+        setTrending(sortedByViews.slice(0, 5));
+      } catch (err: any) {
+        console.error('Failed to fetch trending articles:', err);
+        setError('Failed to fetch trending articles. Please check database connection.');
       } finally {
         setLoading(false);
       }
@@ -55,7 +61,7 @@ export default function TrendingNews() {
             <CardDescription className="font-kannada">ರಾಜ್ಯಾದ್ಯಂತ ಈಗ ಜನಪ್ರಿಯವಾಗಿರುವುದೇನು.</CardDescription>
         </CardHeader>
         <CardContent>
-            <p className="text-muted-foreground text-sm">Could not load trending news feed.</p>
+            <p className="text-muted-foreground text-sm">{error || "Could not load trending news feed."}</p>
         </CardContent>
     </Card>
     );
@@ -82,7 +88,7 @@ export default function TrendingNews() {
                         <p className="font-semibold leading-tight group-hover:underline font-kannada">
                             {article.title}
                         </p>
-                         <p className="text-xs text-muted-foreground">{article.source}</p>
+                         <p className="text-xs text-muted-foreground">{article.source || article.author}</p>
                     </div>
                 </li>
             ))}

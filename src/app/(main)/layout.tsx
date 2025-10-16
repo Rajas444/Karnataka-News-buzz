@@ -1,4 +1,3 @@
-
 'use client';
 
 import Header from '@/components/shared/Header';
@@ -15,7 +14,7 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-    const { user, loading } = useAuth();
+    const { user, loading, userRole } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
@@ -24,7 +23,7 @@ export default function MainLayout({
         }
     }, [user, loading, router]);
 
-    if (loading || !user) {
+    if (loading || (!user && userRole !== 'admin')) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <div className="flex flex-col items-center gap-4">

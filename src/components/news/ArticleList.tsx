@@ -25,27 +25,17 @@ interface ArticleListProps {
   initialArticles: Article[];
   categorySlug?: string;
   districtId?: string;
+  allCategories?: Category[];
 }
 
-export default function ArticleList({ initialArticles, categorySlug, districtId }: ArticleListProps) {
+export default function ArticleList({ initialArticles, categorySlug, districtId, allCategories = [] }: ArticleListProps) {
   const [articles, setArticles] = useState<Article[]>(initialArticles);
-  const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(initialArticles.length > 0);
   const { toast } = useToast();
   
   useEffect(() => {
-    async function fetchInitialData() {
-      try {
-        const fetchedCategories = await getCategories();
-        setAllCategories(fetchedCategories);
-      } catch (e) {
-        console.error("Failed to fetch categories for ArticleList", e);
-      }
-    }
-    fetchInitialData();
-    
     setArticles(initialArticles);
     
     if (initialArticles.length > 0) {
@@ -70,23 +60,20 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
   }, [categorySlug, allCategories]);
 
   useEffect(() => {
-    if (!db || articles.length === 0) return;
-
-    const latestArticle = articles[0];
-    if (!latestArticle || !latestArticle.publishedAt) return;
+    if (!db) return;
 
     let constraints = [
         where('status', '==', 'published'),
-        where('publishedAt', '>', Timestamp.fromDate(new Date(latestArticle.publishedAt))),
         orderBy('publishedAt', 'desc'),
+        firestoreLimit(10) // Listen for the latest 10 articles
     ];
 
     if (districtId && districtId !== 'all') {
-      constraints.push(where('districtId', '==', districtId));
+      constraints.unshift(where('districtId', '==', districtId));
     }
 
     if (categoryId) {
-      constraints.push(where('categoryIds', 'array-contains', categoryId));
+      constraints.unshift(where('categoryIds', 'array-contains', categoryId));
     }
 
     const q = query(collection(db, 'articles'), ...constraints as any);
@@ -96,42 +83,58 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
         
         const districts = await getDistricts();
         const newArticles: Article[] = [];
+        const modifiedArticles: Article[] = [];
 
         snapshot.docChanges().forEach((change) => {
+            const docData = change.doc.data();
+            const changedArticle: Article = {
+              id: change.doc.id,
+              title: docData.title,
+              content: docData.content,
+              imageUrl: docData.imageUrl,
+              author: docData.author,
+              authorId: docData.authorId,
+              categoryIds: docData.categoryIds,
+              status: docData.status,
+              publishedAt: (docData.publishedAt.toDate() as Date).toISOString(),
+              createdAt: (docData.createdAt.toDate() as Date).toISOString(),
+              updatedAt: (docData.updatedAt.toDate() as Date).toISOString(),
+              source: docData.source,
+              sourceUrl: docData.sourceUrl,
+              seo: docData.seo,
+              views: docData.views,
+              districtId: docData.districtId,
+              district: districts.find(d => d.id === docData.districtId)?.name,
+            };
+
             if (change.type === 'added') {
-                const docData = change.doc.data();
-                const changedArticle: Article = {
-                  id: change.doc.id,
-                  title: docData.title,
-                  content: docData.content,
-                  imageUrl: docData.imageUrl,
-                  author: docData.author,
-                  authorId: docData.authorId,
-                  categoryIds: docData.categoryIds,
-                  status: docData.status,
-                  publishedAt: (docData.publishedAt.toDate() as Date).toISOString(),
-                  createdAt: (docData.createdAt.toDate() as Date).toISOString(),
-                  updatedAt: (docData.updatedAt.toDate() as Date).toISOString(),
-                  source: docData.source,
-                  sourceUrl: docData.sourceUrl,
-                  seo: docData.seo,
-                  views: docData.views,
-                  districtId: docData.districtId,
-                  district: districts.find(d => d.id === docData.districtId)?.name,
-                };
-                newArticles.push(changedArticle);
+              newArticles.push(changedArticle);
+            }
+             if (change.type === 'modified') {
+              modifiedArticles.push(changedArticle);
             }
         });
 
         if (newArticles.length > 0) {
-            setArticles(prev => [...newArticles, ...prev]);
+            setArticles(prev => {
+                const existingIds = new Set(prev.map(a => a.id));
+                const uniqueNew = newArticles.filter(a => !existingIds.has(a.id));
+                return [...uniqueNew, ...prev];
+            });
         }
+        if (modifiedArticles.length > 0) {
+             setArticles(prev => prev.map(p => {
+                const updated = modifiedArticles.find(m => m.id === p.id);
+                return updated || p;
+            }));
+        }
+
     }, (error) => {
         console.error("Real-time update failed:", error);
     });
 
     return () => unsubscribe();
-  }, [districtId, categoryId, articles]);
+  }, [districtId, categoryId]);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;
@@ -194,3 +197,4 @@ export default function ArticleList({ initialArticles, categorySlug, districtId 
     </div>
   );
 }
+

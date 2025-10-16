@@ -10,6 +10,16 @@ import { getCategories } from './categories';
 import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
 import { getExternalNews } from './newsapi';
 import { placeholderArticles } from '@/lib/placeholder-data';
+import imageData from '@/app/lib/placeholder-images.json';
+
+type ImageData = {
+    [key: string]: {
+        seed: string;
+        hint: string;
+    }
+}
+const typedImageData = imageData as ImageData;
+
 
 async function serializeArticle(doc: any): Promise<Article> {
     const data = doc.data();
@@ -171,7 +181,19 @@ export async function getArticles(options?: {
         console.warn("Using placeholder data as a fallback. Error:", (error as Error).message);
         const { districtId, categorySlug, pageSize = 10, startAfterDocId } = options || {};
         
-        const filteredPlaceholders = placeholderArticles.filter(p => 
+        const processedPlaceholders = placeholderArticles.map(article => {
+            const imageInfo = typedImageData[article.id];
+            if (imageInfo) {
+                return {
+                    ...article,
+                    imageUrl: `https://picsum.photos/seed/${imageInfo.seed}/800/600`,
+                    'data-ai-hint': imageInfo.hint,
+                };
+            }
+            return article;
+        });
+
+        const filteredPlaceholders = processedPlaceholders.filter(p => 
             (!districtId || districtId === 'all' || p.districtId === districtId) && 
             (!categorySlug || categorySlug === 'all' || p.categoryIds.includes(categorySlug))
         ).sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
@@ -221,7 +243,15 @@ export async function getArticle(id: string): Promise<Article | null> {
     
     // If no article was found in Firestore or external API, check placeholders
     if (!article && placeholderArticles.some(p => p.id === id)) {
-        article = placeholderArticles.find(p => p.id === id) || null;
+        const placeholder = placeholderArticles.find(p => p.id === id);
+        if (placeholder) {
+            const imageInfo = typedImageData[placeholder.id];
+            article = {
+                ...placeholder,
+                imageUrl: imageInfo ? `https://picsum.photos/seed/${imageInfo.seed}/800/600` : `https://picsum.photos/seed/${placeholder.id}/800/600`,
+                'data-ai-hint': imageInfo ? imageInfo.hint : 'news article',
+            };
+        }
     }
 
     return article;

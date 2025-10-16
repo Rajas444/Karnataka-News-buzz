@@ -10,6 +10,7 @@ import CommunityHighlights from '@/components/posts/CommunityHighlights';
 import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
+import { getCategories } from '@/services/categories';
 
 type HomePageProps = {
   searchParams: {
@@ -23,15 +24,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const districtId = searchParams?.district;
 
   let districts = [];
+  let allCategories = [];
   let initialArticles: Article[] = [];
   let topArticle: Article | null = null;
   let error: string | null = null;
 
   try {
-    // Fetch districts for the filter controls.
-    districts = await getDistricts();
+    // Fetch districts and categories for the filter controls and cards.
+    [districts, allCategories] = await Promise.all([getDistricts(), getCategories()]);
     
-    // The getArticles service now handles all fallback logic and filtering.
     const { articles } = await getArticles({
       pageSize: 11, // Fetch one extra for the top article
       categorySlug,
@@ -110,6 +111,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                           initialArticles={initialArticles}
                           categorySlug={categorySlug}
                           districtId={districtId}
+                          allCategories={allCategories}
                       />
                   </section>
               </div>
@@ -129,3 +131,4 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     </div>
   );
 }
+

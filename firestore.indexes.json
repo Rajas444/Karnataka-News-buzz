@@ -47,7 +47,7 @@
         },
         {
           "fieldPath": "publishedAt",
-          "order": "ASCENDING"
+          "order": "DESCENDING"
         }
       ]
     }

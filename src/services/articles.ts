@@ -1,13 +1,13 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import type { Article, ArticleFormValues } from '@/lib/types';
 import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, where, Timestamp, limit, startAfter, orderBy, writeBatch } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { watermarkImage } from '@/ai/flows/watermark-image-flow';
 import { getDistricts } from './districts';
 import { getCategories } from './categories';
-import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
 import { getExternalNews } from './newsapi';
 import { placeholderArticles } from '@/lib/placeholder-data';
 import imageData from '@/app/lib/placeholder-images.json';
@@ -67,11 +67,19 @@ async function serializeArticle(doc: any): Promise<Article> {
     return plainObject as Article;
 }
 
+const uploadImageToStorage = async (imageDataUri: string, folder: string, fileName: string): Promise<{ imageUrl: string; imagePath: string }> => {
+    const imagePath = `${folder}/${fileName}`;
+    const storageRef = ref(storage, imagePath);
+    await uploadString(storageRef, imageDataUri, 'data_url');
+    const imageUrl = await getDownloadURL(storageRef);
+    return { imageUrl, imagePath };
+};
+
 export async function createArticle(data: ArticleFormValues & { categoryIds: string[] }): Promise<Article> {
   const articlesCollection = collection(db, 'articles');
   
   let imageUrl = data.imageUrl || null;
-  let imagePath = ''; // Using imagePath to store the Cloudinary public_id
+  let imagePath = '';
 
   if (data.imageUrl && data.imageUrl.startsWith('data:')) {
     try {
@@ -79,15 +87,15 @@ export async function createArticle(data: ArticleFormValues & { categoryIds: str
             imageDataUri: data.imageUrl,
             watermarkText: 'Karnataka News Pulse',
         });
-        const { secure_url, public_id } = await uploadToCloudinary(watermarkedImageResult.imageDataUri, 'articles');
-        imageUrl = secure_url;
-        imagePath = public_id;
+        const uploadResult = await uploadImageToStorage(watermarkedImageResult.imageDataUri, 'articles', `${Date.now()}_${Math.random().toString(36).substring(2)}`);
+        imageUrl = uploadResult.imageUrl;
+        imagePath = uploadResult.imagePath;
     } catch (error: any) {
         console.warn(`Watermarking or upload failed, proceeding with original image. Error: ${error.message}`);
         try {
-            const { secure_url, public_id } = await uploadToCloudinary(data.imageUrl, 'articles');
-            imageUrl = secure_url;
-            imagePath = public_id;
+            const uploadResult = await uploadImageToStorage(data.imageUrl, 'articles', `${Date.now()}_${Math.random().toString(36).substring(2)}`);
+            imageUrl = uploadResult.imageUrl;
+            imagePath = uploadResult.imagePath;
         } catch (uploadError: any) {
             console.error(`Fallback image upload also failed: ${uploadError.message}`);
             imageUrl = null;
@@ -265,22 +273,23 @@ export async function updateArticle(id: string, data: ArticleFormValues & { cate
 
   if (data.imageUrl && data.imageUrl.startsWith('data:')) {
     if (imagePath) {
-      await deleteFromCloudinary(imagePath);
+        const oldImageRef = ref(storage, imagePath);
+        await deleteObject(oldImageRef).catch(e => console.error("Failed to delete old image, continuing...", e));
     }
     try {
         const watermarkedImageResult = await watermarkImage({
           imageDataUri: data.imageUrl,
           watermarkText: 'Karnataka News Pulse',
         });
-        const { secure_url, public_id } = await uploadToCloudinary(watermarkedImageResult.imageDataUri, 'articles');
-        imageUrl = secure_url;
-        imagePath = public_id;
+        const uploadResult = await uploadImageToStorage(watermarkedImageResult.imageDataUri, 'articles', `${Date.now()}_${Math.random().toString(36).substring(2)}`);
+        imageUrl = uploadResult.imageUrl;
+        imagePath = uploadResult.imagePath;
     } catch (error: any) {
         console.warn(`Watermarking or upload failed, proceeding with original image. Error: ${error.message}`);
         try {
-            const { secure_url, public_id } = await uploadToCloudinary(data.imageUrl, 'articles');
-            imageUrl = secure_url;
-            imagePath = public_id;
+            const uploadResult = await uploadImageToStorage(data.imageUrl, 'articles', `${Date.now()}_${Math.random().toString(36).substring(2)}`);
+            imageUrl = uploadResult.imageUrl;
+            imagePath = uploadResult.imagePath;
         } catch (uploadError: any) {
             console.error(`Fallback image upload also failed: ${uploadError.message}`);
         }
@@ -315,7 +324,8 @@ export async function deleteArticle(id: string): Promise<void> {
     const article = docSnap.exists() ? docSnap.data() : null;
     
     if (article?.imagePath) {
-        await deleteFromCloudinary(article.imagePath);
+        const imageRef = ref(storage, article.imagePath);
+        await deleteObject(imageRef).catch(e => console.error("Failed to delete image from storage:", e));
     }
     await deleteDoc(docRef);
 }
@@ -337,7 +347,5 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         .filter(article => article.id !== currentArticleId)
         .slice(0, 3);
 }
-
-
 
     

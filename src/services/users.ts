@@ -1,10 +1,10 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import type { UserProfile } from '@/lib/types';
-import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { FirebaseError } from 'firebase/app';
@@ -47,6 +47,15 @@ export async function getUsers(): Promise<UserProfile[]> {
     return snapshot.docs.map(doc => doc.data() as UserProfile);
 }
 
+const uploadImageToStorage = async (imageDataUri: string, folder: string, fileName: string): Promise<{ imageUrl: string; imagePath: string }> => {
+    const imagePath = `${folder}/${fileName}`;
+    const storageRef = ref(storage, imagePath);
+    await uploadString(storageRef, imageDataUri, 'data_url');
+    const imageUrl = await getDownloadURL(storageRef);
+    return { imageUrl, imagePath };
+};
+
+
 // UPDATE user profile
 export async function updateUserProfile(uid: string, data: { displayName: string, phoneNumber: string, newImageDataUri?: string | null }): Promise<void> {
     const userDocRef = doc(db, 'users', uid);
@@ -60,13 +69,14 @@ export async function updateUserProfile(uid: string, data: { displayName: string
         const currentUserData = userDoc.data() as UserProfile;
 
         if (currentUserData.imagePath) {
-            await deleteFromCloudinary(currentUserData.imagePath);
+            const oldImageRef = ref(storage, currentUserData.imagePath);
+            await deleteObject(oldImageRef).catch(e => console.error("Failed to delete old image, continuing...", e));
         }
 
-        const { secure_url, public_id } = await uploadToCloudinary(data.newImageDataUri, 'profile-pictures');
+        const uploadResult = await uploadImageToStorage(data.newImageDataUri, 'profile-pictures', uid);
         
-        updateData.photoURL = secure_url;
-        updateData.imagePath = public_id; 
+        updateData.photoURL = uploadResult.imageUrl;
+        updateData.imagePath = uploadResult.imagePath; 
     }
     
     // Use .catch() block for non-blocking mutation with error handling
@@ -84,3 +94,5 @@ export async function updateUserProfile(uid: string, data: { displayName: string
         }
     });
 }
+
+    

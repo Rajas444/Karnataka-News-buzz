@@ -1,6 +1,7 @@
+
 'use server';
 
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import type { Post, PostFormValues } from '@/lib/types';
 import {
   collection,
@@ -11,7 +12,16 @@ import {
   orderBy,
   limit,
 } from 'firebase/firestore';
-import { uploadToCloudinary } from '@/lib/cloudinary';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+
+const uploadImageToStorage = async (imageDataUri: string, folder: string, fileName: string): Promise<{ imageUrl: string; imagePath: string }> => {
+    const imagePath = `${folder}/${fileName}`;
+    const storageRef = ref(storage, imagePath);
+    await uploadString(storageRef, imageDataUri, 'data_url');
+    const imageUrl = await getDownloadURL(storageRef);
+    return { imageUrl, imagePath };
+};
+
 
 // CREATE a new post
 export async function createPost(
@@ -25,12 +35,13 @@ export async function createPost(
 
   if (data.imageUrl && data.imageUrl.startsWith('data:')) {
     try {
-      const { secure_url, public_id } = await uploadToCloudinary(
+      const uploadResult = await uploadImageToStorage(
         data.imageUrl,
-        'community_posts'
+        'community_posts',
+        `${author.uid}_${Date.now()}`
       );
-      imageUrl = secure_url;
-      imagePath = public_id;
+      imageUrl = uploadResult.imageUrl;
+      imagePath = uploadResult.imagePath;
     } catch (error) {
       console.error('Failed to upload post image:', error);
       // Proceed without an image if upload fails
@@ -83,3 +94,5 @@ export async function getPosts(count?: number): Promise<Post[]> {
 export async function getRecentPosts(count: number): Promise<Post[]> {
     return getPosts(count);
 }
+
+    

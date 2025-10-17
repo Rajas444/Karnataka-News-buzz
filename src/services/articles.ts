@@ -190,7 +190,7 @@ export async function getArticles(options?: {
         const { districtId, categorySlug, pageSize = 10, startAfterDocId } = options || {};
         
         const processedPlaceholders = placeholderArticles.map(article => {
-            const imageInfo = typedImageData[article.id];
+            const imageInfo = typedImageData[article.id as keyof typeof typedImageData];
             if (imageInfo) {
                 return {
                     ...article,
@@ -253,7 +253,7 @@ export async function getArticle(id: string): Promise<Article | null> {
     if (!article && placeholderArticles.some(p => p.id === id)) {
         const placeholder = placeholderArticles.find(p => p.id === id);
         if (placeholder) {
-            const imageInfo = typedImageData[placeholder.id];
+            const imageInfo = typedImageData[placeholder.id as keyof typeof typedImageData];
             article = {
                 ...placeholder,
                 imageUrl: imageInfo ? `https://picsum.photos/seed/${imageInfo.seed}/800/600` : `https://picsum.photos/seed/${placeholder.id}/800/600`,

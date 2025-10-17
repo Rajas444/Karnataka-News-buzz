@@ -11,17 +11,6 @@ import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
 import { getCategories } from '@/services/categories';
-import imageData from '@/app/lib/placeholder-images.json';
-
-
-type ImageData = {
-    [key: string]: {
-        seed: string;
-        hint: string;
-    }
-}
-const typedImageData = imageData as ImageData;
-
 
 type HomePageProps = {
   searchParams: {
@@ -49,25 +38,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       categorySlug,
       districtId,
     });
-    
-    // Correctly process placeholders here before splitting the articles
-    const processedArticles = rawArticles.map(article => {
-        // Only modify if it's a placeholder (lacks a real imageUrl and has a key in our JSON)
-        if (!article.imageUrl && typedImageData[article.id]) {
-            const imageInfo = typedImageData[article.id];
-            return {
-                ...article,
-                imageUrl: `https://picsum.photos/seed/${imageInfo.seed}/800/600`,
-                'data-ai-hint': imageInfo.hint,
-            };
-        }
-        return article;
-    });
 
-
-    if (processedArticles.length > 0) {
-      topArticle = processedArticles[0];
-      initialArticles = processedArticles.slice(1);
+    if (rawArticles.length > 0) {
+      topArticle = rawArticles[0];
+      initialArticles = rawArticles.slice(1);
     }
 
   } catch (e: any) {

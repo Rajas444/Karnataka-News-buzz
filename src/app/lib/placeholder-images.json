@@ -1,0 +1,71 @@
+
+{
+  "new-tech-park-hubballi-1": {
+    "seed": "techpark",
+    "hint": "tech park"
+  },
+  "mysuru-dasara-preparations-2": {
+    "seed": "dasara",
+    "hint": "festival parade"
+  },
+  "bengaluru-fc-new-signing-3": {
+    "seed": "football",
+    "hint": "soccer player"
+  },
+  "monsoon-relief-kodagu-4": {
+    "seed": "flood",
+    "hint": "flood relief"
+  },
+  "ganesh-chaturthi-celebrations-5": {
+    "seed": "ganesha",
+    "hint": "Ganesha statue"
+  },
+  "new-kannada-film-release-6": {
+    "seed": "cinema",
+    "hint": "movie theater"
+  },
+  "belagavi-politics-update-7": {
+    "seed": "politics",
+    "hint": "political rally"
+  },
+  "startup-funding-bangalore-8": {
+    "seed": "startup",
+    "hint": "office meeting"
+  },
+  "hampi-utsav-announcement-9": {
+    "seed": "hampi",
+    "hint": "ancient ruins"
+  },
+  "udupi-beach-cleanup-10": {
+    "seed": "beachcleanup",
+    "hint": "beach cleanup"
+  },
+  "bengaluru-suburban-rail-update-11": {
+    "seed": "train",
+    "hint": "suburban train"
+  },
+  "kannada-unicode-font-release-12": {
+    "seed": "typography",
+    "hint": "kannada script"
+  },
+  "bengaluru-mysuru-expressway-tolls-13": {
+    "seed": "expressway",
+    "hint": "highway toll"
+  },
+  "mandya-sugarcane-farmers-protest-14": {
+    "seed": "farmerprotest",
+    "hint": "farmer protest"
+  },
+  "uttara-kannada-new-bridge-15": {
+    "seed": "bridgeconstruction",
+    "hint": "bridge construction"
+  },
+  "chikkamagaluru-folk-art-festival-16": {
+    "seed": "folkdance",
+    "hint": "folk dance"
+  },
+  "tumakuru-industrial-area-17": {
+    "seed": "factory",
+    "hint": "industrial area"
+  }
+}

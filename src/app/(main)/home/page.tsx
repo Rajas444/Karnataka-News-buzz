@@ -31,8 +31,8 @@ type HomePageProps = {
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
-  const categorySlug = searchParams?.category;
-  const districtId = searchParams?.district;
+  const categorySlug = searchParams.category;
+  const districtId = searchParams.district;
 
   let districts = [];
   let allCategories = [];
@@ -157,5 +157,3 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     </div>
   );
 }
-
-    

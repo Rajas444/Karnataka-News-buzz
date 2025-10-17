@@ -8,6 +8,8 @@ import { Menu, Newspaper, Search, Moon, Sun, LogOut, User as UserIcon, ShieldChe
 import {
   Sheet,
   SheetContent,
+  SheetHeader,
+  SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
 import {
@@ -60,12 +62,15 @@ export default function Header() {
               <span className="sr-only">Toggle Menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left">
+          <SheetContent side="left" className="p-0">
+            <SheetHeader className="p-4 border-b">
+                 <SheetTitle className="sr-only">Main Menu</SheetTitle>
+                 <Link href="/home" className="flex items-center space-x-2">
+                    <Newspaper className="h-6 w-6 text-primary" />
+                    <span className="font-bold">Karnataka News Pulse</span>
+                </Link>
+            </SheetHeader>
             <div className="flex flex-col space-y-4 p-4">
-              <Link href="/home" className="flex items-center space-x-2">
-                <Newspaper className="h-6 w-6 text-primary" />
-                <span className="font-bold">Karnataka News Pulse</span>
-              </Link>
               <nav className="flex flex-col space-y-2">
                 {navLinks.map((link) => (
                   <Link

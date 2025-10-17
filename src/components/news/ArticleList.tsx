@@ -6,7 +6,6 @@ import ArticleCard from '@/components/news/ArticleCard';
 import { Loader2 } from 'lucide-react';
 import type { Article, Category } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { getCategories } from '@/services/categories';
 import { getArticles } from '@/services/articles';
 import { Button } from '../ui/button';
 import {
@@ -37,18 +36,13 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   
   useEffect(() => {
     setArticles(initialArticles);
-    
     if (initialArticles.length > 0) {
-        const lastInitialArticle = initialArticles[initialArticles.length - 1];
-        if (lastInitialArticle && lastInitialArticle.id && !lastInitialArticle.id.startsWith('http')) {
-            setLastVisibleDocId(lastInitialArticle.id);
-        } else {
-            setLastVisibleDocId(null);
-        }
-        setHasMore(initialArticles.length >= 10); 
+      // Correctly set the lastVisibleDocId from the initial server-rendered articles
+      const lastArticle = initialArticles[initialArticles.length - 1];
+      setLastVisibleDocId(lastArticle.id);
+      setHasMore(true); // Assume there might be more if we received a full page initially
     } else {
-        setLastVisibleDocId(null);
-        setHasMore(false);
+      setHasMore(false);
     }
   }, [initialArticles]);
 
@@ -65,8 +59,14 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     let constraints = [
         where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
-        firestoreLimit(10) // Listen for the latest 10 articles
     ];
+
+    if (initialArticles.length > 0 && initialArticles[0].publishedAt) {
+        constraints.push(where('publishedAt', '>', Timestamp.fromDate(new Date(initialArticles[0].publishedAt))));
+    } else {
+        constraints.push(firestoreLimit(10));
+    }
+
 
     if (districtId && districtId !== 'all') {
       constraints.unshift(where('districtId', '==', districtId));
@@ -86,6 +86,8 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
         const modifiedArticles: Article[] = [];
 
         snapshot.docChanges().forEach((change) => {
+            if (change.type === 'removed') return; // Don't process removals for this simple feed
+
             const docData = change.doc.data();
             const changedArticle: Article = {
               id: change.doc.id,
@@ -119,7 +121,9 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
             setArticles(prev => {
                 const existingIds = new Set(prev.map(a => a.id));
                 const uniqueNew = newArticles.filter(a => !existingIds.has(a.id));
-                return [...uniqueNew, ...prev];
+                // Sort by published date to ensure correct order
+                const sortedNewArticles = [...uniqueNew, ...prev].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+                return sortedNewArticles;
             });
         }
         if (modifiedArticles.length > 0) {
@@ -134,7 +138,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     });
 
     return () => unsubscribe();
-  }, [districtId, categoryId]);
+  }, [districtId, categoryId, initialArticles]);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;
@@ -197,4 +201,3 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     </div>
   );
 }
-

@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { getArticles } from '@/services/articles';
 import { Button } from '../ui/button';
 import { db } from '@/lib/firebase';
+import { collection, query, where, orderBy, onSnapshot, doc, getDoc, startAfter, limit, Timestamp } from 'firebase/firestore';
+import { getCategories } from '@/services/categories';
 
 interface ArticleListProps {
   initialArticles: Article[];
@@ -20,22 +22,79 @@ interface ArticleListProps {
 export default function ArticleList({ initialArticles, categorySlug, districtId, allCategories = [] }: ArticleListProps) {
   const [articles, setArticles] = useState<Article[]>(initialArticles);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
+  const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(() => {
+      if (initialArticles.length > 0) {
+        return initialArticles[initialArticles.length - 1].id;
+      }
+      return null;
+  });
+  const [hasMore, setHasMore] = useState(initialArticles.length >= 10);
   const { toast } = useToast();
-  
-  useEffect(() => {
+
+   useEffect(() => {
     setArticles(initialArticles);
     if (initialArticles.length > 0) {
-      const lastArticle = initialArticles[initialArticles.length - 1];
-      setLastVisibleDocId(lastArticle.id);
-      // A bit of a guess, but if we receive less than the page size, we probably don't have more.
-      // This gets corrected on the first `handleLoadMore` call.
-      setHasMore(initialArticles.length >= 10); 
+      setLastVisibleDocId(initialArticles[initialArticles.length - 1].id);
+      setHasMore(initialArticles.length >= 10);
     } else {
       setHasMore(false);
     }
   }, [initialArticles]);
+
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const articlesCollection = collection(db, 'articles');
+    let constraints = [
+        where('status', '==', 'published'),
+        orderBy('publishedAt', 'desc'),
+    ];
+
+    if (districtId && districtId !== 'all') {
+        constraints.push(where('districtId', '==', districtId));
+    }
+    
+    // Note: Firestore doesn't allow array-contains and inequality on another field in the same query.
+    // If we were to filter by category, we couldn't reliably sort by date without a specific index.
+    // Given the previous errors, we prioritize the district and date query which now has an index.
+
+    const q = query(articlesCollection, ...constraints, limit(10));
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+        const serverArticles: Article[] = [];
+        const districts = await getDistricts();
+
+        for (const doc of snapshot.docs) {
+            const data = doc.data();
+            const district = districts.find(d => d.id === data.districtId)?.name;
+            const article: Article = {
+                ...data,
+                id: doc.id,
+                publishedAt: (data.publishedAt as Timestamp)?.toDate().toISOString(),
+                createdAt: (data.createdAt as Timestamp)?.toDate().toISOString(),
+                updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString(),
+                district: district || undefined,
+            } as Article;
+            serverArticles.push(article);
+        }
+        setArticles(serverArticles);
+        if (serverArticles.length > 0) {
+            setLastVisibleDocId(serverArticles[serverArticles.length - 1].id);
+        }
+        setHasMore(serverArticles.length >= 10);
+
+    }, (error) => {
+        console.error("Real-time update failed:", error);
+        toast({
+            title: "Could not get live updates",
+            description: "Displaying cached news. Real-time updates have been paused.",
+            variant: "destructive",
+        });
+    });
+
+    return () => unsubscribe();
+  }, [districtId, categorySlug, toast]);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;

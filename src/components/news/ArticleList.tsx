@@ -8,17 +8,7 @@ import type { Article, Category } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getArticles } from '@/services/articles';
 import { Button } from '../ui/button';
-import {
-  onSnapshot,
-  query,
-  collection,
-  orderBy,
-  Timestamp,
-  where,
-  limit as firestoreLimit,
-} from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { getDistricts } from '@/services/districts';
 
 interface ArticleListProps {
   initialArticles: Article[];
@@ -31,114 +21,21 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   const [articles, setArticles] = useState<Article[]>(initialArticles);
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(initialArticles.length > 0);
+  const [hasMore, setHasMore] = useState(true);
   const { toast } = useToast();
   
   useEffect(() => {
     setArticles(initialArticles);
     if (initialArticles.length > 0) {
-      // Correctly set the lastVisibleDocId from the initial server-rendered articles
       const lastArticle = initialArticles[initialArticles.length - 1];
       setLastVisibleDocId(lastArticle.id);
-      setHasMore(true); // Assume there might be more if we received a full page initially
+      // A bit of a guess, but if we receive less than the page size, we probably don't have more.
+      // This gets corrected on the first `handleLoadMore` call.
+      setHasMore(initialArticles.length >= 10); 
     } else {
       setHasMore(false);
     }
   }, [initialArticles]);
-
-
-  const categoryId = useMemo(() => {
-      if (!categorySlug || categorySlug === 'all') return null;
-      const category = allCategories.find(c => c.slug === categorySlug);
-      return category?.id || null;
-  }, [categorySlug, allCategories]);
-
-  useEffect(() => {
-    if (!db) return;
-
-    let constraints = [
-        where('status', '==', 'published'),
-        orderBy('publishedAt', 'desc'),
-    ];
-
-    if (initialArticles.length > 0 && initialArticles[0].publishedAt) {
-        constraints.push(where('publishedAt', '>', Timestamp.fromDate(new Date(initialArticles[0].publishedAt))));
-    } else {
-        constraints.push(firestoreLimit(10));
-    }
-
-
-    if (districtId && districtId !== 'all') {
-      constraints.unshift(where('districtId', '==', districtId));
-    }
-
-    if (categoryId) {
-      constraints.unshift(where('categoryIds', 'array-contains', categoryId));
-    }
-
-    const q = query(collection(db, 'articles'), ...constraints as any);
-
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-        if (snapshot.empty) return;
-        
-        const districts = await getDistricts();
-        const newArticles: Article[] = [];
-        const modifiedArticles: Article[] = [];
-
-        snapshot.docChanges().forEach((change) => {
-            if (change.type === 'removed') return; // Don't process removals for this simple feed
-
-            const docData = change.doc.data();
-            const changedArticle: Article = {
-              id: change.doc.id,
-              title: docData.title,
-              content: docData.content,
-              imageUrl: docData.imageUrl,
-              author: docData.author,
-              authorId: docData.authorId,
-              categoryIds: docData.categoryIds,
-              status: docData.status,
-              publishedAt: (docData.publishedAt.toDate() as Date).toISOString(),
-              createdAt: (docData.createdAt.toDate() as Date).toISOString(),
-              updatedAt: (docData.updatedAt.toDate() as Date).toISOString(),
-              source: docData.source,
-              sourceUrl: docData.sourceUrl,
-              seo: docData.seo,
-              views: docData.views,
-              districtId: docData.districtId,
-              district: districts.find(d => d.id === docData.districtId)?.name,
-            };
-
-            if (change.type === 'added') {
-              newArticles.push(changedArticle);
-            }
-             if (change.type === 'modified') {
-              modifiedArticles.push(changedArticle);
-            }
-        });
-
-        if (newArticles.length > 0) {
-            setArticles(prev => {
-                const existingIds = new Set(prev.map(a => a.id));
-                const uniqueNew = newArticles.filter(a => !existingIds.has(a.id));
-                // Sort by published date to ensure correct order
-                const sortedNewArticles = [...uniqueNew, ...prev].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-                return sortedNewArticles;
-            });
-        }
-        if (modifiedArticles.length > 0) {
-             setArticles(prev => prev.map(p => {
-                const updated = modifiedArticles.find(m => m.id === p.id);
-                return updated || p;
-            }));
-        }
-
-    }, (error) => {
-        console.error("Real-time update failed:", error);
-    });
-
-    return () => unsubscribe();
-  }, [districtId, categoryId, initialArticles]);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;
@@ -172,7 +69,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     }
   }, [hasMore, loadingMore, lastVisibleDocId, toast, categorySlug, districtId]);
   
-  if (articles.length === 0) {
+  if (articles.length === 0 && !loadingMore) {
     return (
       <div className="text-center py-12 bg-card rounded-lg">
         <h2 className="text-2xl font-bold mb-4 font-kannada">ಯಾವುದೇ ಲೇಖನಗಳು ಕಂಡುಬಂದಿಲ್ಲ</h2>

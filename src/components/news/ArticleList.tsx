@@ -11,6 +11,7 @@ import { Button } from '../ui/button';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot, doc, getDoc, startAfter, limit, Timestamp } from 'firebase/firestore';
 import { getCategories } from '@/services/categories';
+import { getDistricts } from '@/services/districts';
 
 interface ArticleListProps {
   initialArticles: Article[];

@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ArticleCard from '@/components/news/ArticleCard';
 import { Loader2 } from 'lucide-react';
 import type { Article, Category } from '@/lib/types';
@@ -10,7 +9,6 @@ import { getArticles } from '@/services/articles';
 import { Button } from '../ui/button';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot, doc, getDoc, startAfter, limit, Timestamp } from 'firebase/firestore';
-import { getCategories } from '@/services/categories';
 import { getDistricts } from '@/services/districts';
 
 interface ArticleListProps {
@@ -23,23 +21,16 @@ interface ArticleListProps {
 export default function ArticleList({ initialArticles, categorySlug, districtId, allCategories = [] }: ArticleListProps) {
   const [articles, setArticles] = useState<Article[]>(initialArticles);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(() => {
-      if (initialArticles.length > 0) {
-        return initialArticles[initialArticles.length - 1].id;
-      }
-      return null;
-  });
-  const [hasMore, setHasMore] = useState(initialArticles.length >= 10);
+  const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
   const { toast } = useToast();
 
    useEffect(() => {
     setArticles(initialArticles);
     if (initialArticles.length > 0) {
       setLastVisibleDocId(initialArticles[initialArticles.length - 1].id);
-      setHasMore(initialArticles.length >= 10);
-    } else {
-      setHasMore(false);
     }
+    setHasMore(initialArticles.length >= 10);
   }, [initialArticles]);
 
 
@@ -47,7 +38,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     if (typeof window === 'undefined') return;
 
     const articlesCollection = collection(db, 'articles');
-    let constraints = [
+    let constraints: any[] = [
         where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
     ];
@@ -56,9 +47,11 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
         constraints.push(where('districtId', '==', districtId));
     }
     
-    // Note: Firestore doesn't allow array-contains and inequality on another field in the same query.
-    // If we were to filter by category, we couldn't reliably sort by date without a specific index.
-    // Given the previous errors, we prioritize the district and date query which now has an index.
+    if (categorySlug) {
+        // This part of the query was causing index issues.
+        // For now, we will rely on server-side filtering for categories on initial load,
+        // and client-side will primarily handle district filtering for real-time.
+    }
 
     const q = query(articlesCollection, ...constraints, limit(10));
 

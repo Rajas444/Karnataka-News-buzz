@@ -1,7 +1,18 @@
 
-import { NextResponse } from "next/server";
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, collection, doc, setDoc, serverTimestamp, getDocs, deleteDoc, writeBatch } from "firebase/firestore";
+'use server';
+
+import { NextResponse } from 'next/server';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import {
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  serverTimestamp,
+  getDocs,
+  writeBatch,
+  Timestamp,
+} from 'firebase/firestore';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -17,49 +28,55 @@ const firebaseConfig = {
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-
 const districts = [
-  { id: "bagalkote", name: "ಬಾಗಲಕೋಟೆ" },
-  { id: "ballari", name: "ಬಳ್ಳಾರಿ" },
-  { id: "belagavi", name: "ಬೆಳಗಾವಿ" },
-  { id: "bengaluru-rural", name: "ಬೆಂಗಳೂರು ಗ್ರಾಮಾಂತರ" },
-  { id: "bengaluru-urban", name: "ಬೆಂಗಳೂರು ನಗರ" },
-  { id: "bidar", name: "ಬೀದರ್" },
-  { id: "chamarajanagara", name: "ಚಾಮರಾಜನಗರ" },
-  { id: "chikkaballapura", name: "ಚಿಕ್ಕಬಳ್ಳಾಪುರ" },
-  { id: "chikkamagaluru", name: "ಚಿಕ್ಕಮಗಳೂರು" },
-  { id: "chitradurga", name: "ಚಿತ್ರದುರ್ಗ" },
-  { id: "dakshina-kannada", name: "ದಕ್ಷಿಣ ಕನ್ನಡ" },
-  { id: "davanagere", name: "ದಾವಣಗೆರೆ" },
-  { id: "dharwad", name: "ಧಾರವಾಡ" },
-  { id: "gadag", name: "ಗದಗ" },
-  { id: "hassan", name: "ಹಾಸನ" },
-  { id: "haveri", name: "ಹಾವೇರಿ" },
-  { id: "kalaburagi", name: "ಕಲಬುರಗಿ" },
-  { id: "kodagu", name: "ಕೊಡಗು" },
-  { id: "kolar", name: "ಕೋಲಾರ" },
-  { id: "koppala", name: "ಕೊಪ್ಪಳ" },
-  { id: "mandya", name: "ಮಂಡ್ಯ" },
-  { id: "mysuru", name: "ಮೈಸೂರು" },
-  { id: "raichuru", name: "ರಾಯಚೂರು" },
-  { id: "ramanagara", name: "ರಾಮನಗರ" },
-  { id: "shivamogga", name: "ಶಿವಮೊಗ್ಗ" },
-  { id: "tumakuru", name: "ತುಮಕೂರು" },
-  { id: "udupi", name: "ಉಡುಪಿ" },
-  { id: "uttara-kannada", name: "ಉತ್ತರ ಕನ್ನಡ" },
-  { id: "vijayanagara", name: "ವಿಜಯನಗರ" },
-  { id: "yadgiri", name: "ಯಾದಗಿರಿ" }
+  { id: 'bagalkote', name: 'ಬಾಗಲಕೋಟೆ' },
+  { id: 'ballari', name: 'ಬಳ್ಳಾರಿ' },
+  { id: 'belagavi', name: 'ಬೆಳಗಾವಿ' },
+  { id: 'bengaluru-rural', name: 'ಬೆಂಗಳೂರು ಗ್ರಾಮಾಂತರ' },
+  { id: 'bengaluru-urban', name: 'ಬೆಂಗಳೂರು ನಗರ' },
+  { id: 'bidar', name: 'ಬೀದರ್' },
+  { id: 'chamarajanagara', name: 'ಚಾಮರಾಜನಗರ' },
+  { id: 'chikkaballapura', name: 'ಚಿಕ್ಕಬಳ್ಳಾಪುರ' },
+  { id: 'chikkamagaluru', name: 'ಚಿಕ್ಕಮಗಳೂರು' },
+  { id: 'chitradurga', name: 'ಚಿತ್ರದುರ್ಗ' },
+  { id: 'dakshina-kannada', name: 'ದಕ್ಷಿಣ ಕನ್ನಡ' },
+  { id: 'davanagere', name: 'ದಾವಣಗೆರೆ' },
+  { id: 'dharwad', name: 'ಧಾರವಾಡ' },
+  { id: 'gadag', name: 'ಗದಗ' },
+  { id: 'hassan', name: 'ಹಾಸನ' },
+  { id: 'haveri', name: 'ಹಾವೇರಿ' },
+  { id: 'kalaburagi', name: 'ಕಲಬುರಗಿ' },
+  { id: 'kodagu', name: 'ಕೊಡಗು' },
+  { id: 'kolar', name: 'ಕೋಲಾರ' },
+  { id: 'koppala', name: 'ಕೊಪ್ಪಳ' },
+  { id: 'mandya', name: 'ಮಂಡ್ಯ' },
+  { id: 'mysuru', name: 'ಮೈಸೂರು' },
+  { id: 'raichuru', name: 'ರಾಯಚೂರು' },
+  { id: 'ramanagara', name: 'ರಾಮನಗರ' },
+  { id: 'shivamogga', name: 'ಶಿವಮೊಗ್ಗ' },
+  { id: 'tumakuru', name: 'ತುಮಕೂರು' },
+  { id: 'udupi', name: 'ಉಡುಪಿ' },
+  { id: 'uttara-kannada', name: 'ಉತ್ತರ ಕನ್ನಡ' },
+  { id: 'vijayanagara', name: 'ವಿಜಯನಗರ' },
+  { id: 'yadgiri', name: 'ಯಾದಗಿರಿ' },
 ];
 
-const categories = ["Politics", "Sports", "Business", "Technology", "Culture", "Health"];
+const categories = [
+  'Politics',
+  'Sports',
+  'Business',
+  'Technology',
+  'Culture',
+  'Health',
+];
 
 async function clearCollection(collectionName: string) {
   const collectionRef = collection(db, collectionName);
   const snapshot = await getDocs(collectionRef);
   if (snapshot.empty) return;
-  
+
   const batch = writeBatch(db);
-  snapshot.docs.forEach(doc => {
+  snapshot.docs.forEach((doc) => {
     batch.delete(doc.ref);
   });
   await batch.commit();
@@ -67,8 +84,8 @@ async function clearCollection(collectionName: string) {
 
 async function populateDistricts() {
   const batch = writeBatch(db);
-  const districtsRef = collection(db, "districts");
-  districts.forEach(district => {
+  const districtsRef = collection(db, 'districts');
+  districts.forEach((district) => {
     const docRef = doc(districtsRef, district.id);
     batch.set(docRef, district);
   });
@@ -82,7 +99,9 @@ function generateSampleNews() {
     for (let i = 1; i <= count; i++) {
       newsList.push({
         title: `${district.name} Sample News ${i}`,
-        categoryIds: [categories[Math.floor(Math.random() * categories.length)].toLowerCase()],
+        categoryIds: [
+          categories[Math.floor(Math.random() * categories.length)].toLowerCase(),
+        ],
         districtId: district.id,
         content: `This is a sample news article ${i} for ${district.name}. The content is generated for demonstration purposes.`,
         imageUrl: `https://picsum.photos/seed/${district.id}-${i}/600/400`,
@@ -96,7 +115,7 @@ function generateSampleNews() {
         seo: {
           metaDescription: `Read the latest sample news ${i} from ${district.name}.`,
           keywords: [district.name, `news ${i}`, 'sample'],
-        }
+        },
       });
     }
   });
@@ -105,9 +124,9 @@ function generateSampleNews() {
 
 async function populateNews() {
   const batch = writeBatch(db);
-  const newsRef = collection(db, "news_articles");
+  const newsRef = collection(db, 'news_articles');
   const newsList = generateSampleNews();
-  newsList.forEach(news => {
+  newsList.forEach((news) => {
     const docRef = doc(newsRef);
     batch.set(docRef, news);
   });
@@ -117,16 +136,19 @@ async function populateNews() {
 export async function POST() {
   try {
     // 1. Clear collections
-    await clearCollection("districts");
-    await clearCollection("news_articles");
-    
+    await clearCollection('districts');
+    await clearCollection('news_articles');
+
     // 2. Populate collections
     await populateDistricts();
     await populateNews();
-    
-    return NextResponse.json({ message: "Firestore seeded successfully!" });
+
+    return NextResponse.json({ message: 'Firestore seeded successfully!' });
   } catch (err: any) {
-    console.error("Error seeding Firestore:", err);
-    return NextResponse.json({ message: "Failed to seed Firestore", error: err.message }, { status: 500 });
+    console.error('Error seeding Firestore:', err);
+    return NextResponse.json(
+      { message: 'Failed to seed Firestore', error: err.message },
+      { status: 500 }
+    );
   }
 }

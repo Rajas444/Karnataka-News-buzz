@@ -6,8 +6,8 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "categoryIds",
-          "arrayConfig": "CONTAINS"
+          "fieldPath": "districtId",
+          "order": "ASCENDING"
         },
         {
           "fieldPath": "status",
@@ -24,8 +24,8 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "districtId",
-          "order": "ASCENDING"
+          "fieldPath": "categoryIds",
+          "arrayConfig": "CONTAINS"
         },
         {
           "fieldPath": "status",

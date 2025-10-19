@@ -37,7 +37,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const articlesCollection = collection(db, 'articles');
+    const articlesCollection = collection(db, 'news_articles');
     let constraints: any[] = [
         where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),

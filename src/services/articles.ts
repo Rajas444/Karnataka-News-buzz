@@ -169,8 +169,10 @@ export async function getArticles(options?: {
         const snapshot = await getDocs(q);
 
         if (snapshot.empty && !startAfterDocId) {
-            // This is a controlled fallback, so we throw an error to enter the catch block.
-            throw new Error("Firestore is empty or returned no results for the query. Falling back to placeholders.");
+            console.warn("Firestore is empty or returned no results for the query. Falling back to placeholders.");
+            const placeholderResult = { articles: placeholderArticles, lastVisibleDocId: null };
+            // Simulate pagination for placeholders if needed, though this simple return is often enough for a fallback.
+            return placeholderResult;
         }
 
         const fetchedArticles = await Promise.all(snapshot.docs.map(serializeArticle));
@@ -347,5 +349,7 @@ export async function getRelatedArticles(categoryId: string, currentArticleId: s
         .filter(article => article.id !== currentArticleId)
         .slice(0, 3);
 }
+
+    
 
     

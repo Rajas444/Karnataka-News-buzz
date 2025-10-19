@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -37,23 +38,28 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const articlesCollection = collection(db, 'news_articles');
-    let constraints: any[] = [
+    // This query correctly fetches the initial set of articles based on server-rendered props.
+    // It's simpler and avoids the complex indexing issues.
+    let q = query(
+        collection(db, "news_articles"),
         where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
-    ];
+        limit(10)
+    );
 
+    // Apply district filter if one is selected
     if (districtId && districtId !== 'all') {
-        constraints.push(where('districtId', '==', districtId));
+        q = query(
+            collection(db, "news_articles"),
+            where('status', '==', 'published'),
+            where('districtId', '==', districtId),
+            orderBy('publishedAt', 'desc'),
+            limit(10)
+        );
+    } else if (categorySlug) {
+        // We rely on initialArticles for category filtering, as combining array-contains with other filters is complex.
+        // This real-time listener will show the latest overall articles if no district is selected.
     }
-    
-    if (categorySlug) {
-        // This part of the query was causing index issues.
-        // For now, we will rely on server-side filtering for categories on initial load,
-        // and client-side will primarily handle district filtering for real-time.
-    }
-
-    const q = query(articlesCollection, ...constraints, limit(10));
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
         const serverArticles: Article[] = [];
@@ -72,7 +78,13 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
             } as Article;
             serverArticles.push(article);
         }
-        setArticles(serverArticles);
+        
+        // This logic ensures we don't completely replace server-filtered initial articles
+        // unless the filter context (district) is changed.
+        if (districtId || !categorySlug) {
+             setArticles(serverArticles);
+        }
+
         if (serverArticles.length > 0) {
             setLastVisibleDocId(serverArticles[serverArticles.length - 1].id);
         }

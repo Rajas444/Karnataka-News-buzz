@@ -77,7 +77,10 @@ function generateSampleNews() {
         district: district.id,
         content: `This is a sample news article ${i} for ${district.name}.`,
         imageUrl: `https://picsum.photos/seed/${district.id}-${i}/600/400`,
-        timestamp: serverTimestamp()
+        status: 'published',
+        publishedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
     }
   });

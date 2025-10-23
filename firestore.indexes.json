@@ -14,6 +14,7 @@
       "collectionGroup": "news_articles",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "categoryIds", "order": "CONTAINS" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "publishedAt", "order": "DESCENDING" }
       ]

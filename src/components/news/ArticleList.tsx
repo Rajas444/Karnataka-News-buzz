@@ -38,69 +38,47 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // This query correctly fetches the initial set of articles based on server-rendered props.
-    // It's simpler and avoids the complex indexing issues.
-    let q = query(
+    // A simplified query to get the absolute latest articles for real-time updates.
+    // This avoids complex indexes and focuses on showing new content as it arrives.
+    const q = query(
         collection(db, "news_articles"),
         where('status', '==', 'published'),
         orderBy('publishedAt', 'desc'),
-        limit(10)
+        limit(1) // Only listen for the very latest article
     );
 
-    // Apply district filter if one is selected
-    if (districtId && districtId !== 'all') {
-        q = query(
-            collection(db, "news_articles"),
-            where('status', '==', 'published'),
-            where('districtId', '==', districtId),
-            orderBy('publishedAt', 'desc'),
-            limit(10)
-        );
-    } else if (categorySlug) {
-        // We rely on initialArticles for category filtering, as combining array-contains with other filters is complex.
-        // This real-time listener will show the latest overall articles if no district is selected.
-    }
-
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-        const serverArticles: Article[] = [];
-        const districts = await getDistricts();
-
-        for (const doc of snapshot.docs) {
-            const data = doc.data();
+        if (snapshot.docs.length > 0) {
+            const latestDoc = snapshot.docs[0];
+            const districts = await getDistricts();
+            const data = latestDoc.data();
             const district = districts.find(d => d.id === data.districtId)?.name;
-            const article: Article = {
+
+             const newArticle: Article = {
                 ...data,
-                id: doc.id,
+                id: latestDoc.id,
                 publishedAt: (data.publishedAt as Timestamp)?.toDate().toISOString(),
                 createdAt: (data.createdAt as Timestamp)?.toDate().toISOString(),
                 updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString(),
                 district: district || undefined,
             } as Article;
-            serverArticles.push(article);
-        }
-        
-        // This logic ensures we don't completely replace server-filtered initial articles
-        // unless the filter context (district) is changed.
-        if (districtId || !categorySlug) {
-             setArticles(serverArticles);
-        }
 
-        if (serverArticles.length > 0) {
-            setLastVisibleDocId(serverArticles[serverArticles.length - 1].id);
+            // Add the new article to the top of the list if it's not already there
+            setArticles(prevArticles => {
+                if (!prevArticles.some(a => a.id === newArticle.id)) {
+                    return [newArticle, ...prevArticles];
+                }
+                return prevArticles;
+            });
         }
-        setHasMore(serverArticles.length >= 10);
-
     }, (error) => {
         console.error("Real-time update failed:", error);
-        toast({
-            title: "Could not get live updates",
-            description: "Displaying cached news. Real-time updates have been paused.",
-            variant: "destructive",
-        });
+        // Don't show a toast for this, as it could be noisy.
+        // The main functionality (loading more) will still work.
     });
 
     return () => unsubscribe();
-  }, [districtId, categorySlug, toast]);
+  }, [toast]);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;

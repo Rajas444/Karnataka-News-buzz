@@ -215,9 +215,8 @@ export async function getArticles(options?: {
     const q = query(articlesCollection, ...constraints);
     const snapshot = await getDocs(q);
 
-    if (snapshot.empty && !startAfterDocId) {
-      console.warn('Firestore is empty or returned no results, falling back to placeholders.');
-      return { articles: placeholderArticles, lastVisibleDocId: null };
+    if (snapshot.empty) {
+      return { articles: [], lastVisibleDocId: null };
     }
 
     const fetched = await Promise.all(snapshot.docs.map(serializeArticle));
@@ -225,8 +224,10 @@ export async function getArticles(options?: {
 
     return { articles: fetched, lastVisibleDocId: lastVisible };
   } catch (error) {
-    console.warn('Error fetching articles, falling back to placeholders.', (error as Error).message);
-    return { articles: placeholderArticles, lastVisibleDocId: null };
+    console.error("Error fetching articles from Firestore:", (error as Error).message);
+    // In case of a system-level error (e.g., permissions), return an empty array
+    // to prevent the app from crashing and allow the UI to show a "no articles" state.
+    return { articles: [], lastVisibleDocId: null };
   }
 }
 

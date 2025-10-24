@@ -15,17 +15,12 @@ import TrendingNews from '@/components/news/TrendingNews';
 import { getCategories } from '@/services/categories';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/hooks/use-translation';
+import { useSearchParams } from 'next/navigation';
 
-type HomePageProps = {
-  searchParams: {
-    category?: string;
-    district?: string;
-  };
-};
-
-export default function HomePage({ searchParams }: HomePageProps) {
-  const categorySlug = searchParams.category;
-  const districtId = searchParams.district;
+export default function HomePage() {
+  const searchParams = useSearchParams();
+  const categorySlug = searchParams.get('category') || undefined;
+  const districtId = searchParams.get('district') || undefined;
   const { t } = useTranslation();
 
   const [districts, setDistricts] = useState<any[]>([]);

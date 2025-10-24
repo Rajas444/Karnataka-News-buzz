@@ -193,40 +193,57 @@ export async function getArticles(options?: {
   categorySlug?: string;
   districtId?: string;
 }) {
+  console.log('[getArticles] Service called with options:', options);
   try {
     const articlesCollection = collection(db, 'articles');
     const { pageSize = 10, startAfterDocId, categorySlug, districtId } = options || {};
     const constraints: any[] = [where('status', '==', 'published')];
 
-    if (districtId && districtId !== 'all') constraints.push(where('districtId', '==', districtId));
+    if (districtId && districtId !== 'all') {
+      constraints.push(where('districtId', '==', districtId));
+      console.log(`[getArticles] Added district filter: ${districtId}`);
+    }
     if (categorySlug && categorySlug !== 'all') {
       const categories = await getCategories();
       const catId = categories.find(c => c.slug === categorySlug)?.id;
-      if (catId) constraints.push(where('categoryIds', 'array-contains', catId));
+      if (catId) {
+        constraints.push(where('categoryIds', 'array-contains', catId));
+        console.log(`[getArticles] Added category filter: ${catId} (from slug ${categorySlug})`);
+      }
     }
 
     constraints.push(orderBy('publishedAt', 'desc'), limit(pageSize));
 
     if (startAfterDocId) {
       const startDoc = await getDoc(doc(db, 'articles', startAfterDocId));
-      if (startDoc.exists()) constraints.push(startAfter(startDoc));
+      if (startDoc.exists()) {
+        constraints.push(startAfter(startDoc));
+        console.log(`[getArticles] Added pagination filter, starting after doc: ${startAfterDocId}`);
+      }
     }
 
+    console.log(`[getArticles] Executing query with ${constraints.length} constraints.`);
     const q = query(articlesCollection, ...constraints);
     const snapshot = await getDocs(q);
+    console.log(`[getArticles] Firestore query returned ${snapshot.docs.length} documents.`);
+
 
     if (snapshot.empty) {
+      console.log('[getArticles] Query returned empty. Returning empty array.');
       return { articles: [], lastVisibleDocId: null };
     }
 
     const fetched = await Promise.all(snapshot.docs.map(serializeArticle));
     const lastVisible = snapshot.docs.length === pageSize ? snapshot.docs[snapshot.docs.length - 1].id : null;
-
+    
+    console.log(`[getArticles] Successfully fetched and serialized ${fetched.length} articles. lastVisibleDocId is ${lastVisible}`);
     return { articles: fetched, lastVisibleDocId: lastVisible };
-  } catch (error) {
-    console.error("Error fetching articles from Firestore:", (error as Error).message);
+
+  } catch (error: any) {
+    console.error("[getArticles] CRITICAL ERROR fetching articles from Firestore:", error);
     // In case of a system-level error (e.g., permissions), return an empty array
     // to prevent the app from crashing and allow the UI to show a "no articles" state.
+    console.log('[getArticles] Returning empty array due to catch block.');
     return { articles: [], lastVisibleDocId: null };
   }
 }

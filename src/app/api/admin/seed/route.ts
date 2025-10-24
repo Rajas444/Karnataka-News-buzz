@@ -70,6 +70,50 @@ const categories = [
   'Health',
 ];
 
+const sampleJobs = [
+  {
+    title: 'Village Accountant',
+    company: 'Karnataka Revenue Department',
+    location: 'Across Karnataka',
+    qualification: 'PUC / 12th Standard',
+    description: 'Responsible for maintaining land records and revenue collection at the village level. Requires strong local knowledge and basic computer skills.',
+    applyLink: 'https://kpsc.kar.nic.in/',
+    jobType: 'Government',
+    lastDateToApply: new Date(new Date().setDate(new Date().getDate() + 30)), // 30 days from now
+  },
+  {
+    title: 'Software Development Engineer',
+    company: 'Tech Solutions Inc.',
+    location: 'Bengaluru',
+    qualification: 'B.E/B.Tech in Computer Science',
+    description: 'Join our dynamic team to build next-generation web applications using React and Node.js. 2+ years of experience preferred.',
+    applyLink: 'https://example.com/job/sde',
+    jobType: 'Private',
+    lastDateToApply: new Date(new Date().setDate(new Date().getDate() + 45)), // 45 days from now
+  },
+  {
+    title: 'Digital Marketing Intern',
+    company: 'Growth Hackers',
+    location: 'Mysuru',
+    qualification: 'Any Degree (BBA/BBM preferred)',
+    description: 'A 3-month internship program for aspiring digital marketers. Learn SEO, SEM, and social media marketing from industry experts.',
+    applyLink: 'https://example.com/job/intern',
+    jobType: 'Internship',
+    lastDateToApply: new Date(new Date().setDate(new Date().getDate() + 15)), // 15 days from now
+  },
+  {
+    title: 'Data Entry Operator (Fresher)',
+    company: 'InfoData Services',
+    location: 'Hubballi',
+    qualification: 'Any Degree with good typing speed',
+    description: 'Entry-level position for freshers. Responsible for entering data from various sources into our system. Training will be provided.',
+    applyLink: 'https://example.com/job/data-entry',
+    jobType: 'Fresher',
+    lastDateToApply: new Date(new Date().setDate(new Date().getDate() + 20)), // 20 days from now
+  },
+];
+
+
 async function clearCollection(collectionName: string) {
   const collectionRef = collection(db, collectionName);
   const snapshot = await getDocs(collectionRef);
@@ -133,15 +177,33 @@ async function populateNews() {
   await batch.commit();
 }
 
+async function populateJobs() {
+  const batch = writeBatch(db);
+  const jobsRef = collection(db, 'jobs');
+  sampleJobs.forEach((job) => {
+    const docRef = doc(jobsRef);
+    batch.set(docRef, {
+      ...job,
+      lastDateToApply: Timestamp.fromDate(job.lastDateToApply),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  });
+  await batch.commit();
+}
+
 export async function POST() {
   try {
     // 1. Clear collections
     await clearCollection('districts');
     await clearCollection('news_articles');
+    await clearCollection('jobs');
+
 
     // 2. Populate collections
     await populateDistricts();
     await populateNews();
+    await populateJobs();
 
     return NextResponse.json({ message: 'Firestore seeded successfully!' });
   } catch (err: any) {

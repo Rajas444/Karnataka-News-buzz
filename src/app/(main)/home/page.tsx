@@ -32,11 +32,9 @@ export default function HomePage() {
 
   useEffect(() => {
     async function fetchData() {
-      console.log(`[HomePage] Fetching data with filters: districtId=${districtId}, categorySlug=${categorySlug}`);
       setLoading(true);
       setError(null);
       try {
-        console.log('[HomePage] Awaiting promises: getDistricts, getCategories, getArticles...');
         const [districtsData, categoriesData, articlesData] = await Promise.all([
           getDistricts(),
           getCategories(),
@@ -46,21 +44,14 @@ export default function HomePage() {
             districtId,
           }),
         ]);
-        console.log('[HomePage] Promises resolved.');
-        console.log(`[HomePage] Fetched ${districtsData.length} districts.`);
-        console.log(`[HomePage] Fetched ${categoriesData.length} categories.`);
-        console.log(`[HomePage] Fetched ${articlesData.articles.length} articles.`);
-
 
         setDistricts(districtsData);
         setAllCategories(categoriesData);
 
         if (articlesData.articles.length > 0) {
-          console.log('[HomePage] Setting top article and initial articles.');
           setTopArticle(articlesData.articles[0]);
           setInitialArticles(articlesData.articles.slice(1));
         } else {
-          console.log('[HomePage] No articles returned, clearing top and initial articles.');
           setTopArticle(null);
           setInitialArticles([]);
         }
@@ -70,7 +61,6 @@ export default function HomePage() {
         console.error("[HomePage] CRITICAL ERROR fetching data:", e);
         setError(errorMessage);
       } finally {
-        console.log('[HomePage] Fetch finished, setting loading to false.');
         setLoading(false);
       }
     }

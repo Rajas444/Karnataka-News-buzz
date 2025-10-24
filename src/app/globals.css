@@ -1,9 +1,30 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
   font-family: var(--font-body), sans-serif;
+}
+
+/* Default to English fonts */
+body.lang-en .font-kannada {
+    font-family: var(--font-body), sans-serif;
+}
+
+/* Use Kannada fonts when Kannada is active */
+body.lang-kn .font-kannada,
+body.lang-kn h1,
+body.lang-kn h2,
+body.lang-kn h3,
+body.lang-kn h4,
+body.lang-kn p,
+body.lang-kn a,
+body.lang-kn span,
+body.lang-kn button,
+body.lang-kn div,
+body.lang-kn label {
+    font-family: 'Noto Sans Kannada', sans-serif;
 }
 
 @layer base {

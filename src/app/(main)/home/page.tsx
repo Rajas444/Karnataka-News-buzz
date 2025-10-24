@@ -1,8 +1,10 @@
 
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import type { Article } from '@/lib/types';
 import ArticleList from '@/components/news/ArticleList';
 import FilterControls from '@/components/news/FilterControls';
@@ -11,6 +13,8 @@ import { getDistricts } from '@/services/districts';
 import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
 import { getCategories } from '@/services/categories';
+import { useEffect, useState } from 'react';
+import { useTranslation } from '@/hooks/use-translation';
 
 type HomePageProps = {
   searchParams: {
@@ -19,43 +23,65 @@ type HomePageProps = {
   };
 };
 
-export default async function HomePage({ searchParams }: HomePageProps) {
+export default function HomePage({ searchParams }: HomePageProps) {
   const categorySlug = searchParams.category;
   const districtId = searchParams.district;
+  const { t } = useTranslation();
 
-  let districts = [];
-  let allCategories = [];
-  let initialArticles: Article[] = [];
-  let topArticle: Article | null = null;
-  let error: string | null = null;
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [allCategories, setAllCategories] = useState<any[]>([]);
+  const [initialArticles, setInitialArticles] = useState<Article[]>([]);
+  const [topArticle, setTopArticle] = useState<Article | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  try {
-    // Fetch districts and categories for the filter controls and cards.
-    [districts, allCategories] = await Promise.all([getDistricts(), getCategories()]);
-    
-    const { articles: rawArticles } = await getArticles({
-      pageSize: 11, // Fetch one extra for the top article
-      categorySlug,
-      districtId,
-    });
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      setError(null);
+      try {
+        const [districtsData, categoriesData, articlesData] = await Promise.all([
+          getDistricts(),
+          getCategories(),
+          getArticles({
+            pageSize: 11,
+            categorySlug,
+            districtId,
+          }),
+        ]);
 
-    if (rawArticles.length > 0) {
-      topArticle = rawArticles[0];
-      initialArticles = rawArticles.slice(1);
+        setDistricts(districtsData);
+        setAllCategories(categoriesData);
+
+        if (articlesData.articles.length > 0) {
+          setTopArticle(articlesData.articles[0]);
+          setInitialArticles(articlesData.articles.slice(1));
+        } else {
+          setTopArticle(null);
+          setInitialArticles([]);
+        }
+
+      } catch (e: any) {
+        setError(e.message || t('home_page.error_fetching_articles'));
+        console.error("Error on HomePage:", e);
+      } finally {
+        setLoading(false);
+      }
     }
 
-  } catch (e: any) {
-    error = e.message || 'An unknown error occurred while fetching articles.';
-    console.error("Error on HomePage:", error);
-    // In case of a catastrophic error, we can still try to render something.
-    initialArticles = [];
-    topArticle = null;
-  }
+    fetchData();
+  }, [categorySlug, districtId, t]);
 
   const renderErrorState = () => (
     <div className="text-center bg-card p-8 rounded-lg">
-      <h1 className="text-2xl font-bold mb-4 font-kannada">ಸುದ್ದಿ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</h1>
-      <p className="text-muted-foreground font-kannada">{error}</p>
+      <h1 className="text-2xl font-bold mb-4">{t('home_page.error_loading_news')}</h1>
+      <p className="text-muted-foreground">{error}</p>
+    </div>
+  );
+
+  const renderLoadingState = () => (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
     </div>
   );
 
@@ -66,9 +92,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <FilterControls districts={districts} />
       </section>
 
-      {error && renderErrorState()}
+      {loading && renderLoadingState()}
+      {error && !loading && renderErrorState()}
 
-      {!error && (
+      {!loading && !error && (
         <div className="space-y-12">
           {topArticle && (
               <section>
@@ -85,15 +112,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                       />
                   </div>
                   <div>
-                      <h1 className="font-headline text-4xl md:text-5xl font-bold mb-4 leading-tight font-kannada">
+                      <h1 className="font-headline text-4xl md:text-5xl font-bold mb-4 leading-tight">
                       {topArticle.title}
                       </h1>
-                      <p className="text-muted-foreground text-lg mb-6 font-kannada">
+                      <p className="text-muted-foreground text-lg mb-6">
                         {(topArticle.seo?.metaDescription || topArticle.content || '').substring(0, 150)}...
                       </p>
                       <Button asChild size="lg">
-                      <Link href={`/article/${topArticle.id}`} className="font-kannada">
-                          ಮುಂದೆ ಓದಿ <ArrowRight className="ml-2 h-5 w-5" />
+                      <Link href={`/article/${topArticle.id}`}>
+                          {t('home_page.read_more')} <ArrowRight className="ml-2 h-5 w-5" />
                       </Link>
                       </Button>
                   </div>
@@ -103,8 +130,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
               <div className="lg:col-span-2 space-y-6">
-                  <h2 className="font-headline text-3xl font-bold font-kannada">
-                    ಇತ್ತೀಚಿನ ಸುದ್ದಿ
+                  <h2 className="font-headline text-3xl font-bold">
+                    {t('home_page.latest_news')}
                   </h2>
                   <section>
                       <ArticleList

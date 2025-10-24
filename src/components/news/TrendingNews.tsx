@@ -7,12 +7,14 @@ import { getArticles } from '@/services/articles';
 import type { Article } from '@/lib/types';
 import { Loader2, TrendingUp } from 'lucide-react';
 import { useArticleModal } from '../providers/article-modal-provider';
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function TrendingNews() {
   const [trending, setTrending] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { onOpen } = useArticleModal();
+  const { t } = useTranslation();
 
   useEffect(() => {
     async function fetchTrending() {
@@ -26,25 +28,25 @@ export default function TrendingNews() {
         const sortedByViews = articles.sort((a, b) => (b.views || 0) - (a.views || 0));
 
         if (sortedByViews.length === 0) {
-          setError("Could not load trending news at this time.");
+          setError(t('trending_news.error_load'));
         }
         setTrending(sortedByViews.slice(0, 5));
       } catch (err: any) {
         console.error('Failed to fetch trending articles:', err);
-        setError('Failed to fetch trending articles. Please check database connection.');
+        setError(t('trending_news.error_fetch'));
       } finally {
         setLoading(false);
       }
     }
     fetchTrending();
-  }, []);
+  }, [t]);
 
   if (loading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 font-kannada"><TrendingUp /> ಟ್ರೆಂಡಿಂಗ್ ನ್ಯೂಸ್</CardTitle>
-          <CardDescription className="font-kannada">ಈಗ ಜನಪ್ರಿಯವಾಗಿರುವುದೇನು.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><TrendingUp /> {t('trending_news.title')}</CardTitle>
+          <CardDescription>{t('trending_news.description')}</CardDescription>
         </CardHeader>
         <CardContent className="h-48 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -57,11 +59,11 @@ export default function TrendingNews() {
     return (
        <Card>
         <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-kannada"><TrendingUp /> ಟ್ರೆಂಡಿಂಗ್ ನ್ಯೂಸ್</CardTitle>
-            <CardDescription className="font-kannada">ರಾಜ್ಯಾದ್ಯಂತ ಈಗ ಜನಪ್ರಿಯವಾಗಿರುವುದೇನು.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><TrendingUp /> {t('trending_news.title')}</CardTitle>
+            <CardDescription>{t('trending_news.description')}</CardDescription>
         </CardHeader>
         <CardContent>
-            <p className="text-muted-foreground text-sm font-kannada">{error || "Could not load trending news feed."}</p>
+            <p className="text-muted-foreground text-sm">{error || t('trending_news.error_load_feed')}</p>
         </CardContent>
     </Card>
     );
@@ -70,8 +72,8 @@ export default function TrendingNews() {
   return (
     <Card>
         <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-kannada"><TrendingUp /> ಟ್ರೆಂಡಿಂಗ್ ನ್ಯೂಸ್</CardTitle>
-            <CardDescription className="font-kannada">ರಾಜ್ಯಾದ್ಯಂತ ಈಗ ಜನಪ್ರಿಯವಾಗಿರುವುದೇನು.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><TrendingUp /> {t('trending_news.title')}</CardTitle>
+            <CardDescription>{t('trending_news.description')}</CardDescription>
         </CardHeader>
         <CardContent>
             <ul className="space-y-4">
@@ -85,10 +87,10 @@ export default function TrendingNews() {
                         {index + 1}
                     </span>
                     <div>
-                        <p className="font-semibold leading-tight group-hover:underline font-kannada">
+                        <p className="font-semibold leading-tight group-hover:underline">
                             {article.title}
                         </p>
-                         <p className="text-xs text-muted-foreground font-kannada">{article.source || article.author}</p>
+                         <p className="text-xs text-muted-foreground">{article.source || article.author}</p>
                     </div>
                 </li>
             ))}
@@ -97,5 +99,3 @@ export default function TrendingNews() {
     </Card>
   );
 }
-
-    

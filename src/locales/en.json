@@ -1,0 +1,35 @@
+
+{
+    "filter_controls": {
+        "title": "Filter News",
+        "district_label": "District",
+        "select_district": "Select District",
+        "all_districts": "All Districts"
+    },
+    "trending_news": {
+        "title": "Trending News",
+        "description": "What's popular across the state.",
+        "error_load": "Could not load trending news at this time.",
+        "error_fetch": "Failed to fetch trending articles. Please check database connection.",
+        "error_load_feed": "Could not load trending news feed."
+    },
+    "article_card": {
+        "just_now": "Just now",
+        "read_more": "Read More"
+    },
+    "article_list": {
+        "error_live_updates_title": "Could not get live updates",
+        "error_live_updates_description": "Displaying cached news. Real-time updates have been paused.",
+        "error_load_more": "Failed to load more news",
+        "no_articles_title": "No Articles Found",
+        "no_articles_description": "There are no articles available for the selected filters. Please try again later or select different filters.",
+        "loading_more": "Loading...",
+        "load_more_button": "Load More News"
+    },
+    "home_page": {
+        "error_fetching_articles": "An unknown error occurred while fetching articles.",
+        "error_loading_news": "Failed to Load News",
+        "read_more": "Read More",
+        "latest_news": "Latest News"
+    }
+}

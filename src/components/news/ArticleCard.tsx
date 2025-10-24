@@ -8,6 +8,7 @@ import type { Article, Category } from '@/lib/types';
 import { format } from 'date-fns';
 import { Calendar, ArrowRight, MapPin } from 'lucide-react';
 import { useArticleModal } from '@/components/providers/article-modal-provider';
+import { useTranslation } from '@/hooks/use-translation';
 
 interface ArticleCardProps {
   article: Article;
@@ -16,6 +17,7 @@ interface ArticleCardProps {
 
 export default function ArticleCard({ article, allCategories = [] }: ArticleCardProps) {
   const { onOpen } = useArticleModal();
+  const { t } = useTranslation();
   
   const categories = article.categoryIds?.map(catId => {
       return allCategories.find(c => c.id === catId)?.name || catId;
@@ -32,7 +34,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
   };
 
   const getPublishedDate = () => {
-    if (!article.publishedAt) return 'Just now';
+    if (!article.publishedAt) return t('article_card.just_now');
     
     // Handle both ISO string from server and Firebase Timestamp from client-side updates
     const date = typeof article.publishedAt === 'string' 
@@ -61,13 +63,13 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
       <CardContent className="flex-grow p-4">
         {categories.length > 0 && 
             <div className="flex flex-wrap gap-2 mb-2">
-               {categories.map(cat => <Badge key={cat} variant="secondary" className="font-kannada">{cat}</Badge>)}
+               {categories.map(cat => <Badge key={cat} variant="secondary">{cat}</Badge>)}
             </div>
         }
-        <CardTitle className="mb-2 text-xl leading-tight font-kannada">
+        <CardTitle className="mb-2 text-xl leading-tight">
             {article.title}
         </CardTitle>
-        <p className="text-muted-foreground text-sm font-kannada">
+        <p className="text-muted-foreground text-sm">
            {(article.seo?.metaDescription || article.content || '').substring(0, 100)}...
         </p>
       </CardContent>
@@ -78,14 +80,14 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
                 <span>{getPublishedDate()}</span>
             </div>
             {article.district && (
-                 <div className="flex items-center gap-1 font-kannada">
+                 <div className="flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
                     <span>{article.district}</span>
                 </div>
             )}
         </div>
-        <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1 font-kannada">
-          ಮುಂದೆ ಓದಿ <ArrowRight className="h-3 w-3" />
+        <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1">
+          {t('article_card.read_more')} <ArrowRight className="h-3 w-3" />
         </div>
       </CardFooter>
     </Card>
@@ -118,34 +120,32 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
         <CardContent className="flex-grow p-4">
             {categories.length > 0 && 
                 <div className="flex flex-wrap gap-2 mb-2">
-                {categories.map(cat => <Badge key={cat} variant="secondary" className="font-kannada">{cat}</Badge>)}
+                {categories.map(cat => <Badge key={cat} variant="secondary">{cat}</Badge>)}
                 </div>
             }
-            <CardTitle className="mb-2 text-xl leading-tight font-kannada">
+            <CardTitle className="mb-2 text-xl leading-tight">
                 {article.title}
             </CardTitle>
         </CardContent>
         <CardFooter className="p-4 bg-muted/50 text-xs text-muted-foreground flex justify-between items-center flex-wrap gap-y-2">
             <div className="flex items-center gap-2">
                 {article.district && (
-                    <div className="flex items-center gap-1 font-kannada">
+                    <div className="flex items-center gap-1">
                         <MapPin className="h-3 w-3" />
                         <span>{article.district}</span>
                     </div>
                 )}
                  {article.source && (
-                    <div className="flex items-center gap-1 font-kannada">
+                    <div className="flex items-center gap-1">
                         <span>{article.source}</span>
                     </div>
                 )}
             </div>
-            <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1 font-kannada">
-            ಮುಂದೆ ಓದಿ <ArrowRight className="h-3 w-3" />
+            <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1">
+            {t('article_card.read_more')} <ArrowRight className="h-3 w-3" />
             </div>
         </CardFooter>
         </Card>
     </div>
   );
 }
-
-    

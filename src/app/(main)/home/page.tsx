@@ -1,4 +1,3 @@
-
 'use client';
 
 import Image from 'next/image';
@@ -14,15 +13,13 @@ import { getArticles } from '@/services/articles';
 import TrendingNews from '@/components/news/TrendingNews';
 import { getCategories } from '@/services/categories';
 import { useEffect, useState } from 'react';
-import { useTranslation } from '@/hooks/use-translation';
 import { useSearchParams } from 'next/navigation';
 
 export default function HomePage() {
   const searchParams = useSearchParams();
   const categorySlug = searchParams.get('category') || undefined;
   const districtId = searchParams.get('district') || undefined;
-  const { t } = useTranslation();
-
+  
   const [districts, setDistricts] = useState<any[]>([]);
   const [allCategories, setAllCategories] = useState<any[]>([]);
   const [initialArticles, setInitialArticles] = useState<Article[]>([]);
@@ -57,7 +54,7 @@ export default function HomePage() {
         }
 
       } catch (e: any) {
-        const errorMessage = e.message || t('home_page.error_fetching_articles');
+        const errorMessage = e.message || 'An unknown error occurred while fetching articles.';
         console.error("[HomePage] CRITICAL ERROR fetching data:", e);
         setError(errorMessage);
       } finally {
@@ -66,11 +63,11 @@ export default function HomePage() {
     }
 
     fetchData();
-  }, [categorySlug, districtId, t]);
+  }, [categorySlug, districtId]);
 
   const renderErrorState = () => (
     <div className="text-center bg-card p-8 rounded-lg">
-      <h1 className="text-2xl font-bold mb-4">{t('home_page.error_loading_news')}</h1>
+      <h1 className="text-2xl font-bold mb-4">ಸುದ್ದಿ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</h1>
       <p className="text-muted-foreground">{error}</p>
     </div>
   );
@@ -116,7 +113,7 @@ export default function HomePage() {
                       </p>
                       <Button asChild size="lg">
                       <Link href={`/article/${topArticle.id}`}>
-                          {t('home_page.read_more')} <ArrowRight className="ml-2 h-5 w-5" />
+                          ಮುಂದೆ ಓದಿ <ArrowRight className="ml-2 h-5 w-5" />
                       </Link>
                       </Button>
                   </div>
@@ -127,7 +124,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
               <div className="lg:col-span-2 space-y-6">
                   <h2 className="font-headline text-3xl font-bold">
-                    {t('home_page.latest_news')}
+                    ಇತ್ತೀಚಿನ ಸುದ್ದಿ
                   </h2>
                   <section>
                       <ArticleList

@@ -11,7 +11,6 @@ import { Button } from '../ui/button';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot, doc, getDoc, startAfter, limit, Timestamp } from 'firebase/firestore';
 import { getDistricts } from '@/services/districts';
-import { useTranslation } from '@/hooks/use-translation';
 
 interface ArticleListProps {
   initialArticles: Article[];
@@ -26,7 +25,6 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
   const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const { toast } = useToast();
-  const { t } = useTranslation();
 
    useEffect(() => {
     setArticles(initialArticles);
@@ -84,14 +82,14 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
     }, (error) => {
         console.error("Real-time update failed:", error);
         toast({
-          title: t('article_list.error_live_updates_title'),
-          description: t('article_list.error_live_updates_description'),
+          title: "ಲೈವ್ ಅಪ್‌ಡೇಟ್‌ಗಳನ್ನು ಪಡೆಯಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ",
+          description: "ಸಂಗ್ರಹಿಸಿದ ಸುದ್ದಿಗಳನ್ನು ಪ್ರದರ್ಶಿಸಲಾಗುತ್ತಿದೆ. ನೈಜ-ಸಮಯದ ನವೀಕರಣಗಳನ್ನು ವಿರಾಮಗೊಳಿಸಲಾಗಿದೆ.",
           variant: 'destructive'
         })
     });
 
     return () => unsubscribe();
-  }, [districtId, toast, t]);
+  }, [districtId, toast]);
 
   const handleLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;
@@ -119,18 +117,18 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
 
     } catch (error: any) {
       console.error("Failed to load more articles", error);
-      toast({ title: t('article_list.error_load_more'), variant: "destructive" });
+      toast({ title: "ಹೆಚ್ಚಿನ ಸುದ್ದಿಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ", variant: "destructive" });
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, lastVisibleDocId, toast, categorySlug, districtId, t]);
+  }, [hasMore, loadingMore, lastVisibleDocId, toast, categorySlug, districtId]);
   
   if (articles.length === 0 && !loadingMore) {
     return (
       <div className="text-center py-12 bg-card rounded-lg">
-        <h2 className="text-2xl font-bold mb-4">{t('article_list.no_articles_title')}</h2>
+        <h2 className="text-2xl font-bold mb-4">ಯಾವುದೇ ಲೇಖನಗಳು ಕಂಡುಬಂದಿಲ್ಲ</h2>
         <p className="text-muted-foreground">
-          {t('article_list.no_articles_description')}
+          ಆಯ್ದ ಫಿಲ್ಟರ್‌ಗಳಿಗಾಗಿ ಯಾವುದೇ ಲೇಖನಗಳು ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ ಅಥವಾ ಬೇರೆ ಫಿಲ್ಟರ್‌ಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ.
         </p>
       </div>
     );
@@ -147,7 +145,7 @@ export default function ArticleList({ initialArticles, categorySlug, districtId,
         <div className="text-center mt-8">
           <Button onClick={handleLoadMore} disabled={loadingMore}>
             {loadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {loadingMore ? t('article_list.loading_more') : t('article_list.load_more_button')}
+            {loadingMore ? 'ಲೋಡ್ ಆಗುತ್ತಿದೆ...' : 'ಇನ್ನಷ್ಟು ಸುದ್ದಿಗಳನ್ನು ಲೋಡ್ ಮಾಡಿ'}
           </Button>
         </div>
       )}

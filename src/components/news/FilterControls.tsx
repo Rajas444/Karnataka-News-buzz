@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { useCallback } from 'react';
-import { useTranslation } from '@/hooks/use-translation';
 
 interface FilterControlsProps {
   districts: District[];
@@ -22,7 +21,6 @@ interface FilterControlsProps {
 export default function FilterControls({ districts }: FilterControlsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { t } = useTranslation();
   
   const selectedDistrictId = searchParams.get('district') || 'all';
 
@@ -44,21 +42,20 @@ export default function FilterControls({ districts }: FilterControlsProps) {
     router.push(`/home?${createQueryString(type, value)}`);
   };
 
-  const allDistrictsLabel = t('filter_controls.all_districts');
-  const allDistricts = [{ id: 'all', name: allDistrictsLabel }, ...districts];
+  const allDistricts = [{ id: 'all', name: 'ಎಲ್ಲಾ ಜಿಲ್ಲೆಗಳು' }, ...districts];
 
   return (
     <Card>
         <CardHeader className="flex flex-row items-center gap-2">
             <Filter className="h-5 w-5" />
-            <CardTitle className="font-headline text-2xl">{t('filter_controls.title')}</CardTitle>
+            <CardTitle className="font-headline text-2xl">ಸುದ್ದಿ ಫಿಲ್ಟರ್ ಮಾಡಿ</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
              <div className="md:col-start-2 lg:col-start-2">
-                 <label className="text-sm font-medium mb-2 block">{t('filter_controls.district_label')}</label>
+                 <label className="text-sm font-medium mb-2 block">ಜಿಲ್ಲೆ</label>
                 <Select onValueChange={(value) => handleFilterChange('district', value)} value={selectedDistrictId}>
                     <SelectTrigger>
-                        <SelectValue placeholder={t('filter_controls.select_district')} />
+                        <SelectValue placeholder="ಜಿಲ್ಲೆ ಆಯ್ಕೆಮಾಡಿ" />
                     </SelectTrigger>
                     <SelectContent>
                         {allDistricts.map((district) => (

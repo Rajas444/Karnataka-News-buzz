@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Menu, Newspaper, Search, Moon, Sun, LogOut, User as UserIcon, ShieldCheck, Briefcase, MessageSquare, Languages } from 'lucide-react';
+import { Menu, Newspaper, Search, Moon, Sun, LogOut, User as UserIcon, ShieldCheck } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -26,7 +26,6 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import { Skeleton } from '../ui/skeleton';
-import { useLanguage } from '../providers/language-provider';
 
 
 const navLinks = [
@@ -39,7 +38,6 @@ export default function Header() {
   const { theme, setTheme } = useTheme();
   const { user, userProfile, userRole, loading } = useAuth();
   const router = useRouter();
-  const { language, setLanguage } = useLanguage();
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -106,28 +104,12 @@ export default function Header() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
-             {userRole === 'admin' && (
-                <Button variant="outline" size="sm" onClick={() => router.push('/admin')}>
-                    <ShieldCheck className="mr-2 h-4 w-4" />
-                    Admin Panel
-                </Button>
+            {userRole === 'admin' && (
+              <Button variant="outline" size="sm" onClick={() => router.push('/admin')}>
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Admin Panel
+              </Button>
             )}
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                        <Languages className="h-5 w-5" />
-                        <span className="sr-only">Change language</span>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setLanguage('en')} disabled={language === 'en'}>
-                        English
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setLanguage('kn')} disabled={language === 'kn'}>
-                        ಕನ್ನಡ (Kannada)
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
             <Button
               variant="ghost"
               size="icon"

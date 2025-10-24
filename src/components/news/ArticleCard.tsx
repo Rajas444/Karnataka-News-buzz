@@ -8,7 +8,6 @@ import type { Article, Category } from '@/lib/types';
 import { format } from 'date-fns';
 import { Calendar, ArrowRight, MapPin } from 'lucide-react';
 import { useArticleModal } from '@/components/providers/article-modal-provider';
-import { useTranslation } from '@/hooks/use-translation';
 
 interface ArticleCardProps {
   article: Article;
@@ -17,7 +16,6 @@ interface ArticleCardProps {
 
 export default function ArticleCard({ article, allCategories = [] }: ArticleCardProps) {
   const { onOpen } = useArticleModal();
-  const { t } = useTranslation();
   
   const categories = article.categoryIds?.map(catId => {
       return allCategories.find(c => c.id === catId)?.name || catId;
@@ -34,7 +32,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
   };
 
   const getPublishedDate = () => {
-    if (!article.publishedAt) return t('article_card.just_now');
+    if (!article.publishedAt) return 'Just now';
     
     // Handle both ISO string from server and Firebase Timestamp from client-side updates
     const date = typeof article.publishedAt === 'string' 
@@ -87,7 +85,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
             )}
         </div>
         <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1">
-          {t('article_card.read_more')} <ArrowRight className="h-3 w-3" />
+          ಮುಂದೆ ಓದಿ <ArrowRight className="h-3 w-3" />
         </div>
       </CardFooter>
     </Card>
@@ -142,7 +140,7 @@ export default function ArticleCard({ article, allCategories = [] }: ArticleCard
                 )}
             </div>
             <div className="text-primary hover:underline text-xs font-semibold flex items-center gap-1">
-            {t('article_card.read_more')} <ArrowRight className="h-3 w-3" />
+            ಮುಂದೆ ಓದಿ <ArrowRight className="h-3 w-3" />
             </div>
         </CardFooter>
         </Card>
